@@ -81,7 +81,7 @@ void loop() {
 
   // here if not a + command
 
-  // read in and process a protocol (starts with '[', ends with '!' or timeout)
+  // read in and process a protocol (starts with '[')
   // example: [{"pulses": [150],"a_lights": [[3]],"a_intensities": [[50]],"pulsedistance": 1000,"m_intensities": [[125]],"pulsesize": 2,"detectors": [[3]],"meas_lights": [[1]],"protocols": 1}]<newline>
 
   do_protocol();
@@ -206,106 +206,106 @@ void do_command()
       get_set_device_info(1);
       break;
 
-        case 1011:
-          Serial_Print_Line("PULSE1");
-          DAC_set(1, 50);
-          DAC_change();
-          digitalWriteFast(PULSE1, HIGH);
-          delay(1000);
-          digitalWriteFast(PULSE1, LOW);
-          DAC_set(1, 0);
-          DAC_change();
-          break;
-        case 1012:
-          Serial_Print_Line("PULSE2");
-          DAC_set(2, 50);
-          DAC_change();
-          digitalWriteFast(PULSE2, HIGH);
-          delay(1000);
-          digitalWriteFast(PULSE2, LOW);
-          DAC_set(2, 0);
-          DAC_change();
-          break;
-        case 1013:
-          Serial_Print_Line("PULSE3");
-          DAC_set(3, 50);
-          DAC_change();
-          digitalWriteFast(PULSE3, HIGH);
-          delay(1000);
-          digitalWriteFast(PULSE3, LOW);
-          DAC_set(3, 0);
-          DAC_change();
-          break;
-        case 1014:
-          Serial_Print_Line("PULSE4");
-          DAC_set(4, 50);
-          DAC_change();
-          digitalWriteFast(PULSE4, HIGH);
-          delay(1000);
-          digitalWriteFast(PULSE4, LOW);
-          DAC_set(4, 0);
-          DAC_change();
-          break;
-        case 1015:
-          Serial_Print_Line("PULSE5");
-          DAC_set(5, 50);
-          DAC_change();
-          digitalWriteFast(PULSE5, HIGH);
-          delay(1000);
-          digitalWriteFast(PULSE5, LOW);
-          DAC_set(5, 0);
-          DAC_change();
-          break;
-        case 1016:
-          Serial_Print_Line("PULSE6");
-          DAC_set(6, 50);
-          DAC_change();
-          digitalWriteFast(PULSE6, HIGH);
-          delay(1000);
-          digitalWriteFast(PULSE6, LOW);
-          DAC_set(6, 0);
-          DAC_change();
-          break;
-        case 1017:
-          Serial_Print_Line("PULSE7");
-          DAC_set(7, 50);
-          DAC_change();
-          digitalWriteFast(PULSE7, HIGH);
-          delay(1000);
-          digitalWriteFast(PULSE7, LOW);
-          DAC_set(7, 0);
-          DAC_change();
-          break;
-        case 1018:
-          Serial_Print_Line("PULSE8");
-          DAC_set(8, 50);
-          DAC_change();
-          digitalWriteFast(PULSE8, HIGH);
-          delay(1000);
-          digitalWriteFast(PULSE8, LOW);
-          DAC_set(8, 0);
-          DAC_change();
-          break;
-        case 1019:
-          Serial_Print_Line("PULSE9");
-          DAC_set(9, 50);
-          DAC_change();
-          digitalWriteFast(PULSE9, HIGH);
-          delay(1000);
-          digitalWriteFast(PULSE9, LOW);
-          DAC_set(9, 0);
-          DAC_change();
-          break;
-        case 1020:
-          Serial_Print_Line("PULSE10");
-          DAC_set(10, 50);
-          DAC_change();
-          digitalWriteFast(PULSE10, HIGH);
-          delay(1000);
-          digitalWriteFast(PULSE10, LOW);
-          DAC_set(10, 0);
-          DAC_change();
-          break;
+    case 1011:
+      Serial_Print_Line("PULSE1");
+      DAC_set(1, 50);
+      DAC_change();
+      digitalWriteFast(PULSE1, HIGH);
+      delay(1000);
+      digitalWriteFast(PULSE1, LOW);
+      DAC_set(1, 0);
+      DAC_change();
+      break;
+    case 1012:
+      Serial_Print_Line("PULSE2");
+      DAC_set(2, 50);
+      DAC_change();
+      digitalWriteFast(PULSE2, HIGH);
+      delay(1000);
+      digitalWriteFast(PULSE2, LOW);
+      DAC_set(2, 0);
+      DAC_change();
+      break;
+    case 1013:
+      Serial_Print_Line("PULSE3");
+      DAC_set(3, 50);
+      DAC_change();
+      digitalWriteFast(PULSE3, HIGH);
+      delay(1000);
+      digitalWriteFast(PULSE3, LOW);
+      DAC_set(3, 0);
+      DAC_change();
+      break;
+    case 1014:
+      Serial_Print_Line("PULSE4");
+      DAC_set(4, 50);
+      DAC_change();
+      digitalWriteFast(PULSE4, HIGH);
+      delay(1000);
+      digitalWriteFast(PULSE4, LOW);
+      DAC_set(4, 0);
+      DAC_change();
+      break;
+    case 1015:
+      Serial_Print_Line("PULSE5");
+      DAC_set(5, 50);
+      DAC_change();
+      digitalWriteFast(PULSE5, HIGH);
+      delay(1000);
+      digitalWriteFast(PULSE5, LOW);
+      DAC_set(5, 0);
+      DAC_change();
+      break;
+    case 1016:
+      Serial_Print_Line("PULSE6");
+      DAC_set(6, 50);
+      DAC_change();
+      digitalWriteFast(PULSE6, HIGH);
+      delay(1000);
+      digitalWriteFast(PULSE6, LOW);
+      DAC_set(6, 0);
+      DAC_change();
+      break;
+    case 1017:
+      Serial_Print_Line("PULSE7");
+      DAC_set(7, 50);
+      DAC_change();
+      digitalWriteFast(PULSE7, HIGH);
+      delay(1000);
+      digitalWriteFast(PULSE7, LOW);
+      DAC_set(7, 0);
+      DAC_change();
+      break;
+    case 1018:
+      Serial_Print_Line("PULSE8");
+      DAC_set(8, 50);
+      DAC_change();
+      digitalWriteFast(PULSE8, HIGH);
+      delay(1000);
+      digitalWriteFast(PULSE8, LOW);
+      DAC_set(8, 0);
+      DAC_change();
+      break;
+    case 1019:
+      Serial_Print_Line("PULSE9");
+      DAC_set(9, 50);
+      DAC_change();
+      digitalWriteFast(PULSE9, HIGH);
+      delay(1000);
+      digitalWriteFast(PULSE9, LOW);
+      DAC_set(9, 0);
+      DAC_change();
+      break;
+    case 1020:
+      Serial_Print_Line("PULSE10");
+      DAC_set(10, 50);
+      DAC_change();
+      digitalWriteFast(PULSE10, HIGH);
+      delay(1000);
+      digitalWriteFast(PULSE10, LOW);
+      DAC_set(10, 0);
+      DAC_change();
+      break;
     case 1021:                                                                            // variety of test commands used during development
       {
 
@@ -1019,9 +1019,9 @@ void do_protocol()
                 String intensity_string = a_intensities.getArray(cycle).getString(i);
                 _a_intensities[i] = expr(intensity_string.c_str());                       // evaluate as an expression
 
-//                if (PULSERDEBUG) {
-                  Serial_Printf("\n all a_lights, intensities: %d,%d,|%s|,%f,%f,%f\n", _a_lights[i], _a_intensities[i],intensity_string.c_str(),expr(intensity_string.c_str()),light_intensity, light_intensity_averaged);
-//                } // PULSERDEBUG
+                //                if (PULSERDEBUG) {
+                Serial_Printf("\n all a_lights, intensities: %d,%d,|%s|,%f,%f,%f\n", _a_lights[i], _a_intensities[i], intensity_string.c_str(), expr(intensity_string.c_str()), light_intensity, light_intensity_averaged);
+                //                } // PULSERDEBUG
               }
               //              }
 
@@ -1456,15 +1456,15 @@ void do_protocol()
 
         act_background_light_prev = act_background_light;                               // set current background as previous background for next protocol
         spec_on = 0;                                                                    // reset flag that spec is turned on for this measurement
-        
+
       }  // for each protocol repeat u
-      
+
     }  // for each protocol q[{      "environmental":[["light_intensity",0]],"pulses": [100,100,100],"a_lights": [[2],[2],[2]],"a_intensities": [["light_intensity_averaged"],[1000],["light_intensity_averaged"]],"pulsedistance": [10000,10000,10000],"m_intensities": [[500],[500],[500],[500]],"pulsesize": [60,60,60],"detectors": [[1],[1],[1]],"meas_lights": [[3],[3],[3]],"averages": 1}]
 
     Serial_Flush_Input();
-    if (y < measurements - 1) {                                 // if not last measurement                   
+    if (y < measurements - 1) {                                 // if not last measurement
       Serial_Print(",");                                        // add commas between measurements
-      
+
       if (measurements_delay > 0) {                             // delay for specified time or until + is entered
         Serial_Input_Long("+", measurements_delay * 1000);
       }
@@ -1814,7 +1814,7 @@ static void environmentals(JsonArray environmental, const int _averages, const i
 
 static void print_all () {
   // print every value saved in eeprom in valid json structure (even the undefined values which are still 0)
-  Serial_Printf("light_intensity:%g\n",light_intensity);
+  Serial_Printf("light_intensity:%g\n", light_intensity);
 }
 
 static void print_userdef () {

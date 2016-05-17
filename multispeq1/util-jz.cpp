@@ -17,18 +17,28 @@ void program_once(unsigned char address, unsigned int value);
 int jz_test_mode = 0;
 
 
-void start_watchdog()
+void start_watchdog(int minutes)
 {
+  if (minutes < 1)
+     minutes = 1;
   WDOG_UNLOCK = WDOG_UNLOCK_SEQ1;
   WDOG_UNLOCK = WDOG_UNLOCK_SEQ2;
   delayMicroseconds(1); // Need to wait a bit..
   WDOG_TOVALL = 0; // The next 2 lines sets the time-out value. This is the value that the watchdog timer compare itself to.
-  WDOG_TOVALH = 2;     // 65 seconds each 
+  WDOG_TOVALH = minutes;     // approximate
   WDOG_PRESC = 0;
-  WDOG_STCTRLH = (WDOG_STCTRLH_WAITEN | WDOG_STCTRLH_STOPEN | WDOG_STCTRLH_WDOGEN); // enable
+  WDOG_STCTRLH = (WDOG_STCTRLH_WAITEN | WDOG_STCTRLH_STOPEN | WDOG_STCTRLH_WDOGEN | WDOG_STCTRLH_ALLOWUPDATE); // enable
 }
 
-void kick_watchdog()
+void stop_watchdog()
+{
+  WDOG_UNLOCK = WDOG_UNLOCK_SEQ1;
+  WDOG_UNLOCK = WDOG_UNLOCK_SEQ2;
+  delayMicroseconds(1); // Need to wait a bit..
+  WDOG_STCTRLH = WDOG_STCTRLH_ALLOWUPDATE;               // disable
+}
+
+void feed_watchdog()
 {
   noInterrupts();
   WDOG_REFRESH = 0xA602;
@@ -241,7 +251,7 @@ void activity() {
 
 void powerdown() {
 
-  //return;    // this is still experimental
+  return;    // this is still experimental
 
   if ((millis() - last_activity > SHUTDOWN /* && !Serial */) || battery_low(0)) {   // if USB is active, no timeout sleep
 

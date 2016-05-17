@@ -274,7 +274,7 @@ void setup() {
   analogReadResolution(16);
   analogReadAveraging(4);
   { // check voltage level
-    //uint32_t x = analogRead(39) >> 4;  // forumla needs 12 bits, not 16
+    //uint32_t x = analogRead(39) >> 4;  // formula needs 12 bits, not 16
     //uint32_t mv = (178 * x * x + 2688757565 - 1184375 * x) / 372346; // milli-volts input to MCU, clips at ~3500
     //assert(mv > 3400);      // voltage is too low for proper operation
   }
@@ -289,9 +289,9 @@ void setup() {
 
   assert(sizeof(eeprom_class) < 2048);                    // check that we haven't exceeded eeprom space
 
-  setTime(Teensy3Clock.get());             // set time from RTC - TODO RTC doesn't clock?
+  setTime(Teensy3Clock.get());             // set time from RTC
 
-  Serial_Print(DEVICE_NAME);
+  Serial_Print(DEVICE_NAME);               // note: this may not display because Serial isn't ready
   Serial_Print_Line(" Ready");
 
 }  // setup() - now execute loop()
@@ -425,6 +425,3 @@ void print_data()
   Serial_Print("]");
 }
 #endif
-
-
-
