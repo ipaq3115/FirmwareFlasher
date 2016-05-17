@@ -251,7 +251,7 @@ void activity() {
 
 void powerdown() {
 
-  return;    // this is still experimental
+  //return;    // this is still experimental
 
   if ((millis() - last_activity > SHUTDOWN /* && !Serial */) || battery_low(0)) {   // if USB is active, no timeout sleep
 
@@ -261,6 +261,7 @@ void powerdown() {
 #endif
 
     // TODO put accelerometer into lowest power mode
+    // TODO - turn off unneeded peripherals?
 
     accel_changed();     // update values with current
 
@@ -279,8 +280,8 @@ void powerdown() {
     } // for
 
     // note, peripherals are now in an unknown state
-
-    // calling setup() might also work
+    // calling setup() + turn on peripherals might also work and would preserve ram contents (allowing hibernate in more places)
+   
     // reboot to turn everything on and re-intialize peripherals
 #define CPU_RESTART_ADDR ((uint32_t *)0xE000ED0C)
 #define CPU_RESTART_VAL 0x5FA0004
@@ -290,7 +291,7 @@ void powerdown() {
 }  // powerdown()
 
 
-#define USE_HIBERNATE  // doesn't work, you have to edit the library source code
+//#define USE_HIBERNATE  // doesn't work, you have to edit the library source code
 #include <Snooze.h>
 
 static SnoozeBlock config;
@@ -301,8 +302,11 @@ void sleep_mode(const int n)
   // Set Low Power Timer wake up in milliseconds.
   config.setTimer(n);      // milliseconds
 
+#ifdef USE_HIBERNATE
+  Snooze.hibernate( config );
+#else
   Snooze.deepSleep( config );
-  //    Snooze.hibernate( config );
+#endif
 
 } // sleep_mode()
 
