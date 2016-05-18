@@ -147,7 +147,7 @@ EXTERN float thickness_raw_averaged;
 EXTERN float contactless_temp;
 EXTERN float contactless_temp_averaged;
 
-EXTERN int compass;
+EXTERN float compass;
 EXTERN float compass_averaged;
 EXTERN int x_compass_raw, y_compass_raw, z_compass_raw;
 EXTERN float x_compass_raw_averaged, y_compass_raw_averaged, z_compass_raw_averaged;
@@ -155,7 +155,7 @@ EXTERN float x_compass_raw_averaged, y_compass_raw_averaged, z_compass_raw_avera
 EXTERN double angle;
 EXTERN double angle_averaged;
 EXTERN String angle_direction;
-EXTERN int roll, pitch;
+EXTERN float roll, pitch;
 EXTERN float roll_averaged, pitch_averaged;
 EXTERN int x_tilt, y_tilt, z_tilt;
 EXTERN float x_tilt_averaged, y_tilt_averaged, z_tilt_averaged;
