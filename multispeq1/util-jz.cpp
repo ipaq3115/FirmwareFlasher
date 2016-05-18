@@ -165,6 +165,8 @@ int battery_low(int flash)         // 0 for no load, 1 to flash LEDs to create l
 {
   uint32_t initial_value = 0;
 
+  // TODO set Bat_meas pin to low output (pull down) to measure
+
   // find voltage before high load
   for (int i = 0 ; i < 100; ++i)
     initial_value += analogRead(BATT_TEST);  // test A10 analog input
@@ -213,6 +215,8 @@ int battery_low(int flash)         // 0 for no load, 1 to flash LEDs to create l
     return 1;                  // too low
   else
     return 0;  // OK
+  
+  // TODO set Bat_meas pin to high impedance
 
 } // battery_low()
 
@@ -261,7 +265,7 @@ void powerdown() {
 #endif
 
     // TODO put accelerometer into lowest power mode
-    // TODO - turn off unneeded peripherals?
+    // TODO - turn off unneeded peripherals?, set some pins to high impedance/floating
 
     accel_changed();     // update values with current
 
