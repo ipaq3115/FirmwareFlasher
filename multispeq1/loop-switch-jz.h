@@ -5,12 +5,22 @@
 
 {
 
+case hash("feed_watchdog"):
+    feed_watchdog();
+    break;
+
+case hash("start_watchdog"):
+    start_watchdog((int)Serial_Input_Long("\r\n+",1000));      // enter time in minutes
+    break;
+
+case hash("stop_watchdog"):
+    stop_watchdog();
+    break;
+
 case hash("expr"):
   {
   char c[100];
   Serial_Input_Chars(c, "\r\n", 1000, sizeof(c) - 1);  // no plus since that is a operator
-  Serial_Print_Line("this is c   ");
-  Serial_Print(c);
   Serial_Printf("%g\n", expr(c));
   }
   break;
@@ -20,7 +30,7 @@ case hash("testmode"):
   jz_test_mode = 1;
   break;
 
-case hash("readonce"):
+case hash("readonce"):                           // access write once flash
   // bytes in 0xE and 0xF are the serial number
   Serial_Printf("0,E,F = %8.8x %8.8x %8.8x\n", read_once(0x0), read_once(0xe), read_once(0xf));
   //program_once(0xe,0xABCD);
@@ -44,9 +54,8 @@ case hash("set_date"):
   }
   // fall through to print
 case hash("print_date"):
-  // example: 2004-02-12T15:19:21.000Z
-  Serial_Printf("{\"device_time\":\"%4.4d-%2.2d-%2.2dT%2.2d:%2.2d:%2.2d.000Z\"}\n", year(), month(), day(), hour(), minute(), second());
-  Serial_Printf("{\"device_time\":%u}\n", now()); // since 1970 format
+  // example: 2004-02-12T15:19:21.000Z and also seconds since 1970
+  Serial_Printf("{\"device_time\":\"%4.4d-%2.2d-%2.2dT%2.2d:%2.2d:%2.2d.000Z\",\"device_time\":%u}\n", year(), month(), day(), hour(), minute(), second(),now());
   break;
 
 case hash("powerdown"):
@@ -66,6 +75,7 @@ case hash("scan_i2c"):
   break;
 
 case hash("sleep"):
+  Serial_Print_Line("start sleeping");
   sleep_mode(5000);
   Serial_Print_Line("done sleeping");
   break;

@@ -17,18 +17,28 @@ void program_once(unsigned char address, unsigned int value);
 int jz_test_mode = 0;
 
 
-void start_watchdog()
+void start_watchdog(int minutes)
 {
+  if (minutes < 1)
+     minutes = 1;
   WDOG_UNLOCK = WDOG_UNLOCK_SEQ1;
   WDOG_UNLOCK = WDOG_UNLOCK_SEQ2;
   delayMicroseconds(1); // Need to wait a bit..
   WDOG_TOVALL = 0; // The next 2 lines sets the time-out value. This is the value that the watchdog timer compare itself to.
-  WDOG_TOVALH = 2;     // 65 seconds each 
+  WDOG_TOVALH = minutes;     // approximate
   WDOG_PRESC = 0;
-  WDOG_STCTRLH = (WDOG_STCTRLH_WAITEN | WDOG_STCTRLH_STOPEN | WDOG_STCTRLH_WDOGEN); // enable
+  WDOG_STCTRLH = (WDOG_STCTRLH_WAITEN | WDOG_STCTRLH_STOPEN | WDOG_STCTRLH_WDOGEN | WDOG_STCTRLH_ALLOWUPDATE); // enable
 }
 
-void kick_watchdog()
+void stop_watchdog()
+{
+  WDOG_UNLOCK = WDOG_UNLOCK_SEQ1;
+  WDOG_UNLOCK = WDOG_UNLOCK_SEQ2;
+  delayMicroseconds(1); // Need to wait a bit..
+  WDOG_STCTRLH = WDOG_STCTRLH_ALLOWUPDATE;               // disable
+}
+
+void feed_watchdog()
 {
   noInterrupts();
   WDOG_REFRESH = 0xA602;
@@ -251,6 +261,7 @@ void powerdown() {
 #endif
 
     // TODO put accelerometer into lowest power mode
+    // TODO - turn off unneeded peripherals?
 
     accel_changed();     // update values with current
 
@@ -269,8 +280,8 @@ void powerdown() {
     } // for
 
     // note, peripherals are now in an unknown state
-
-    // calling setup() might also work
+    // calling setup() + turn on peripherals might also work and would preserve ram contents (allowing hibernate in more places)
+   
     // reboot to turn everything on and re-intialize peripherals
 #define CPU_RESTART_ADDR ((uint32_t *)0xE000ED0C)
 #define CPU_RESTART_VAL 0x5FA0004
@@ -280,7 +291,7 @@ void powerdown() {
 }  // powerdown()
 
 
-#define USE_HIBERNATE  // doesn't work, you have to edit the library source code
+//#define USE_HIBERNATE  // doesn't work, you have to edit the library source code
 #include <Snooze.h>
 
 static SnoozeBlock config;
@@ -291,8 +302,11 @@ void sleep_mode(const int n)
   // Set Low Power Timer wake up in milliseconds.
   config.setTimer(n);      // milliseconds
 
+#ifdef USE_HIBERNATE
+  Snooze.hibernate( config );
+#else
   Snooze.deepSleep( config );
-  //    Snooze.hibernate( config );
+#endif
 
 } // sleep_mode()
 

@@ -21,4 +21,7 @@ float cosine_internal(float angle);
 //float float_max(float x, float y);
 //float float_min(float x, float y);
 void timefromcompiler(void);
+void start_watchdog(int min);
+void stop_watchdog(void);
+void feed_watchdog(void);
 
