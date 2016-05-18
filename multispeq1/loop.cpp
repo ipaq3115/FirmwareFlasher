@@ -730,7 +730,8 @@ void do_protocol()
 
   Serial_Printf("{\"device_id\":%ld", eeprom->device_id);   // change to : format?
   Serial_Printf(",\"device_version\":%s", DEVICE_VERSION);
-  Serial_Printf(",\"firmware_version\":%s", DEVICE_FIRMWARE);
+ Serial_Printf(",\"firmware_version\":%s", DEVICE_FIRMWARE);
+  Serial_Printf(",\"device_firmware\":%s", DEVICE_FIRMWARE);
   if (year() >= 2016)
     Serial_Printf(",\"device_time\":%u", now());
   Serial_Print(",\"sample\":[");
