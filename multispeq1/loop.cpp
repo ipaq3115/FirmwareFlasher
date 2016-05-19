@@ -1074,7 +1074,8 @@ void do_protocol()
                 //              stopTimers();                                                                                   // stop the old timers
                 startTimers(_pulsedistance);                                    // restart the measurement light timer
               }
-            }
+
+            }  // for num of pulses z
 
             if (PULSERDEBUG) {
               Serial_Printf("pulsedistance = %d, pulsesize = %d, cycle = %d, measurement number = %d, measurement array size = %d,total pulses = %d\n", (int) _pulsedistance, (int) _pulsesize, (int) cycle, (int) meas_number, (int) meas_array_size, (int) total_pulses);
@@ -1346,7 +1347,9 @@ void do_protocol()
               pulse = 0;                                                               // reset pulse counter
               cycle++;                                                                 // ...move to next cycle
             }
-          }
+
+          }  // for averages x
+
           background_on = 0;
           /*
                     background_on = calculate_intensity_background(act_background_light, tcs_to_act, cycle, _light_intensity, act_background_light_intensity); // figure out background light intensity and state
@@ -1388,7 +1391,7 @@ void do_protocol()
             }
           }
 
-        }  // for each protocol repeat
+        }  // for each protocol repeat u
 
         /*
            Recall and save values to the eeprom
@@ -1471,7 +1474,9 @@ void do_protocol()
 
       }  // for each protocol repeat u
 
-    }  // for each protocol q[{      "environmental":[["light_intensity",0]],"pulses": [100,100,100],"a_lights": [[2],[2],[2]],"a_intensities": [["light_intensity_averaged"],[1000],["light_intensity_averaged"]],"pulsedistance": [10000,10000,10000],"m_intensities": [[500],[500],[500],[500]],"pulsesize": [60,60,60],"detectors": [[1],[1],[1]],"meas_lights": [[3],[3],[3]],"averages": 1}]
+    }  // for each protocol q
+
+// [{      "environmental":[["light_intensity",0]],"pulses": [100,100,100],"a_lights": [[2],[2],[2]],"a_intensities": [["light_intensity_averaged"],[1000],["light_intensity_averaged"]],"pulsedistance": [10000,10000,10000],"m_intensities": [[500],[500],[500],[500]],"pulsesize": [60,60,60],"detectors": [[1],[1],[1]],"meas_lights": [[3],[3],[3]],"averages": 1}]
 
     Serial_Flush_Input();
     if (y < measurements - 1) {                                 // if not last measurement
