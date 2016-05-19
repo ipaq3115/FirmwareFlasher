@@ -166,6 +166,9 @@ EXTERN float temperature_averaged, humidity_averaged, pressure_averaged;
 EXTERN float temperature2, humidity2, pressure2;
 EXTERN float temperature2_averaged, humidity2_averaged, pressure2_averaged;
 
+EXTERN float detector_read1, detector_read2;
+EXTERN float detector_read1_averaged, detector_read2_averaged;
+
 // pressure/temp/humidity sensors
 EXTERN BME280 bme1;        // I2C sensor
 EXTERN BME280 bme2;

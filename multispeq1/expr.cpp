@@ -59,6 +59,22 @@ float variable(const char *name)
 
     value = b_averaged;
 
+  } else if (strcmp( name, "detector_read1" ) == 0 ) {
+
+    value = detector_read1;
+    
+  } else if (strcmp( name, "detector_read1_averaged" ) == 0 ) {
+
+    value = detector_read1_averaged;
+
+  } else if (strcmp( name, "detector_read2" ) == 0 ) {
+
+    value = detector_read2;
+    
+  } else if (strcmp( name, "detector_read2_averaged" ) == 0 ) {
+
+    value = detector_read2_averaged;
+
   } else if (strcmp( name, "thickness" ) == 0 ) {
 
     value = thickness;
