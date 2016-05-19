@@ -5,6 +5,11 @@
 
 {
 
+case hash("cut_through"):
+    extern int cut_through;
+    cut_through = 1;
+    break;
+    
 case hash("feed_watchdog"):
     feed_watchdog();
     break;

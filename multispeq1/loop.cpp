@@ -39,6 +39,8 @@ void do_protocol(void);
 void do_command(void);
 void print_calibrations(void);
 
+void get_compass_and_angle (int notRaw, int _averages);
+
 
 //////////////////////// MAIN LOOP /////////////////////////
 
@@ -592,6 +594,14 @@ void do_command()
 
       }
       break;
+
+    case 1054:
+      { int leave = 0;
+        while (leave != -1) {
+          leave = Serial_Input_Long("+", 1000);
+          get_compass_and_angle(1, 1);
+        }
+      }
 
     case hash("collect"):
       Serial_Print("Disconnect the cable");
@@ -1649,18 +1659,27 @@ float get_contactless_temp (int _averages) {
 
 void get_compass_and_angle (int notRaw, int _averages) {
 
-  // get accelerometer values for tilt
-  MMA8653FC_read(&x_tilt, &y_tilt, &z_tilt);                      // saves x_tilt, y_... and z_... values
-  // consider adding a calibration with more useful outputs
-  roll = getRoll(y_tilt, z_tilt);
-  pitch = getPitch(x_tilt, y_tilt, z_tilt, roll);
+  int magX, magY, magZ, accX, accY, accZ;
+  MAG3110_read(&magX, &magY, &magZ);
+  MMA8653FC_read(&accX, &accY, &accZ);
 
-  // get compass values, and use tilt values to adjust calibration
-  MAG3110_read(&x_compass_raw, &y_compass_raw, &z_compass_raw);            // saves x_compass, y_ and z_ values
-  compass = getCompass(x_compass_raw, y_compass_raw, z_compass_raw, pitch, roll);
-  Tilt tilt_temp = calculateTilt(roll, pitch, compass);
-  angle = tilt_temp.angle;
-  angle_direction = tilt_temp.angle_direction;
+  float mag_coords[3] = {(float) magX, (float) magY, (float) magZ};
+  applyMagCal(mag_coords);
+
+  int acc_coords[3] = {accX, accY, accZ};
+  applyAccCal(acc_coords);
+
+  float roll = getRoll(acc_coords[1], acc_coords[2]);
+  float pitch = getPitch(acc_coords[0], acc_coords[1], acc_coords[2], roll);
+  float compass = getCompass(mag_coords[0], mag_coords[1], mag_coords[2], pitch, roll);
+
+  Tilt deviceTilt = calculateTilt(roll, pitch, compass);
+
+  rad_to_deg(&roll, &pitch, &compass);
+
+  angle = deviceTilt.angle;
+  //Serial_Printf("%f \n", angle);
+  angle_direction = deviceTilt.angle_direction;
 
   // TODO now access the elements in the Tilt struct and save them.  Go change all the values elsewhere
 
@@ -1768,7 +1787,7 @@ static void environmentals(JsonArray environmental, const int _averages, const i
     if ((String) environmental.getArray(i).getString(0) == "compass_and_angle") {                             // measure tilt in -180 - 180 degrees
       get_compass_and_angle(1, _averages);
       if (count == _averages - 1) {
-        Serial_Printf("\"compass_direction\":%s,\"compass\":%.2f,\"angle\":%.2f,\"angle_direction\":%s,\"pitch\":%.2f,\"roll\":%.2f,", getDirection(compass_segment(compass)), compass_averaged, angle_averaged, angle_direction.c_str(), pitch_averaged, roll_averaged);
+        Serial_Printf("\"compass_direction\":%s,\"compass\":%.2f,\"angle\":%.2f,\"angle_direction\":%s,\"pitch\":%.2f,\"roll\":%.2f,", getDirection(compass_segment(compass_averaged)), compass_averaged, angle_averaged, angle_direction.c_str(), pitch_averaged, roll_averaged);
       }
     }
 

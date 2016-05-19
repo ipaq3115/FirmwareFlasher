@@ -27,10 +27,11 @@ void applyMagCal(float * arr) {
 
   //arr[1] *= -1;
   arr[0] *= -1;
+  arr[2] *= -1;
 }
 
 void applyAccCal(int * arr){
-  arr[1] *= -1;
+  //arr[1] *= -1;
   arr[2] *= -1;
 }
 
@@ -44,16 +45,18 @@ void rad_to_deg(float* roll, float* pitch, float* compass){
 float getCompass(const float magX, const float magY, const float magZ, const float & pitch, const float & roll) {
 
   float negBfy = magZ * sine_internal(roll) - magY * cosine_internal(roll);
-  float Bfx = magX * cosine_internal(pitch) - magY * sine_internal(roll) * sine_internal(pitch) - magZ * sine_internal(pitch) * cosine_internal(roll);
+  float Bfx = magX * cosine_internal(pitch) + magY * sine_internal(roll) * sine_internal(pitch) + magZ * sine_internal(pitch) * cosine_internal(roll);
   float compass = atan2(negBfy, Bfx);
+
+  compass += PI / 2;
+  
   if (compass < 0) {
     compass += 2 * PI;
   }
-
-  compass += PI / 2;
   if(compass > 2 * PI){
     compass -= 2 * PI;
   }
+
 
   return compass;
 }
@@ -109,7 +112,7 @@ Tilt calculateTilt(float roll, float pitch, float compass) {
     deviceTilt.angle_direction = "\"Invalid compass heading\"";
   }
 
-  float tilt_angle = atan2((sine_internal(roll)), cosine_internal(roll) * sine_internal(pitch));
+  float tilt_angle = atan2(-1 * sine_internal(roll), cosine_internal(roll) * sine_internal(pitch));
 
   tilt_angle *= 180 / PI;
 
