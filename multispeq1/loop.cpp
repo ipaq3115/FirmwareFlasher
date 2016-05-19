@@ -83,7 +83,7 @@ void loop() {
 
   // here if not a + command
 
-  // read in and process a protocol (starts with '[')
+  // read in and process a protocol (starts with '[', ends with '!' or timeout)
   // example: [{"pulses": [150],"a_lights": [[3]],"a_intensities": [[50]],"pulsedistance": 1000,"m_intensities": [[125]],"pulsesize": 2,"detectors": [[3]],"meas_lights": [[1]],"protocols": 1}]<newline>
 
   do_protocol();
@@ -480,40 +480,40 @@ void do_command()
         }
       }
       break;
-    /*
-      case 1047:
+
+    case 1047:
       //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 2, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
       for (;;) {
-      int led = Serial_Input_Double("+", 0);
-      if (led == -1) {                                    // user can bail with -1+ setting as LED
-        break;
-      }
-      else if (led > 0 || led < NUM_LEDS + 1) {
-        store(colorcal_intensity2_slope[led], Serial_Input_Double("+", 0));
-        store(colorcal_intensity2_yint[led], Serial_Input_Double("+", 0));
-      }
-      else {
-        Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
-      }
+        int led = Serial_Input_Double("+", 0);
+        if (led == -1) {                                    // user can bail with -1+ setting as LED
+          break;
+        }
+        else if (led > 0 || led < NUM_LEDS + 1) {
+          store(colorcal_intensity2_slope[led], Serial_Input_Double("+", 0));
+          store(colorcal_intensity2_yint[led], Serial_Input_Double("+", 0));
+        }
+        else {
+          Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+        }
       }
       break;
-      case 1048:
+    case 1048:
       //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 3, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
       for (;;) {
-      int led = Serial_Input_Double("+", 0);
-      if (led == -1) {                                    // user can bail with -1+ setting as LED
-        break;
-      }
-      else if (led > 0 || led < NUM_LEDS + 1) {
-        store(colorcal_intensity3_slope[led], Serial_Input_Double("+", 0));
-        store(colorcal_intensity3_yint[led], Serial_Input_Double("+", 0));
-      }
-      else {
-        Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
-      }
+        int led = Serial_Input_Double("+", 0);
+        if (led == -1) {                                    // user can bail with -1+ setting as LED
+          break;
+        }
+        else if (led > 0 || led < NUM_LEDS + 1) {
+          store(colorcal_intensity3_slope[led], Serial_Input_Double("+", 0));
+          store(colorcal_intensity3_yint[led], Serial_Input_Double("+", 0));
+        }
+        else {
+          Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+        }
       }
       break;
-    */
+
     case 1049:
       //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for blank at thickness 1 (true blank), thickness 2 (1 piece of white paper), and thickness 3 (3 pieces of white paper), each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
       for (;;) {
@@ -977,6 +977,9 @@ void do_protocol()
 
         temperature2 = humidity2 = pressure2 = 0;
         temperature2_averaged = humidity2_averaged = pressure2_averaged = 0;
+
+        detector_read1 = detector_read1_averaged = 0;
+        detector_read2 = detector_read2_averaged = 0;
 
         //!!! when offset gets recalculated I need to reposition this later, since pulsesize is now an array
         //        calculate_offset(pulsesize);                                                                    // calculate the offset, based on the pulsesize and the calibration values (ax+b)
@@ -1509,7 +1512,6 @@ abort:
 
 } // do_protocol()
 
-
 //  routines for LED pulsing
 
 static void pulse3() {                           // ISR to turn on/off LED pulse - also controls integration switch
@@ -1615,6 +1617,43 @@ void get_temperature_humidity_pressure2 (int _averages) {    // read temperature
 
 }
 
+void get_detector_value (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2) {    // read reflectance of LED 5 (940nm) with 20 pulses and averages
+
+  const unsigned  STABILIZE = 10;                                           // this delay gives the LED current controller op amp the time needed to stabilize
+  uint16_t this_sample_adc[48];                                              // initialize the variables to hold the main and reference detector data
+  DAC_set(this_light, par_to_dac(this_intensity, this_light));              // set the DAC, make sure to convert PAR intensity to DAC value
+  DAC_change();
+  AD7689_set (this_detector - 1);                                           // set ADC channel as specified
+
+  for (uint16_t i = 0; i < 50; i++) {
+    noInterrupts();
+    digitalWriteFast(LED_to_pin[this_light], HIGH);            // turn on measuring light
+    delayMicroseconds(STABILIZE);           // this delay gives the LED current controller op amp the time needed to turn
+    // the light on completely + stabilize.
+    // Very low intensity measuring pulses may require an even longer delay here.
+    digitalWriteFast(HOLDADD, LOW);        // turn off sample and hold discharge
+    digitalWriteFast(HOLDM, LOW);          // turn off sample and hold discharge
+    delayMicroseconds(this_pulsesize);         // pulse width
+    digitalWriteFast(LED_to_pin[this_light], LOW);            // turn off measuring light
+    if (i >= 1 && i <= 49) {               // skip the first and last because I'm paranoid to make 48 total samples :)
+      AD7689_read_array(this_sample_adc, 19);                                              // read detector, average 19 values and save in this_sample_adc
+    }
+    interrupts();                                             // re-enable interrupts (left off after LED ISR)
+    digitalWriteFast(HOLDM, HIGH);                            // discharge integrators
+    digitalWriteFast(HOLDADD, HIGH);
+    delayMicroseconds(2000);                                  // wait until next pulse, pulse distance == 2000
+  }
+
+  if (detector_read1or2 == 1) {                                                                 // save in detector_read1 or 2 depending on which is called
+    detector_read1 = median16(this_sample_adc, 19);                                             // using median - 25% improvements over using mean to determine this value
+    detector_read1_averaged += detector_read1 / _averages;
+  }
+  else {
+    detector_read2 = median16(this_sample_adc, 19);                                             // using median - 25% improvements over using mean to determine this value
+    detector_read2_averaged += detector_read2 / _averages;    
+  }
+}
+
 float get_contactless_temp (int _averages) {
   contactless_temp = (MLX90615_Read(0) + MLX90615_Read(0) + MLX90615_Read(0)) / 3.0;
   contactless_temp_averaged += contactless_temp / _averages;
@@ -1665,24 +1704,6 @@ void get_compass_and_angle (int notRaw, int _averages) {
   }
   // add better routine here to produce clearer tilt values
 }
-
-// read compass
-
-/*
-  void get_compass (int notRaw, int _averages) {
-  get_tilt(notRaw, _averages)
-  MAG3110_read(&x_compass_raw, &y_compass_raw, &z_compass_raw);            // saves x_compass, y_ and z_ values
-  // add calibration here to give 0 - 360 directional values or N / NE / E / SE / S / SW / W / NW save that to variable called compass
-  if (notRaw == 0) {                                              // save the raw values average
-    x_compass_raw_averaged += (float)x_compass_raw / _averages;
-    y_compass_raw_averaged += (float)y_compass_raw / _averages;
-    z_compass_raw_averaged += (float)z_compass_raw / _averages;
-  }
-  if (notRaw == 1) {                                              // save the calibrated values and average
-    compass_averaged += (float)x_compass_raw / _averages;
-  }
-  }
-*/
 
 // read the hall sensor to measure thickness of a leaf
 
@@ -1782,10 +1803,26 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "compass_raw") {
-      int magX, magY, magZ;
-      MAG3110_read(&magX, &magY, &magZ);
-      Serial_Printf("\"x_compass\":%d,\"y_compass\":%d,\"z_compass\":%d", magX, magY, magZ);
+    if ((String) environmental.getArray(i).getString(0) == "detector_read1") {
+      int this_light = environmental.getArray(i).getLong(2);
+      int this_intensity = environmental.getArray(i).getLong(3);
+      int this_detector = environmental.getArray(i).getLong(4);
+      int this_pulsesize = environmental.getArray(i).getLong(5);
+      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize,1);      // save as "detector_read" from get_detector_value function
+      if (count == _averages - 1) {
+        Serial_Printf("\"detector_read1\":%f,", detector_read1_averaged);
+      }
+    }
+
+    if ((String) environmental.getArray(i).getString(0) == "detector_read2") {
+      int this_light = environmental.getArray(i).getLong(2);
+      int this_intensity = environmental.getArray(i).getLong(3);
+      int this_detector = environmental.getArray(i).getLong(4);
+      int this_pulsesize = environmental.getArray(i).getLong(5);
+      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize,2);      // save as "detector_read" from get_detector_value function
+      if (count == _averages - 1) {
+        Serial_Printf("\"detector_read2\":%f,", detector_read2_averaged);
+      }
     }
 
     if ((String) environmental.getArray(i).getString(0) == "analog_read") {                      // perform analog reads
