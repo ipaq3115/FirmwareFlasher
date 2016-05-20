@@ -252,14 +252,17 @@ static void flush_packet()
 
 static void print_packet(const char *str)
 {
-  if (cut_through)
-    Serial_Print_BLE(str);  // send to BLE buffer now vs waiting for a full data packet
-
   // copy to buffer, sending whenever it reaches n bytes
   while (*str != 0) {                  // until end of string
 
     packet_buffer[packet_count] = *str;
     ++packet_count;
+
+    if (cut_through) {
+      char s[2] = {*str, 0};
+      Serial_Print_BLE(s);  // send to BLE buffer now vs waiting for a full data packet
+    }
+
     ++str;
 
     if (packet_count == PACKET_SIZE) {  // full buffer - send it
