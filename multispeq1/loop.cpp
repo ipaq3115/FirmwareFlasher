@@ -97,9 +97,9 @@ void loop() {
 // =========================================
 
 // globals - try to avoid
-static uint8_t _meas_light;                    // measuring light to be used during the interrupt
-static uint16_t _pulsesize = 0;         // pulse width in usec
-static volatile uint8_t led_off = 0;    // status of LED set by ISR
+static uint8_t _meas_light;         // measuring light to be used during the interrupt
+static uint16_t _pulsesize = 0;     // pulse width in usec
+static volatile int led_off = 0;    // status of LED set by ISR
 
 // process a numeric + command
 
@@ -765,6 +765,7 @@ void do_protocol()
       json[json2[q].length()] = '\0';                                       // Add closing character to char*
       json2[q] = "";                                                        // attempt to release the String memory
       hashTable = root.parseHashTable(json);                                // parse it
+
       if (!hashTable.success()) {                                           // NOTE: if the incomign JSON is too long (>~5000 bytes) this tends to be where you see failure (no response from device)
         Serial_Print("{\"error\":\"JSON failure with:\"}");
         Serial_Print(json);
@@ -848,7 +849,7 @@ void do_protocol()
 
         ///*
         JsonArray pulsedistance =   hashTable.getArray("pulsedistance");                            // distance between measuring pulses in us.  Minimum 1000 us.
-        JsonArray pulsesize =       hashTable.getArray("pulsesize");                            // distance between measuring pulses in us.  Minimum 1000 us.
+        JsonArray pulsesize =       hashTable.getArray("pulsesize");                            // pulse width in us.  
 
         JsonArray a_lights =        hashTable.getArray("a_lights");
         JsonArray a_intensities =   hashTable.getArray("a_intensities");
@@ -1029,6 +1030,7 @@ void do_protocol()
                   Serial_Printf("\n all a_lights_prev: %d\n", _a_lights_prev[i]);
                 } // PULSERDEBUG
               }
+
               for (unsigned i = 0; i < NUM_LEDS; i++) {                                   // save the current list of act lights, determine if they should be on, and determine their intensity
                 _a_lights[i] = a_lights.getArray(cycle).getLong(i);                        // save which light should be turned on/off
                 String intensity_string = a_intensities.getArray(cycle).getString(i);
@@ -1038,7 +1040,6 @@ void do_protocol()
                   Serial_Printf("\n all a_lights, intensities: %d,%d,|%s|,%f,%f,%f\n", _a_lights[i], _a_intensities[i], intensity_string.c_str(), expr(intensity_string.c_str()), light_intensity, light_intensity_averaged);
                 } // PULSERDEBUG
               }
-              //              }
 
               if (CORAL_SPEQ) {
                 _spec = spec.getLong(cycle);                                                      // pull whether the spec will get called in this cycle or not for coralspeq and set parameters.  If they are empty (not defined by the user) set them to the default value
@@ -1078,7 +1079,7 @@ void do_protocol()
                 startTimers(_pulsedistance);                                    // restart the measurement light timer
               }
 
-            }  // for num of pulses z
+            }  // if pulse == 0
 
             if (PULSERDEBUG) {
               Serial_Printf("pulsedistance = %d, pulsesize = %d, cycle = %d, measurement number = %d, measurement array size = %d,total pulses = %d\n", (int) _pulsedistance, (int) _pulsesize, (int) cycle, (int) meas_number, (int) meas_array_size, (int) total_pulses);
@@ -1103,6 +1104,7 @@ void do_protocol()
             if (_reference != 0) {                                                                      // if using the reference detector, make sure to half the sample rate (1/2 sample from main, 1/2 sample from detector)
               _number_samples = _number_samples / 2;
             }
+
             if (_reference == 0) {                                                                      // If the reference detector isn't turned on, then we need to set the ADC first
               AD7689_set (detector - 1);        // set ADC channel as specified
             }
@@ -1187,6 +1189,7 @@ void do_protocol()
               else {                                                                                      // otherwise evaluate directly as a number to enter into the DAC
                 DAC_set(_meas_light, _m_intensity);                                // set the DAC, make sure to convert PAR intensity to DAC value
               }
+
               DAC_change();
 
               for (unsigned i = 0; i < NUM_LEDS; i++) {                         // set the DAC lights for actinic lights in the current pulse set
@@ -1204,7 +1207,8 @@ void do_protocol()
                   } // PULSERDEBUG
                 }
               } // for
-            }
+
+            }  // if (pulse < meas_array_size) 
 
             if (Serial_Available() && Serial_Input_Long("+", 1) == -1) {                                      // exit protocol completely if user enters -1+
               q = number_of_protocols;
@@ -1222,7 +1226,7 @@ void do_protocol()
             while (led_off == 0) {                                                                     // wait for LED pulse complete (in ISR)
               //if (abort_cmd())
               //  goto abort;  // or just reboot?
-              sleep_cpu();     // any ISR will cause this to immediately return
+              sleep_cpu();     // save power - any ISR will cause this to immediately return
             }
 
             if (_reference != 0) {
@@ -1248,6 +1252,7 @@ void do_protocol()
               }
               //              Serial_Print("],");
             }
+
             data = median16(sample_adc, _number_samples);                                             // using median - 25% improvements over using mean to determine this value
 
             if (_reference != 0) {                                                        // if also using reference, then ...
@@ -1333,7 +1338,6 @@ void do_protocol()
               }
             }
 
-            noInterrupts();                                                              // turn off interrupts because we're checking volatile variables set in the interrupts
             led_off = 0;                                                                // reset pulse status flags
             pulse++;                                                                     // progress the pulse counter and measurement number counter
 
@@ -1343,7 +1347,6 @@ void do_protocol()
             Serial_Print("!");
             Serial_Print_Line(data);
 #endif
-            interrupts();                                                              // done with volatile variables, turn interrupts back on
             meas_number++;                                                              // progress measurement number counters
 
             if (pulse == pulses.getLong(cycle)*meas_lights.getArray(cycle).getLength()) { // if it's the last pulse of a cycle...
@@ -1351,7 +1354,7 @@ void do_protocol()
               cycle++;                                                                 // ...move to next cycle
             }
 
-          }  // for averages x
+          }  // for pulses z
 
           background_on = 0;
           /*
@@ -1394,7 +1397,7 @@ void do_protocol()
             }
           }
 
-        }  // for each protocol repeat u
+        }  // for each protocol repeat x for averages
 
         /*
            Recall and save values to the eeprom
