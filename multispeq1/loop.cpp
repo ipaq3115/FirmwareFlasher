@@ -99,7 +99,7 @@ void loop() {
 // globals - try to avoid
 static uint8_t _meas_light;         // measuring light to be used during the interrupt
 static uint16_t _pulsesize = 0;     // pulse width in usec
-static volatile int led_off = 0;    // status of LED set by ISR
+static volatile int pulse_done = 0; // set by ISR
 
 // process a numeric + command
 
@@ -1223,7 +1223,8 @@ void do_protocol()
             //            uint16_t startTimer;                                                                            // to measure the actual time it takes to perform the ADC reads on the sample (for debugging)
             //            uint16_t endTimer;
 
-            while (led_off == 0) {                                                                     // wait for LED pulse complete (in ISR)
+            pulse_done = 0;             // clear volatile ISR done flag
+            while (!pulse_done) {       // wait for LED pulse complete (in ISR)
               //if (abort_cmd())
               //  goto abort;  // or just reboot?
               sleep_cpu();     // save power - any ISR will cause this to immediately return
@@ -1338,7 +1339,6 @@ void do_protocol()
               }
             }
 
-            led_off = 0;                                                                // reset pulse status flags
             pulse++;                                                                     // progress the pulse counter and measurement number counter
 
 #ifdef DEBUGSIMPLE
@@ -1378,7 +1378,6 @@ void do_protocol()
           stopTimers();
           cycle = 0;                                                                     // ...and reset counters
           pulse = 0;
-          led_off = 0;
           meas_number = 0;
 
           /*
@@ -1517,21 +1516,25 @@ abort:
 
 //  routines for LED pulsing
 
-static void pulse3() {                           // ISR to turn on/off LED pulse - also controls integration switch
+static void pulse3() {                      // ISR to turn on/off LED pulse - also controls integration switch
+
+  if (pulse_done)                           // skip this pulse if not ready yet
+     return;        
+
   const unsigned  STABILIZE = 10;                // this delay gives the LED current controller op amp the time needed to stabilize
   register int pin = LED_to_pin[_meas_light];
   register int pulse_size = _pulsesize;
 
   noInterrupts();
-  digitalWriteFast(pin, HIGH);            // turn on measuring light
-  delayMicroseconds(STABILIZE);           // this delay gives the LED current controller op amp the time needed to turn
+  digitalWriteFast(pin, HIGH);           // turn on measuring light
+  delayMicroseconds(STABILIZE);          // this delay gives the LED current controller op amp the time needed to turn
   // the light on completely + stabilize.
   // Very low intensity measuring pulses may require an even longer delay here.
   digitalWriteFast(HOLDADD, LOW);        // turn off sample and hold discharge
   digitalWriteFast(HOLDM, LOW);          // turn off sample and hold discharge
   delayMicroseconds(pulse_size);         // pulse width
   digitalWriteFast(pin, LOW);            // turn off measuring light
-  led_off = 1;                           // indicate that we are done
+  pulse_done = 1;                        // indicate that we are done
   // NOTE:  interrupts are left off and must be re-enabled
 }
 

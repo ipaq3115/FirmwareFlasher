@@ -255,8 +255,6 @@ void activity() {
 
 void powerdown() {
 
-  //return;    // this is still experimental
-
   if ((millis() - last_activity > SHUTDOWN /* && !Serial */) || battery_low(0)) {   // if USB is active, no timeout sleep
 
 #ifdef LEGACY
@@ -264,23 +262,25 @@ void powerdown() {
     digitalWriteFast(POWERDOWN_REQUEST, LOW);
 #endif
 
+    // TODO - turn off unneeded peripherals or some pins to high impedance/floating?
     // TODO put accelerometer into lowest power mode
-    // TODO - turn off unneeded peripherals?, set some pins to high impedance/floating
+    // TODO - have accelerometer create interrupt to wake up
 
     accel_changed();     // update values with current
 
     // wake up if the device has changed orientation
+    // remain in sleep if battery is low
 
     for (;;) {
-      sleep_mode(200);          // sleep for 200 ms
-      // note: Accel runs fine down to 2V - ie, battery is fine
-      if (accel_changed()) {    //       Accel requires ~2ms from power on.  So leave it powered.
-        if (battery_low(0)) {
-          sleep_mode(60000);    // sleep much longer for low bat
-          continue;
-        } else
-          break;
-      } // if
+      while (battery_low(0)) 
+         sleep_mode(60000);    // sleep much longer for low bat
+
+      // note: Accel runs down to 2V - ie, battery is fine
+      if (accel_changed() && !battery_low(0))     //       Accel requires ~2ms from power on.  So leave it powered.
+        break;
+      else
+        sleep_mode(200);          // sleep for 200 ms (can be much longer if accel interrupts on movement)
+
     } // for
 
     // note, peripherals are now in an unknown state
