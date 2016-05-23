@@ -38,7 +38,7 @@ float expr(const char str[]);
 void do_protocol(void);
 void do_command(void);
 void print_calibrations(void);
-
+void start_on_open_close(void);
 void get_compass_and_angle (int notRaw, int _averages);
 
 
@@ -369,8 +369,8 @@ void do_command()
 
     case 1031:
       //      Serial_Print("{\"message\": \"input 9 magnetometer calibration values, each followed by +: \"}");
-      for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
+      for (uint16_t i = 0; i < 3; i++) {
+        for (uint16_t j = 0; j < 3; j++) {
           store(mag_cal[j][i], Serial_Input_Double("+", 0));
         }
       }
@@ -383,8 +383,8 @@ void do_command()
       break;
     case 1033:
       //      Serial_Print("{\"message\": \"input 9 accelerometer calibration values, each followed by +: \"}");
-      for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
+      for (uint16_t i = 0; i < 3; i++) {
+        for (uint16_t j = 0; j < 3; j++) {
           store(accel_cal[j][i], Serial_Input_Double("+", 0));
         }
       }
@@ -430,120 +430,132 @@ void do_command()
       store(detector_offset_yint[3], Serial_Input_Double("+", 0));
       break;
     case 1044:
-      //      Serial_Print_Line("{\"message\": \"input the LED #, slope1, slope 2, and y intercept for LED PAR calibration, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
-      for (;;) {
-        int led = Serial_Input_Double("+", 0);
-        if (led == -1) {                                    // user can bail with -1+ setting as LED
-          break;
-        }
-        else if (led > 0 || led < NUM_LEDS + 1) {
-          store(par_to_dac_slope1[led], Serial_Input_Double("+", 0));
-          store(par_to_dac_slope2[led], Serial_Input_Double("+", 0));
-          store(par_to_dac_yint[led], Serial_Input_Double("+", 0));
-        }
-        else {
-          Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+      {
+        //      Serial_Print_Line("{\"message\": \"input the LED #, slope1, slope 2, and y intercept for LED PAR calibration, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
+        for (;;) {
+          int led = Serial_Input_Double("+", 0);
+          if (led == -1) {                                    // user can bail with -1+ setting as LED
+            break;
+          }
+          else if (led > 0 || led < NUM_LEDS + 1) {
+            store(par_to_dac_slope1[led], Serial_Input_Double("+", 0));
+            store(par_to_dac_slope2[led], Serial_Input_Double("+", 0));
+            store(par_to_dac_yint[led], Serial_Input_Double("+", 0));
+          }
+          else {
+            Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+          }
         }
       }
       break;
     case 1045:
-      //      Serial_Print_Line("{\"message\": \"input the IR baseline slope and yint: \"}");
-      for (;;) {
-        int led = Serial_Input_Double("+", 0);
-        if (led == -1) {                                    // user can bail with -1+ setting as LED
-          break;
-        }
-        else if (led > 0 || led < NUM_LEDS + 1) {
-
-          store(ir_baseline_slope[led], Serial_Input_Double("+", 0));
-          store(ir_baseline_yint[led], Serial_Input_Double("+", 0));
-        }
-        else {
-          Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+      {
+        //      Serial_Print_Line("{\"message\": \"input the IR baseline slope and yint: \"}");
+        for (;;) {
+          int led = Serial_Input_Double("+", 0);
+          if (led == -1) {                                    // user can bail with -1+ setting as LED
+            break;
+          }
+          else if (led > 0 || led < NUM_LEDS + 1) {
+            store(ir_baseline_slope[led], Serial_Input_Double("+", 0));
+            store(ir_baseline_yint[led], Serial_Input_Double("+", 0));
+          }
+          else {
+            Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+          }
         }
       }
       break;
     case 1046:
-      //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 1, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
-      for (;;) {
-        int led = Serial_Input_Double("+", 0);
-        if (led == -1) {                                    // user can bail with -1+ setting as LED
-          break;
-        }
-        else if (led > 0 || led < NUM_LEDS + 1) {
-
-          store(colorcal_intensity1_slope[led], Serial_Input_Double("+", 0));
-          store(colorcal_intensity1_yint[led], Serial_Input_Double("+", 0));
-        }
-        else {
-          Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+      {
+        //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 1, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
+        for (;;) {
+          int led = Serial_Input_Double("+", 0);
+          if (led == -1) {                                    // user can bail with -1+ setting as LED
+            break;
+          }
+          else if (led > 0 || led < NUM_LEDS + 1) {
+            store(colorcal_intensity1_slope[led], Serial_Input_Double("+", 0));
+            store(colorcal_intensity1_yint[led], Serial_Input_Double("+", 0));
+          }
+          else {
+            Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+          }
         }
       }
       break;
 
     case 1047:
-      //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 2, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
-      for (;;) {
-        int led = Serial_Input_Double("+", 0);
-        if (led == -1) {                                    // user can bail with -1+ setting as LED
-          break;
-        }
-        else if (led > 0 || led < NUM_LEDS + 1) {
-          store(colorcal_intensity2_slope[led], Serial_Input_Double("+", 0));
-          store(colorcal_intensity2_yint[led], Serial_Input_Double("+", 0));
-        }
-        else {
-          Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+      {
+        //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 2, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
+        for (;;) {
+          int led = Serial_Input_Double("+", 0);
+          if (led == -1) {                                    // user can bail with -1+ setting as LED
+            break;
+          }
+          else if (led > 0 || led < NUM_LEDS + 1) {
+            store(colorcal_intensity2_slope[led], Serial_Input_Double("+", 0));
+            store(colorcal_intensity2_yint[led], Serial_Input_Double("+", 0));
+          }
+          else {
+            Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+          }
         }
       }
       break;
     case 1048:
-      //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 3, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
-      for (;;) {
-        int led = Serial_Input_Double("+", 0);
-        if (led == -1) {                                    // user can bail with -1+ setting as LED
-          break;
-        }
-        else if (led > 0 || led < NUM_LEDS + 1) {
-          store(colorcal_intensity3_slope[led], Serial_Input_Double("+", 0));
-          store(colorcal_intensity3_yint[led], Serial_Input_Double("+", 0));
-        }
-        else {
-          Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+      {
+        //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 3, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
+        for (;;) {
+          int led = Serial_Input_Double("+", 0);
+          if (led == -1) {                                    // user can bail with -1+ setting as LED
+            break;
+          }
+          else if (led > 0 || led < NUM_LEDS + 1) {
+            store(colorcal_intensity3_slope[led], Serial_Input_Double("+", 0));
+            store(colorcal_intensity3_yint[led], Serial_Input_Double("+", 0));
+          }
+          else {
+            Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+          }
         }
       }
       break;
 
     case 1049:
-      //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for blank at thickness 1 (true blank), thickness 2 (1 piece of white paper), and thickness 3 (3 pieces of white paper), each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
-      for (;;) {
-        int led = Serial_Input_Double("+", 0);
-        if (led == -1) {                                    // user can bail with -1+ setting as LED
-          break;
-        }
-        else if (led > 0 || led < NUM_LEDS + 1) {
-          store(colorcal_blank1[led], Serial_Input_Double("+", 0));
-          store(colorcal_blank2[led], Serial_Input_Double("+", 0));
-          store(colorcal_blank3[led], Serial_Input_Double("+", 0));
-        }
-        else {
-          Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+      {
+        //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for blank at thickness 1 (true blank), thickness 2 (1 piece of white paper), and thickness 3 (3 pieces of white paper), each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
+        for (;;) {
+          int led = Serial_Input_Double("+", 0);
+          if (led == -1) {                                    // user can bail with -1+ setting as LED
+            break;
+          }
+          else if (led > 0 || led < NUM_LEDS + 1) {
+            store(colorcal_blank1[led], Serial_Input_Double("+", 0));
+            store(colorcal_blank2[led], Serial_Input_Double("+", 0));
+            store(colorcal_blank3[led], Serial_Input_Double("+", 0));
+          }
+          else {
+            Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", NUM_LEDS + 1);
+          }
         }
       }
       break;
 
     case 1050:
-      //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 3, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
-      for (;;) {
-        int userdefID = Serial_Input_Double("+", 0);
-        if (userdefID == -1) {                                    // user can bail with -1+ setting as LED
-          break;
-        }
-        else if (userdefID > 0 || userdefID < 50) {
-          store(userdef[userdefID], Serial_Input_Double("+", 0));
-        }
-        else {
-          Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", (sizeof(eeprom->userdef) / sizeof(float)));
+      {
+        //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 3, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
+        for (;;) {
+          int userdefID = Serial_Input_Double("+", 0);
+          if (userdefID == -1) {                                    // user can bail with -1+ setting as LED
+            break;
+          }
+          else if (userdefID > 0 || userdefID < 50) {
+            store(userdef[userdefID], Serial_Input_Double("+", 0));
+          }
+          else {
+            Serial_Printf("\"error\": \" User entered incorrect value.  Should be between 0 and %d", (sizeof(eeprom->userdef) / sizeof(float)));
+          }
         }
       }
       break;
@@ -647,9 +659,9 @@ void do_command()
 
 void do_protocol()
 {
-  const int serial_buffer_size = 5000;                                        // max size of the incoming jsons
+  const int serial_buffer_size = 6000;                                        // max size of the incoming jsons
   const int max_jsons = 15;                                                   // max number of protocols per measurement
-  const int MAX_JSON_ELEMENTS = 600;      //
+  const int MAX_JSON_ELEMENTS = 700;      //
 
   int averages = 1;                        // ??
   uint8_t spec_on = 0;                    // flag to indicate that spec is being used during this measurement
@@ -772,19 +784,12 @@ void do_protocol()
         goto abort;
       }
 
-#if 0
-      // TODO - is this the right place?
-      // wait until the jaw is closed (detected with the hall sensor)
-      if (measurements == 0 && q == 0 && hashTable.getLong("start_on_close") == 1) {
-        wait_for_closed();
-      }
-#endif
-
       int protocols = 1;                                                                       // starts as 1 but gets updated when the json is parsed
       int quit = 0;
 
       for (int u = 0; u < protocols; u++) {                                                    // the number of times to repeat the current protocol
-        JsonArray save_eeprom    = hashTable.getArray("save");
+        uint16_t open_close_start = hashTable.getLong("open_close_start");            // if open_close_start == 1, then the user must open and close the clamp in order to proceed with the measurement (as measured by hall sensor)
+        JsonArray save_eeprom    = hashTable.getArray("save");                                  // save values to the eeprom.
         JsonArray recall_eeprom  = hashTable.getArray("recall");                                // userdef values to recall
         JsonArray number_samples = hashTable.getArray("number_samples");                       // number of samples on the cap during sample + hold phase (default is 40);
         JsonArray reference =     hashTable.getArray("reference");                              // subtract reference value if set to 1 (also causes 1/2 the sample rate per detector) due to time constraints.  Default is no reference (== 0)
@@ -1005,6 +1010,10 @@ void do_protocol()
           float _reference_start = 0;                                                            // reference value at data point 0 - initial value for normalizing the reference (normalized based on the values from main and reference in the first point in the trace)
           float _main_start = 0;                                                               // main detector (sample) value at data point 0 - initial value for normalizing the reference (normalized based on the values from main and reference in the first point in the trace)
           uint16_t _number_samples = 0;                                                               // create the adc sampling rate number
+
+          if (hashTable.getLong("open_close_start") == 1) {                                     // wait for device to open (read hall sensor), then close before proceeding with measurement
+            start_on_open_close();
+          }
 
           environmentals(environmental, averages, x, 0);
 
@@ -1656,7 +1665,7 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
   }
   else {
     detector_read2 = median16(this_sample_adc, 19);                                             // using median - 25% improvements over using mean to determine this value
-    detector_read2_averaged += detector_read2 / _averages;    
+    detector_read2_averaged += detector_read2 / _averages;
   }
 }
 
@@ -1814,7 +1823,7 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int this_intensity = environmental.getArray(i).getLong(3);
       int this_detector = environmental.getArray(i).getLong(4);
       int this_pulsesize = environmental.getArray(i).getLong(5);
-      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize,1);      // save as "detector_read" from get_detector_value function
+      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 1);     // save as "detector_read" from get_detector_value function
       if (count == _averages - 1) {
         Serial_Printf("\"detector_read1\":%f,", detector_read1_averaged);
       }
@@ -1825,7 +1834,7 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int this_intensity = environmental.getArray(i).getLong(3);
       int this_detector = environmental.getArray(i).getLong(4);
       int this_pulsesize = environmental.getArray(i).getLong(5);
-      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize,2);      // save as "detector_read" from get_detector_value function
+      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 2);     // save as "detector_read" from get_detector_value function
       if (count == _averages - 1) {
         Serial_Printf("\"detector_read2\":%f,", detector_read2_averaged);
       }
@@ -2025,44 +2034,44 @@ void print_calibrations() {
       Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity1_yint[i]);
     }
   }
-  /*
-    Serial_Print("\"colorcal_intensity2_slope\": [");
-    for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity2_slope) / sizeof(float); i++) {
+
+  Serial_Print("\"colorcal_intensity2_slope\": [");
+  for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity2_slope) / sizeof(float); i++) {
     if (i != sizeof(eeprom->colorcal_intensity2_slope) / sizeof(float) - 1) {
       Serial_Printf("\"%f\",", eeprom->colorcal_intensity2_slope[i]);
     }
     else {
       Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity2_slope[i]);
     }
-    }
-    Serial_Print("\"colorcal_intensity2_yint\": [");
-    for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity2_yint) / sizeof(float); i++) {
+  }
+  Serial_Print("\"colorcal_intensity2_yint\": [");
+  for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity2_yint) / sizeof(float); i++) {
     if (i != sizeof(eeprom->colorcal_intensity2_yint) / sizeof(float) - 1) {
       Serial_Printf("\"%f\",", eeprom->colorcal_intensity2_yint[i]);
     }
     else {
       Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity2_yint[i]);
     }
-    }
-    Serial_Print("\"colorcal_intensity3_slope\": [");
-    for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity3_slope) / sizeof(float); i++) {
+  }
+  Serial_Print("\"colorcal_intensity3_slope\": [");
+  for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity3_slope) / sizeof(float); i++) {
     if (i != sizeof(eeprom->colorcal_intensity3_slope) / sizeof(float) - 1) {
       Serial_Printf("\"%f\",", eeprom->colorcal_intensity3_slope[i]);
     }
     else {
       Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity3_slope[i]);
     }
-    }
-    Serial_Print("\"colorcal_intensity3_yint\": [");
-    for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity3_yint) / sizeof(float); i++) {
+  }
+  Serial_Print("\"colorcal_intensity3_yint\": [");
+  for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity3_yint) / sizeof(float); i++) {
     if (i != sizeof(eeprom->colorcal_intensity3_yint) / sizeof(float) - 1) {
       Serial_Printf("\"%f\",", eeprom->colorcal_intensity3_yint[i]);
     }
     else {
       Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity3_yint[i]);
     }
-    }
-  */
+  }
+
   Serial_Print("\"colorcal_blank1\": [");
   for (unsigned i = 0; i < sizeof(eeprom->colorcal_blank1) / sizeof(float); i++) {
     if (i != sizeof(eeprom->colorcal_blank1) / sizeof(float) - 1) {
