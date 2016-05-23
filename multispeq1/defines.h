@@ -99,6 +99,10 @@ const uint8_t LED_to_pin[NUM_LEDS + 1] = {0, PULSE1, PULSE2, PULSE3, PULSE4, PUL
 #define POWERDOWN_REQUEST 28   // request that BLE module turn off MCU power
 #define BATT_ME  33           // to activate battery voltage sampling
 #define BATT_TEST 34
+#define REF_VOLTAGE 1.2
+#define BAT_MIN_LOADED 3.3    // in volts
+#define BAT_MIN 3.5
+#define BAT_MAX 4.2
 
 /*NOTES*/// blank pin (used when no other pin is selected - probably should change this later
 #define BLANK    32   // error - same as IOEXT2

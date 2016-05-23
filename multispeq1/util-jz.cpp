@@ -20,7 +20,7 @@ int jz_test_mode = 0;
 void start_watchdog(int minutes)
 {
   if (minutes < 1)
-     minutes = 1;
+    minutes = 1;
   WDOG_UNLOCK = WDOG_UNLOCK_SEQ1;
   WDOG_UNLOCK = WDOG_UNLOCK_SEQ2;
   delayMicroseconds(1); // Need to wait a bit..
@@ -158,19 +158,43 @@ int check_protocol(char *str)
 // This should run just before any new protocol - if it’s too low, report to the user
 // return 1 if low, otherwise 0
 
-//const float MIN_BAT_LEVEL = (3.4 * (16. / (16 + 47)) * (65536 / 1.2)); // 3.4V min battery voltage, voltage divider, 1.2V reference, 16 bit ADC
-const float MIN_BAT_LEVEL = 1;  // TODO - remove
-
 int battery_low(int flash)         // 0 for no load, 1 to flash LEDs to create load
+{
+  int value = battery_level(flash);
+
+  // TODO - make use of intial value?
+
+  if (flash) {
+    if (value < BAT_MIN_LOADED)
+      return 1;   // too low
+  } else {
+    if (value < BAT_MIN)
+      return 1;   // too low
+  } // if
+
+  return 0;
+
+} // battery_low()
+
+#define R1 680                // resistor divider for power measurement
+#define R2 2000
+
+int battery_level(int flash)
 {
   uint32_t initial_value = 0;
 
-  // TODO set Bat_meas pin to low output (pull down) to measure
+  // enable bat measurement
+  pinMode(BATT_ME, OUTPUT);
+  digitalWriteFast(BATT_ME, LOW);
 
+  // do we need a delay here?
+  
   // find voltage before high load
   for (int i = 0 ; i < 100; ++i)
     initial_value += analogRead(BATT_TEST);  // test A10 analog input
   initial_value /= 100;
+
+  //Serial_Printf("initial AD = %d\n",initial_value);
 
   uint32_t value = initial_value;
 
@@ -207,22 +231,18 @@ int battery_low(int flash)         // 0 for no load, 1 to flash LEDs to create l
     digitalWriteFast(PULSE10, 0);
 
     //Serial_Printf("bat = %d counts %fV\n", value, value * (1.2 / 65536));
+  }  // if
 
-    // TODO - make use of intial value?
-  } // if
+  // set Bat_meas pin to high impedance
+  pinMode(BATT_ME, INPUT); 
 
-  if (value  < MIN_BAT_LEVEL)
-    return 1;                  // too low
-  else
-    return 0;  // OK
-  
-  // TODO set Bat_meas pin to high impedance
+  int milli_volts = 1000 * ((value / 65536.) * REF_VOLTAGE) / ((float)R1 / (R1 + R2));
 
-} // battery_low()
-
+  return milli_volts;
+}
 
 // return 1 if the accelerometer values haved changed
-#define ACCEL_CHANGE 100
+#define ACCEL_CHANGE 60
 void MMA8653FC_read(int *axeXnow, int *axeYnow, int *axeZnow);
 
 int accel_changed()
@@ -243,7 +263,7 @@ int accel_changed()
   return changed;
 }  // accel_changed()
 
-const unsigned long SHUTDOWN = 90000;   // power down after X ms of inactivity
+const unsigned long SHUTDOWN = 240 * 1000;   // power down after X ms of inactivity
 static unsigned long last_activity = millis();
 
 // record that we have seen serial port activity (used with powerdown())
@@ -272,8 +292,10 @@ void powerdown() {
     // remain in sleep if battery is low
 
     for (;;) {
-      while (battery_low(0)) 
-         sleep_mode(60000);    // sleep much longer for low bat
+      while (battery_low(0)) {
+ 
+        sleep_mode(60000);    // sleep much longer for low bat
+      }
 
       // note: Accel runs down to 2V - ie, battery is fine
       if (accel_changed() && !battery_low(0))     //       Accel requires ~2ms from power on.  So leave it powered.
@@ -285,7 +307,7 @@ void powerdown() {
 
     // note, peripherals are now in an unknown state
     // calling setup() + turn on peripherals might also work and would preserve ram contents (allowing hibernate in more places)
-   
+
     // reboot to turn everything on and re-intialize peripherals
 #define CPU_RESTART_ADDR ((uint32_t *)0xE000ED0C)
 #define CPU_RESTART_VAL 0x5FA0004
@@ -447,13 +469,13 @@ void get_set_device_info(const int _set) {
 
   // print
 
-//  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
+  //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
   Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":2016}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
                 (unsigned)eeprom->device_id & 0xff);
-//                ,DEVICE_FIRMWARE, eeprom->device_manufacture)
+  //                ,DEVICE_FIRMWARE, eeprom->device_manufacture)
 
   Serial_Print_CRC();
 

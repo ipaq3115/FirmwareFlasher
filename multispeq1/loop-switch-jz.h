@@ -72,7 +72,18 @@ case hash("powerdown"):
   break;
 
 case hash("battery"):
-  battery_low(1);  // test battery with LEDs on
+  {
+  int v = battery_level(1);   // test with load
+  //Serial_Printf("battery level = %d mv, ",v);  
+   
+  const float min_level = BAT_MIN_LOADED * 1000;   // consider this min charge level on a lithium battery when loaded
+  const float max_level = BAT_MAX * 1000;          // consider this fully charged
+
+  v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
+  
+  //Serial_Printf("%d %%\n",v);  
+  Serial_Printf("{\"battery_percent\": %d}\n",v);
+  }
   break;
 
 case hash("scan_i2c"):
