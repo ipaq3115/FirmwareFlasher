@@ -82,7 +82,7 @@ case hash("battery"):
   v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
   
   //Serial_Printf("%d %%\n",v);  
-  Serial_Printf("{\"battery_percent\": %d}\n",v);
+  Serial_Printf("{\"battery\": %d}\n",v);
   }
   break;
 

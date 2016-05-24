@@ -469,12 +469,19 @@ void get_set_device_info(const int _set) {
 
   // print
 
+  int v = battery_level(0);   // test without load
+  
+  const float min_level = BAT_MIN * 1000;   // consider this min charge level on a lithium battery when loaded
+  const float max_level = BAT_MAX * 1000;   // consider this fully charged
+
+  v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
+ 
   //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
-  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":2016}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
+  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"battery\":%d,\"device_firmware\":\"%s\",\"device_manufacture\":2016}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
-                (unsigned)eeprom->device_id & 0xff);
+                (unsigned)eeprom->device_id & 0xff, v);
   //                ,DEVICE_FIRMWARE, eeprom->device_manufacture)
 
   Serial_Print_CRC();

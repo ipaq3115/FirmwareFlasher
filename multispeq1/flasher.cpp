@@ -81,6 +81,8 @@ void loop ()
 // hint:  on Linux, exit the serial console and do "dd if=blink.hex of=/dev/ttyACM0", then restart the Serial console and
 // enter the ":flash xxx" command.
 
+// caution:  on a serial port, it is easy to send too fast.  Put delays between lines.
+
 // TODO - instead of splitting flash in half, use whatever flash is remaining.  This would allow a 64K program to flash
 // a 192K program.  This would allow the two step process of 192K, downgrade to 64K, upgrade to new 192K.
 
