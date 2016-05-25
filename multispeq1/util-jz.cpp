@@ -158,13 +158,11 @@ int check_protocol(char *str)
 // This should run just before any new protocol - if it’s too low, report to the user
 // return 1 if low, otherwise 0
 
-int battery_low(int flash)         // 0 for no load, 1 to flash LEDs to create load
+int battery_low(int load)         // 0 for no load, 1 to flash LEDs to create load
 {
-  int value = battery_level(flash);
+  int value = battery_level(load);
 
-  // TODO - make use of intial value?
-
-  if (flash) {
+  if (load) {
     if (value < BAT_MIN_LOADED)
       return 1;   // too low
   } else {
@@ -179,7 +177,7 @@ int battery_low(int flash)         // 0 for no load, 1 to flash LEDs to create l
 #define R1 680                // resistor divider for power measurement
 #define R2 2000
 
-int battery_level(int flash)
+int battery_level(int load)
 {
   uint32_t initial_value = 0;
 
@@ -187,7 +185,7 @@ int battery_level(int flash)
   pinMode(BATT_ME, OUTPUT);
   digitalWriteFast(BATT_ME, LOW);
 
-  // do we need a delay here?
+  delayMicroseconds(300);    // has a slow filter circuit
   
   // find voltage before high load
   for (int i = 0 ; i < 100; ++i)
@@ -198,7 +196,10 @@ int battery_level(int flash)
 
   uint32_t value = initial_value;
 
-  if (flash) {   // flash LEDs if needed to create load
+  // TODO verify that load effects voltage
+  
+  if (load) {   // flash LEDs if needed to create load
+
     // set DAC values to 1/4 of full output to create load
     DAC_set(5, 4096 / 4);
     DAC_set(6, 4096 / 4);
@@ -230,7 +231,7 @@ int battery_level(int flash)
     digitalWriteFast(PULSE9, 0);
     digitalWriteFast(PULSE10, 0);
 
-    //Serial_Printf("bat = %d counts %fV\n", value, value * (1.2 / 65536));
+    //Serial_Printf("loaded bat = %d counts %fV\n", value, value * (REF_VOLTAGE / 65536));
   }  // if
 
   // set Bat_meas pin to high impedance
@@ -239,6 +240,31 @@ int battery_level(int flash)
   int milli_volts = 1000 * ((value / 65536.) * REF_VOLTAGE) / ((float)R1 / (R1 + R2));
 
   return milli_volts;
+}
+
+// find percentage of battery remaining
+
+int battery_percent(int load)
+{
+  int v = battery_level(load);   // get mv, test without load
+
+  // Serial_Printf("level = %d, load = %d\n",v,load);
+
+  float min_level;
+  
+  if (load)
+     min_level = BAT_MIN_LOADED * 1000;     // consider this min charge level on a lithium battery when loaded
+  else
+     min_level = BAT_MIN * 1000;            // consider this min charge level on a lithium battery when loaded
+      
+  const float max_level = BAT_MAX * 1000;   // consider this fully charged
+
+  v = round(((v - min_level) / (max_level - min_level)) * 100);     // express as %
+  v = constrain(v,0,100);
+
+  // Serial_Printf("v = %d\n",v);
+
+  return v;
 }
 
 // return 1 if the accelerometer values haved changed
@@ -277,11 +303,6 @@ void powerdown() {
 
   if ((millis() - last_activity > SHUTDOWN /* && !Serial */) || battery_low(0)) {   // if USB is active, no timeout sleep
 
-#ifdef LEGACY
-    pinMode(POWERDOWN_REQUEST, OUTPUT);               // legacy: ask BLE to power down MCU (active low)
-    digitalWriteFast(POWERDOWN_REQUEST, LOW);
-#endif
-
     // TODO - turn off unneeded peripherals or some pins to high impedance/floating?
     // TODO put accelerometer into lowest power mode
     // TODO - have accelerometer create interrupt to wake up
@@ -292,10 +313,8 @@ void powerdown() {
     // remain in sleep if battery is low
 
     for (;;) {
-      while (battery_low(0)) {
- 
+      while (battery_low(0)) 
         sleep_mode(60000);    // sleep much longer for low bat
-      }
 
       // note: Accel runs down to 2V - ie, battery is fine
       if (accel_changed() && !battery_low(0))     //       Accel requires ~2ms from power on.  So leave it powered.
@@ -469,13 +488,8 @@ void get_set_device_info(const int _set) {
 
   // print
 
-  int v = battery_level(0);   // test without load
-  
-  const float min_level = BAT_MIN * 1000;   // consider this min charge level on a lithium battery when loaded
-  const float max_level = BAT_MAX * 1000;   // consider this fully charged
-
-  v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
- 
+  int v = battery_percent(0);   // measured without load
+    
   //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
   Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"battery\":%d,\"device_firmware\":\"%s\",\"device_manufacture\":2016}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
@@ -491,4 +505,6 @@ void get_set_device_info(const int _set) {
 } // get_set_device_info()
 
 // ======================================
+
+
 
