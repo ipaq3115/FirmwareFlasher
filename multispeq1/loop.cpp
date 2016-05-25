@@ -21,7 +21,7 @@ inline static void stopTimers(void);
 void reset_freq(void);
 void upgrade_firmware(void);            // for over-the-air firmware updates
 void boot_check(void);                  // for over-the-air firmware updates
-int get_light_intensity(int notRaw, int x);
+int get_light_intensity(int x);
 static void recall_save(JsonArray _recall_eeprom, JsonArray _save_eeprom);
 void get_set_device_info(const int _set);
 int abort_cmd(void);
@@ -155,7 +155,7 @@ void do_command()
         while (leave != -1) {
           long sum = 0;
           leave = Serial_Input_Long("+", 1000);
-          int par_raw = get_light_intensity(0, 1);
+          float par = get_light_intensity(1);
           float contactless_temp = (MLX90615_Read(0) + MLX90615_Read(0) + MLX90615_Read(0)) / 3.0;
           MMA8653FC_read(&Xval, &Yval, &Zval);
           MAG3110_read(&Xcomp, &Ycomp, &Zcomp);
@@ -171,7 +171,7 @@ void do_command()
           float relative_humidity2 = bme2.readHumidity();
           float pressure1 = bme1.readPressure() / 100;
           float pressure2 = bme2.readPressure() / 100;
-          Serial_Printf("{\"par_raw\":%d,\"temperature\":%f,\"relative_humidity\":%f,\"pressure\":%f,\"temperature2\":%f,\"relative_humidity2\":%f,\"pressure2\":%f,\"contactless_temp\":%f,\"hall\":%d,\"accelerometer\":[%d,%d,%d],\"magnetometer\":[%d,%d,%d]}", par_raw, temperature1, relative_humidity1, pressure1, temperature2, relative_humidity2, pressure2, contactless_temp, hall, Xval, Yval, Zval, Xcomp, Ycomp, Zcomp);
+          Serial_Printf("{\"par\":%f,\"temperature\":%f,\"relative_humidity\":%f,\"pressure\":%f,\"temperature2\":%f,\"relative_humidity2\":%f,\"pressure2\":%f,\"contactless_temp\":%f,\"hall\":%d,\"accelerometer\":[%d,%d,%d],\"magnetometer\":[%d,%d,%d]}", par, temperature1, relative_humidity1, pressure1, temperature2, relative_humidity2, pressure2, contactless_temp, hall, Xval, Yval, Zval, Xcomp, Ycomp, Zcomp);
           //          Serial_Printf("{\"par_raw\":%d,\"contactless_temp\":%f,\"hall\":%d,\"accelerometer\":[%d,%d,%d],\"magnetometer\":[%d,%d,%d]}", par_raw, contactless_temp, hall, Xval, Yval, Zval, Xcomp, Ycomp, Zcomp);
           Serial_Print_CRC();
         }
@@ -1770,16 +1770,9 @@ static void environmentals(JsonArray environmental, const int _averages, const i
     }
 
     if ((String) environmental.getArray(i).getString(0) == "light_intensity") {                   // measure light intensity with par calibration applied
-      get_light_intensity(1, _averages);
+      get_light_intensity(_averages);
       if (count == _averages - 1) {
-        Serial_Printf("\"light_intensity\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged);
-      }
-    }
-
-    if ((String) environmental.getArray(i).getString(0) == "light_intensity_raw") {              // measure raw light intensity from TCS sensor
-      get_light_intensity(0, _averages);
-      if (count == _averages - 1) {
-        Serial_Printf("\"light_intensity_raw\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,", light_intensity_raw_averaged, r_averaged, g_averaged, b_averaged);
+        Serial_Printf("\"light_intensity\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,\"light_intensity_raw\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged,light_intensity_raw_averaged);
       }
     }
 
