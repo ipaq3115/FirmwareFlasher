@@ -646,6 +646,24 @@ void do_command()
       }
       break;
 
+    case hash("calibrate_compass"):
+      delay(5000);
+      Serial_Printf("{\"calibration_values\":");
+      Serial_Printf("[");
+      for (int i = 0; i < 100; i++) {
+        int x, y, z;
+        MAG3110_read(&x, &y, &z);
+        if(i != 0) {
+          Serial_Printf(", ");
+        }
+        Serial_Printf("%d, %d, %d", x, y, z);
+        delay(100);
+      }
+      Serial_Printf("]");
+      Serial_Printf("}");
+      Serial_Print_CRC();
+      break;
+
     case hash("upgrade"):
     case 1078:                                                                   // over the air update of firmware.   DO NOT MOVE THIS!
       upgrade_firmware();
