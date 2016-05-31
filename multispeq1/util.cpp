@@ -209,17 +209,17 @@ void start_on_open_close() {
   // now measure every 200ms until you see the value change to > 10000 counts
   while (current_position - start_position < 8000) {
     current_position = measure_hall();
-//        Serial_Printf("start: %f, current: %f\n", start_position, current_position);
+    //        Serial_Printf("start: %f, current: %f\n", start_position, current_position);
     delay(200);                                                               // measure every 100ms
     if (current_position - start_position < -2000) {                              // if the person opened it first (ie they did it wrong and started it with clamp open) - detect and skip to end
-//        Serial_Print("made it");      
+      //        Serial_Print("made it");
       goto end;
     }
   }
   // now measure again every 200ms until you see the value change to < 5000 counts
   while (current_position  - start_position > 6000) {
     current_position = measure_hall();
-//        Serial_Printf("start: %f, current: %f\n", start_position, current_position);
+    //        Serial_Printf("start: %f, current: %f\n", start_position, current_position);
     delay(200);                                                               // measure every 200ms
   }
 end:

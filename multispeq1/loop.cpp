@@ -1,4 +1,3 @@
-
 // main loop and some support routines
 
 #define EXTERN
@@ -24,8 +23,9 @@ void boot_check(void);                  // for over-the-air firmware updates
 int get_light_intensity(int x);
 static void recall_save(JsonArray _recall_eeprom, JsonArray _save_eeprom);
 void get_set_device_info(const int _set);
+void temp_get_set_device_info();
 int abort_cmd(void);
-static void environmentals(JsonArray a, const int _averages, const int x, int beforeOrAfter);
+static void environmentals(JsonArray a, const int _averages, const int x, int oneOrArray);
 void readSpectrometer(int intTime, int delay_time, int read_time, int accumulateMode);
 void MAG3110_read (int *x, int *y, int *z);
 void MMA8653FC_read(int *axeXnow, int *axeYnow, int *axeZnow);
@@ -33,14 +33,26 @@ float MLX90615_Read(int TaTo);
 uint16_t par_to_dac (float _par, uint16_t _pin);
 float light_intensity_raw_to_par (float _light_intensity_raw, float _r, float _g, float _b);
 static void print_all (void);
-static void print_userdef (void);
 float expr(const char str[]);
 void do_protocol(void);
 void do_command(void);
 void print_calibrations(void);
 void start_on_open_close(void);
 void get_compass_and_angle (int notRaw, int _averages);
-
+float get_thickness (int notRaw, int _averages);
+float get_contactless_temp (int _averages);
+void get_detector_value (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2);
+void get_temperature_humidity_pressure (int _averages);
+void get_temperature_humidity_pressure2 (int _averages);
+struct theReadings {                                            // use to return which readings are associated with the environmental_array calls
+  const char* reading1;
+  const char* reading2;
+  const char* reading3;
+  const char* reading4;
+  const char* reading5;
+  int numberReadings;
+};
+theReadings getReadings (const char* _thisSensor);                        // get the actual sensor readings associated with each environmental call (so compass and angle when you call compass_and_angle, etc.)
 
 //////////////////////// MAIN LOOP /////////////////////////
 
@@ -204,6 +216,10 @@ void do_command()
       get_set_device_info(0);
       break;
 
+    case 1008:
+      temp_get_set_device_info();
+      break;
+
     case hash("set_device_info"):
       get_set_device_info(1);
       break;
@@ -346,11 +362,6 @@ void do_command()
     case hash("reboot"):
     case 1027:                                                                                // restart teensy (keep here!)
       _reboot_Teensyduino_();
-      break;
-
-    case hash("userdefs"):
-    case 1028:
-      print_userdef();                                                                        // print only the userdef eeprom values
       break;
 
     case hash("print_all"):
@@ -750,10 +761,20 @@ void do_protocol()
   } // for
 #endif
 
-  Serial_Printf("{\"device_id\":%ld", eeprom->device_id);   // change to : format?
-  Serial_Printf(",\"device_version\":%s", DEVICE_VERSION);
-  Serial_Printf(",\"firmware_version\":%s", DEVICE_FIRMWARE);
-  Serial_Printf(",\"device_firmware\":%s", DEVICE_FIRMWARE);
+  int v = battery_level(0);   // test without load
+
+  const float min_level = BAT_MIN * 1000;   // consider this min charge level on a lithium battery when loaded
+  const float max_level = BAT_MAX * 1000;   // consider this fully charged
+
+  v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
+
+  Serial_Printf("{\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\",\"firmware_version\":\"%s\"", DEVICE_VERSION,    // I did this so it would work with chrome app
+                (unsigned)eeprom->device_id >> 24,
+                ((unsigned)eeprom->device_id & 0xff0000) >> 16,
+                ((unsigned)eeprom->device_id & 0xff00) >> 8,
+                (unsigned)eeprom->device_id & 0xff, v,
+                DEVICE_FIRMWARE, DEVICE_FIRMWARE);
+
   if (year() >= 2016)
     Serial_Printf(",\"device_time\":%u", now());
   Serial_Print(",\"sample\":[");
@@ -854,7 +875,7 @@ void do_protocol()
 
         ///*
         JsonArray pulsedistance =   hashTable.getArray("pulsedistance");                            // distance between measuring pulses in us.  Minimum 1000 us.
-        JsonArray pulsesize =       hashTable.getArray("pulsesize");                            // pulse width in us.  
+        JsonArray pulsesize =       hashTable.getArray("pulsesize");                            // pulse width in us.
 
         JsonArray a_lights =        hashTable.getArray("a_lights");
         JsonArray a_intensities =   hashTable.getArray("a_intensities");
@@ -868,6 +889,7 @@ void do_protocol()
         JsonArray message =       hashTable.getArray("message");                                // sends the user a message to which they must reply <answer>+ to continue
         //*/
         JsonArray environmental = hashTable.getArray("environmental");
+        JsonArray environmental_array = hashTable.getArray("environmental_array");
 
         // ********************INPUT DATA FOR CORALSPEQ*******************
         JsonArray spec =          hashTable.getArray("spec");                                // defines whether the spec will be called during each array.  note for each single plus, the spec will call and add 256 values to data_raw!
@@ -875,6 +897,7 @@ void do_protocol()
         JsonArray read_time =     hashTable.getArray("read_time");                           // Amount of time that the analogRead() procedure takes (in microseconds)
         JsonArray intTime =       hashTable.getArray("intTime");                             // delay per half clock (in microseconds).  This ultimately conrols the integration time.
         JsonArray accumulateMode = hashTable.getArray("accumulateMode");
+        //        JsonArray env = hashTable.getArray("env");                    // used to define any environmental sensor readings to be performed once per pulse set "_environmental_array_averages":["light_intensity","temperature"]
 
         long size_of_data_raw = 0;
         long total_pulses = 0;
@@ -898,10 +921,30 @@ void do_protocol()
 
         } // for each pulse
 
-        unsigned long data_raw_average[size_of_data_raw];                                          // buffer for ADC output data
+        Serial_Print("{");
 
+        Serial_Print("\"protocol_id\":\"");
+        Serial_Print(protocol_id.c_str());
+        Serial_Print("\",");
+
+        unsigned long data_raw_average[size_of_data_raw];                                          // buffer for ADC output data
         for (int i = 0; i < size_of_data_raw; ++i)                                                 // zero it
           data_raw_average[i] = 0;
+
+        uint16_t env_counter = 0;
+        for (uint16_t i = 0; i < environmental_array.getLength(); i++) {                                                  // identify how many arrays to save for each requested environmental variable, based on the number of outputs per call... so compass yields two arrays ("compass" and "angle")... etc.
+          theReadings thisSensor = getReadings(environmental_array.getArray(i).getString(0));
+          env_counter = env_counter + thisSensor.numberReadings;                                                     // sum the total number of readings, so we create the right number of arrays.
+        }
+        //        Serial_Printf("env_counter: %d, size_of_data_raw: %d", env_counter, size_of_data_raw);
+        float environmental_array_averages[env_counter][size_of_data_raw];                                         // buffer for each of the environmentals as arrays in environmental_array_averages
+        if (env_counter > 0) {                                                                                // if there are environmentals during pulse sets, then generate an array to store the outputs in
+          for (uint16_t i = 0; i < env_counter; i++) {
+            for (uint16_t j = 0; j < size_of_data_raw; j++) {                                               // initialize the array as zeros
+              environmental_array_averages[i][j] = 0;
+            }
+          }
+        }
 
 #ifdef DEBUGSIMPLE
         Serial_Print_Line("");
@@ -934,13 +977,6 @@ void do_protocol()
         }
         Serial_Print_Line("");
 #endif
-
-        Serial_Print("{");
-
-        Serial_Print("\"protocol_id\":\"");
-        Serial_Print(protocol_id.c_str());
-        Serial_Print("\",");
-
         /*
                 if (get_offset == 1) {
                   print_offset(1);
@@ -986,6 +1022,9 @@ void do_protocol()
 
         detector_read1 = detector_read1_averaged = 0;
         detector_read2 = detector_read2_averaged = 0;
+
+        analog_read = digital_read = 0;
+        analog_read_averaged = digital_read_averaged = 0;
 
         //!!! when offset gets recalculated I need to reposition this later, since pulsesize is now an array
         //        calculate_offset(pulsesize);                                                                    // calculate the offset, based on the pulsesize and the calibration values (ax+b)
@@ -1217,7 +1256,7 @@ void do_protocol()
                 }
               } // for
 
-            }  // if (pulse < meas_array_size) 
+            }  // if (pulse < meas_array_size)
 
             if (Serial_Available() && Serial_Input_Long("+", 1) == -1) {                                      // exit protocol completely if user enters -1+
               q = number_of_protocols;
@@ -1251,6 +1290,37 @@ void do_protocol()
             digitalWriteFast(HOLDM, HIGH);                            // discharge integrators
             digitalWriteFast(HOLDADD, HIGH);
 
+            if (env_counter > 0) {                                                                                // check to see if there are any objects in environmental array (this saves some time as calling .getLength on environmental_array can take some time)
+              environmentals(environmental_array, averages, x, 1);
+              uint16_t counter1 = 0;
+              for (uint16_t i = 0; i < environmental_array.getLength(); i++) {
+                theReadings thisSensor = getReadings(environmental_array.getArray(i).getString(0));
+                environmental_array_averages[counter1][z] = expr(thisSensor.reading1);
+                counter1++;
+                //                Serial_Printf("counter reading 1:%d, array: %s, value: %f\n", counter1, thisSensor.reading1, expr(thisSensor.reading1));
+                if (thisSensor.numberReadings >= 2) {                                                              // so if the number of readings is 1 or fewer, do this, next if statement is for 2 or fewer, etc. etc.
+                  environmental_array_averages[counter1][z] = expr(thisSensor.reading2);
+                  counter1++;
+                  //                  Serial_Printf("counter reading 2:%d, array: %s, value: %f\n", counter1, thisSensor.reading1, expr(thisSensor.reading2));
+                }
+                if (thisSensor.numberReadings >= 3) {                                                              // so if the number of readings is 1 or fewer, do this, next if statement is for 2 or fewer, etc. etc.
+                  environmental_array_averages[counter1][z] = expr(thisSensor.reading3);
+                  counter1++;
+                  //                  Serial_Printf("counter reading 3:%d, array: %s, value: %f\n", counter1, thisSensor.reading1, expr(thisSensor.reading3));
+                }
+                if (thisSensor.numberReadings >= 4) {                                                              // so if the number of readings is 1 or fewer, do this, next if statement is for 2 or fewer, etc. etc.
+                  environmental_array_averages[counter1][z] = expr(thisSensor.reading4);
+                  counter1++;
+                  //                  Serial_Printf("counter reading 4:%d, array: %s, value: %f\n", counter1, thisSensor.reading1, expr(thisSensor.reading4));
+                }
+                if (thisSensor.numberReadings >= 5) {                                                              // so if the number of readings is 1 or fewer, do this, next if statement is for 2 or fewer, etc. etc.
+                  environmental_array_averages[counter1][z] = expr(thisSensor.reading5);
+                  counter1++;
+                  //                  Serial_Printf("counter reading 5:%d, array: %s, value: %f\n", counter1, thisSensor.reading1, expr(thisSensor.reading5));
+                }
+              }
+            }
+
             if (adc_show == 1) {                                                                        // save the individual ADC measurements separately if adc_show is set to 1 (to be printed to the output later instead of data_raw)
               //              Serial_Print(",\"last_adc_ref\":[");
               for (unsigned i = 0; i < sizeof(sample_adc) / sizeof(uint16_t); i++) {                           //
@@ -1263,7 +1333,7 @@ void do_protocol()
               //              Serial_Print("],");
             }
 
-            data = median16(sample_adc, _number_samples);                                             // using median - 25% improvements over using mean to determine this value
+            data = median16(sample_adc, _number_samples);                                  // using median - 25% improvements over using mean to determine this value
 
             if (_reference != 0) {                                                        // if also using reference, then ...
               data_ref = median16(sample_adc_ref, _number_samples);                       // generate median of reference values
@@ -1394,7 +1464,6 @@ void do_protocol()
             0 - take before spectroscopy measurements
             1 - take after spectroscopy measurements
           */
-          environmentals(environmental, averages, x, 1);
 
           if (x + 1 < averages) {                                                             //  to next average, unless it's the end of the very last run
             if (averages_delay > 0) {
@@ -1422,6 +1491,39 @@ void do_protocol()
             }
           } // for
           Serial_Print("]}");
+        }
+
+        uint16_t counter1 = 0;
+        for (uint16_t i = 0; i < environmental_array.getLength(); i++) {                        // print the environmental_array data
+          theReadings thisSensor = getReadings(environmental_array.getArray(i).getString(0));
+          for (uint16_t g = 0; g < thisSensor.numberReadings; g++) {              // print the appropriate sensor value
+            switch (g) {
+              case 0:                                                              // so if the number of readings is 1 or fewer, do this, next if statement is for 2 or fewer, etc. etc.
+                Serial_Printf("\"%s\":[", thisSensor.reading1);
+                break;
+              case 1:                                                              // so if the number of readings is 1 or fewer, do this, next if statement is for 2 or fewer, etc. etc.
+                Serial_Printf("\"%s\":[", thisSensor.reading2);
+                break;
+              case 2:                                                              // so if the number of readings is 1 or fewer, do this, next if statement is for 2 or fewer, etc. etc.
+                Serial_Printf("\"%s\":[", thisSensor.reading3);
+                break;
+              case 3:                                                              // so if the number of readings is 1 or fewer, do this, next if statement is for 2 or fewer, etc. etc.
+                Serial_Printf("\"%s\":[", thisSensor.reading4);
+                break;
+              case 4:                                                              // so if the number of readings is 1 or fewer, do this, next if statement is for 2 or fewer, etc. etc.
+                Serial_Printf("\"%s\":[", thisSensor.reading5);
+                break;
+            }
+            for (uint16_t j = 0; j < size_of_data_raw; j++) {
+              if (j != size_of_data_raw - 1) {
+                Serial_Printf("\"%f\",", environmental_array_averages[counter1][j]);
+              }
+              else {
+                Serial_Printf("\"%f\"],", environmental_array_averages[counter1][j]);
+              }
+            }
+            counter1++;
+          }
         }
 
         if (spec_on == 0) {
@@ -1490,7 +1592,7 @@ void do_protocol()
 
     }  // for each protocol q
 
-// [{      "environmental":[["light_intensity",0]],"pulses": [100,100,100],"a_lights": [[2],[2],[2]],"a_intensities": [["light_intensity_averaged"],[1000],["light_intensity_averaged"]],"pulsedistance": [10000,10000,10000],"m_intensities": [[500],[500],[500],[500]],"pulsesize": [60,60,60],"detectors": [[1],[1],[1]],"meas_lights": [[3],[3],[3]],"averages": 1}]
+    // [{      "environmental":[["light_intensity",0]],"pulses": [100,100,100],"a_lights": [[2],[2],[2]],"a_intensities": [["light_intensity_averaged"],[1000],["light_intensity_averaged"]],"pulsedistance": [10000,10000,10000],"m_intensities": [[500],[500],[500]],"pulsesize": [60,60,60],"detectors": [[1],[1],[1]],"meas_lights": [[3],[3],[3]],"averages": 1}]
 
     Serial_Flush_Input();
     if (y < measurements - 1) {                                 // if not last measurement
@@ -1528,7 +1630,7 @@ abort:
 static void pulse3() {                      // ISR to turn on/off LED pulse - also controls integration switch
 
   if (pulse_done)                           // skip this pulse if not ready yet
-     return;        
+    return;
 
   const unsigned  STABILIZE = 10;                // this delay gives the LED current controller op amp the time needed to stabilize
   register int pin = LED_to_pin[_meas_light];
@@ -1608,6 +1710,9 @@ int abort_cmd()
       In addition, there are often raw and calibrated versions of sensors, like raw tcs value versus the PAR value, or raw hall sensor versus calibrated thickness.
       As a result, for most sensors there is the base version (like x_tilt) which is available in that measurment, an averaged version (like x_tilt_averaged) which is outputted after averaging, and raw versions of each of those (x_tilt and x_tilt_averaged)
 */
+
+//get_temperature_humidity_pressure
+
 void get_temperature_humidity_pressure (int _averages) {    // read temperature, relative humidity, and pressure BME280 module
 
   temperature = bme1.readTempC();                // temperature in C
@@ -1618,6 +1723,7 @@ void get_temperature_humidity_pressure (int _averages) {    // read temperature,
   humidity_averaged += humidity / _averages;
   pressure_averaged += pressure / _averages;
 
+  //  sensorValues thisSensor = {temperature, humidity, pressure};
 }
 
 void get_temperature_humidity_pressure2 (int _averages) {    // read temperature, relative humidity, and pressure BME280 module
@@ -1672,6 +1778,7 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
 float get_contactless_temp (int _averages) {
   contactless_temp = (MLX90615_Read(0) + MLX90615_Read(0) + MLX90615_Read(0)) / 3.0;
   contactless_temp_averaged += contactless_temp / _averages;
+
   return contactless_temp;
 }
 
@@ -1689,9 +1796,9 @@ void get_compass_and_angle (int notRaw, int _averages) {
   int acc_coords[3] = {accX, accY, accZ};
   applyAccCal(acc_coords);
 
-  float roll = getRoll(acc_coords[1], acc_coords[2]);
-  float pitch = getPitch(acc_coords[0], acc_coords[1], acc_coords[2], roll);
-  float compass = getCompass(mag_coords[0], mag_coords[1], mag_coords[2], pitch, roll);
+  roll = getRoll(acc_coords[1], acc_coords[2]);
+  pitch = getPitch(acc_coords[0], acc_coords[1], acc_coords[2], roll);
+  compass = getCompass(mag_coords[0], mag_coords[1], mag_coords[2], pitch, roll);
 
   Tilt deviceTilt = calculateTilt(roll, pitch, compass);
 
@@ -1700,8 +1807,6 @@ void get_compass_and_angle (int notRaw, int _averages) {
   angle = deviceTilt.angle;
   //Serial_Printf("%f \n", angle);
   angle_direction = deviceTilt.angle_direction;
-
-  // TODO now access the elements in the Tilt struct and save them.  Go change all the values elsewhere
 
   if (notRaw == 0) {                                              // save the raw values average
     x_tilt_averaged += (float)x_tilt / _averages;
@@ -1744,124 +1849,140 @@ float get_thickness (int notRaw, int _averages) {
   }
 }
 
+float get_analog_read (int pin, int _averages) {
+  int sum = 0;
+  for (int i = 0; i < 1000; ++i) {
+    sum += analogRead(pin);
+  }
+  analog_read = (sum / 1000);
+  analog_read_averaged += (float) analog_read / _averages;
+  return analog_read;
+}
+
+float get_digital_read (int pin, int _averages) {
+  digital_read = digitalRead(pin);
+  digital_read_averaged += (float) digital_read / _averages;
+  return analog_read;
+}
 
 // check for commands to read various envirmental sensors
 // also output the value on the final call
 
-static void environmentals(JsonArray environmental, const int _averages, const int count, int beforeOrAfter)
+// TODO ok instead of just adding up the values in the array, we probably need to make another nest in the nested array, otherwise we don't know where to start the next environmentals... so right
+
+static void environmentals(JsonArray environmental, const int _averages, const int count, int oneOrArray)
 {
 
   for (int i = 0; i < environmental.getLength(); i++) {                                       // call environmental measurements after the spectroscopic measurement
 
-    if (environmental.getArray(i).getLong(1) != beforeOrAfter)
-      continue;            // not the right time
+    String thisSensor = environmental.getArray(i).getString(0);
+    //    Serial_Printf("thisSensor: %s", thisSensor);
 
-    if ((String) environmental.getArray(i).getString(0) == "temperature_humidity_pressure") {                   // measure light intensity with par calibration applied
+    if (thisSensor == "temperature_humidity_pressure") {                   // measure light intensity with par calibration applied
       get_temperature_humidity_pressure(_averages);
-      if (count == _averages - 1) {
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"temperature\":%f,\"humidity\":%f,\"pressure\":%f,", temperature_averaged, humidity_averaged, pressure_averaged);
       }
     }
-    if ((String) environmental.getArray(i).getString(0) == "temperature_humidity_pressure2") {                   // measure light intensity with par calibration applied
+    if (thisSensor == "temperature_humidity_pressure2") {                   // measure light intensity with par calibration applied
       get_temperature_humidity_pressure2(_averages);
-      if (count == _averages - 1) {
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"temperature2\":%f,\"humidity2\":%f,\"pressure2\":%f,", temperature2_averaged, humidity2_averaged, pressure2_averaged);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "light_intensity") {                   // measure light intensity with par calibration applied
+    if (thisSensor == "light_intensity") {                   // measure light intensity with par calibration applied
       get_light_intensity(_averages);
-      if (count == _averages - 1) {
-        Serial_Printf("\"light_intensity\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,\"light_intensity_raw\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged,light_intensity_raw_averaged);
+      if (count == _averages - 1 && oneOrArray == 0) {
+        Serial_Printf("\"light_intensity\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,\"light_intensity_raw\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged, light_intensity_raw_averaged);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "contactless_temp") {                 // measure contactless temperature
+    if (thisSensor == "contactless_temp") {                 // measure contactless temperature
       get_contactless_temp(_averages);
-      if (count == _averages - 1) {
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"contactless_temp\":%.2f,", contactless_temp_averaged);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "thickness") {                        // measure thickness via hall sensor, with calibration applied
+    if (thisSensor == "thickness") {                        // measure thickness via hall sensor, with calibration applied
       get_thickness(1, _averages);
-      if (count == _averages - 1) {
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"thickness\":%.2f,", thickness_averaged);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "thickness_raw") {                    // measure thickness via hall sensor, raw analog_read
+    if (thisSensor == "thickness_raw") {                    // measure thickness via hall sensor, raw con
       get_thickness(0, _averages);
-      if (count == _averages - 1) {
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"thickness_raw\":%.2f,", thickness_raw_averaged);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "compass_and_angle") {                             // measure tilt in -180 - 180 degrees
+    if (thisSensor == "compass_and_angle") {                             // measure tilt in -180 - 180 degrees
       get_compass_and_angle(1, _averages);
-      if (count == _averages - 1) {
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"compass_direction\":%s,\"compass\":%.2f,\"angle\":%.2f,\"angle_direction\":%s,\"pitch\":%.2f,\"roll\":%.2f,", getDirection(compass_segment(compass_averaged)), compass_averaged, angle_averaged, angle_direction.c_str(), pitch_averaged, roll_averaged);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "compass_and_angle_raw") {                         // measure tilt from -1000 - 1000
+    if (thisSensor == "compass_and_angle_raw") {                         // measure tilt from -1000 - 1000
       get_compass_and_angle(0, _averages);
-      if (count == _averages - 1) {
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"x_tilt\":%.2f,\"y_tilt\":%.2f,\"z_tilt\":%.2f,\"x_compass_raw\":%.2f,\"y_compass_raw\":%.2f,\"z_compass_raw\":%.2f,", x_tilt_averaged, y_tilt_averaged, z_tilt_averaged, x_compass_raw_averaged, y_compass_raw_averaged, z_compass_raw_averaged);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "detector_read1") {
-      int this_light = environmental.getArray(i).getLong(2);
-      int this_intensity = environmental.getArray(i).getLong(3);
-      int this_detector = environmental.getArray(i).getLong(4);
-      int this_pulsesize = environmental.getArray(i).getLong(5);
-      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 1);     // save as "detector_read" from get_detector_value function
-      if (count == _averages - 1) {
+    if (thisSensor == "detector_read1") {
+      int this_light = environmental.getArray(i).getLong(1);
+      int this_intensity = environmental.getArray(i).getLong(2);
+      int this_detector = environmental.getArray(i).getLong(3);
+      int this_pulsesize = environmental.getArray(i).getLong(4);
+      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 1);     // save as "detector_read1" from get_detector_value function
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"detector_read1\":%f,", detector_read1_averaged);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "detector_read2") {
-      int this_light = environmental.getArray(i).getLong(2);
-      int this_intensity = environmental.getArray(i).getLong(3);
-      int this_detector = environmental.getArray(i).getLong(4);
-      int this_pulsesize = environmental.getArray(i).getLong(5);
-      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 2);     // save as "detector_read" from get_detector_value function
-      if (count == _averages - 1) {
+    if (thisSensor == "detector_read2") {
+      int this_light = environmental.getArray(i).getLong(1);
+      int this_intensity = environmental.getArray(i).getLong(2);
+      int this_detector = environmental.getArray(i).getLong(3);
+      int this_pulsesize = environmental.getArray(i).getLong(4);
+      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 2);     // save as "detector_read2" from get_detector_value function
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"detector_read2\":%f,", detector_read2_averaged);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "analog_read") {                      // perform analog reads
-      int pin = environmental.getArray(i).getLong(2);
-      int analog_read = analogRead(pin);
-      if (count == _averages - 1) {
+    if (thisSensor == "analog_read") {                      // perform analog reads
+      int pin = environmental.getArray(i).getLong(1);
+      get_analog_read(pin, _averages);
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"analog_read\":%f,", analog_read);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "digital_read") {                      // perform digital reads
-      int pin = environmental.getArray(i).getLong(2);
-      pinMode(pin, INPUT_PULLUP);
-      int digital_read = digitalRead(pin);
-      if (count == _averages - 1) {
+    if (thisSensor == "digital_read") {                      // perform digital reads
+      int pin = environmental.getArray(i).getLong(1);
+      get_digital_read(pin, _averages);
+      if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"digital_read\":%f,", digital_read);
       }
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "digital_write") {                      // perform digital write
-      int pin = environmental.getArray(i).getLong(2);
-      int setting = environmental.getArray(i).getLong(3);
+    if (thisSensor == "digital_write") {                      // perform digital write
+      int pin = environmental.getArray(i).getLong(1);
+      int setting = environmental.getArray(i).getLong(2);
       pinMode(pin, OUTPUT);
       digitalWriteFast(pin, setting);
     }
 
-    if ((String) environmental.getArray(i).getString(0) == "analog_write") {                      // perform analog write with length of time to apply the pwm
-      int pin = environmental.getArray(i).getLong(2);
-      int setting = environmental.getArray(i).getLong(3);
-      int freq = environmental.getArray(i).getLong(4);
-      int wait = environmental.getArray(i).getLong(5);
+    if (thisSensor == "analog_write") {                      // perform analog write with length of time to apply the pwm
+      int pin = environmental.getArray(i).getLong(1);
+      int setting = environmental.getArray(i).getLong(2);
+      int freq = environmental.getArray(i).getLong(3);
+      int wait = environmental.getArray(i).getLong(4);
 
       // TODO sanity checks
 
@@ -1886,12 +2007,6 @@ static void environmentals(JsonArray environmental, const int _averages, const i
 static void print_all () {
   // print every value saved in eeprom in valid json structure (even the undefined values which are still 0)
   Serial_Printf("light_intensity:%g\n", light_intensity);
-}
-
-static void print_userdef () {
-  // print only the userdef values which can be defined by the user
-  for (unsigned i = 0; i < NUM_USERDEFS; ++i)
-    Serial_Printf("userdef[%d]=%g\n", i, eeprom->userdef[i]);
 }
 
 #if 0
@@ -2098,5 +2213,65 @@ void print_calibrations() {
   Serial_Printf("\"userdef%d\": \"%f\"\n}", i, eeprom->userdef[i]);
 
   Serial_Print_CRC();
+}
+
+theReadings getReadings (const char* _thisSensor) {                       // get the actual sensor readings associated with each environmental call (so compass and angle when you call compass_and_angle, etc.)
+  theReadings _theReadings;
+  if (!strcmp(_thisSensor, "temperature_humidity_pressure")) {
+    _theReadings.reading1 = "temperature";
+    _theReadings.reading2 = "humidity";
+    _theReadings.reading3 = "pressure";
+    _theReadings.numberReadings = 3;
+  }
+  else if (!strcmp(_thisSensor, "analog_read")) {
+    _theReadings.reading1 = "analog_read";
+    _theReadings.numberReadings = 1;
+  }
+  else if (!strcmp(_thisSensor, "temperature_humidity_pressure2")) {
+    _theReadings.reading1 = "temperature2";
+    _theReadings.reading2 = "humidity2";
+    _theReadings.reading3 = "pressure2";
+    _theReadings.numberReadings = 3;
+  }
+  else if (!strcmp(_thisSensor, "contactless_temp")) {
+    _theReadings.reading1 = "contactless_temp";
+    _theReadings.numberReadings = 1;
+  }
+  else if (!strcmp(_thisSensor, "light_intensity")) {
+    _theReadings.reading1 = "light_intensity";
+    _theReadings.reading2 = "light_intensity_raw";
+    _theReadings.reading3 = "r";
+    _theReadings.reading4 = "g";
+    _theReadings.reading5 = "b";
+    _theReadings.numberReadings = 5;
+  }
+  else if (!strcmp(_thisSensor, "thickness")) {
+    _theReadings.reading1 = "thickness";
+    _theReadings.reading2 = "thickness_raw";
+    _theReadings.numberReadings = 2;
+  }
+  else if (!strcmp(_thisSensor, "compass_and_angle")) {
+    _theReadings.reading1 = "compass";
+    _theReadings.reading2 = "angle";
+    _theReadings.numberReadings = 2;
+  }
+  else if (!strcmp(_thisSensor, "digital_read")) {
+    _theReadings.reading1 = "digital_read";
+    _theReadings.numberReadings = 1;
+  }
+  else if (!strcmp(_thisSensor, "detector_read1")) {
+    _theReadings.reading1 = "detector_read1";
+    _theReadings.numberReadings = 1;
+  }
+  else if (!strcmp(_thisSensor, "detector_read2")) {
+    _theReadings.reading1 = "detector_read2";
+    _theReadings.numberReadings = 1;
+  }
+  else {                                                                          // output invalid entry if the entered sensor call is not on the list
+    _theReadings.reading1 = "invalid_entry";
+    _theReadings.numberReadings = 1;
+  }
+  //  Serial_Printf("%s, %s, %s, %s, %s, %d\n", _theReadings.reading1, _theReadings.reading2, _theReadings.reading3, _theReadings.reading4, _theReadings.reading5, _theReadings.numberReadings);
+  return _theReadings;
 }
 

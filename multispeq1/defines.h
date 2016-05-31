@@ -13,7 +13,7 @@ const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 #define CORAL_SPEQ 0
 
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
-#define DEVICE_FIRMWARE "0.54"
+#define DEVICE_FIRMWARE "0.55"
 #define DEVICE_NAME "MultispeQ"
 #define DEVICE_VERSION "1"
      
@@ -172,6 +172,9 @@ EXTERN float temperature2_averaged, humidity2_averaged, pressure2_averaged;
 
 EXTERN float detector_read1, detector_read2;
 EXTERN float detector_read1_averaged, detector_read2_averaged;
+
+EXTERN float analog_read, digital_read;
+EXTERN float analog_read_averaged, digital_read_averaged;
 
 // pressure/temp/humidity sensors
 EXTERN BME280 bme1;        // I2C sensor

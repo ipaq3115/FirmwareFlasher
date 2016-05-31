@@ -450,6 +450,16 @@ void timefromcompiler(void) {
 
 // read/write device_id and manufacture_date to eeprom
 
+void temp_get_set_device_info() {
+
+    long val;
+
+    // please enter new device ID (lower 4 bytes of BLE MAC address as a long int) followed by '+'
+//    Serial_Print_Line("{\"message\": \"Please enter device mac address (long int) followed by +: \"}\n");
+    val =  Serial_Input_Long("+", 0);              // save to eeprom
+    store(device_id, val);              // save to eeprom
+}
+
 void get_set_device_info(const int _set) {
 
   if (_set == 1) {
@@ -477,13 +487,12 @@ void get_set_device_info(const int _set) {
   v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
  
   //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
-  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"battery\":%d,\"device_firmware\":\"%s\",\"device_manufacture\":2016}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
+  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\",\"device_manufacture\":%ld}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
-                (unsigned)eeprom->device_id & 0xff, v);
-  //                ,DEVICE_FIRMWARE, eeprom->device_manufacture)
-
+                (unsigned)eeprom->device_id & 0xff, v,
+                DEVICE_FIRMWARE, eeprom->device_manufacture);
   Serial_Print_CRC();
 
   return;
