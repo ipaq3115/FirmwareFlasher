@@ -13,8 +13,9 @@ Tilt calculateTilt(float roll, float pitch, float compass);
 int compass_segment(float angle);
 void scan_i2c(void);
 void sleep_mode(int n);
-int battery_low(int leds);
-int battery_level(int leds);
+int battery_low(int load);
+int battery_level(int load);
+int battery_percent(int load);
 float sine_internal(float angle);
 float cosine_internal(float angle);
 //removed because doesn't work and probably unnecessary - see util.cpp comments for more details
