@@ -255,6 +255,11 @@ static void print_packet(const char *str)
   // copy to buffer, sending whenever it reaches n bytes
   while (*str != 0) {                  // until end of string
 
+    if (*str == ETX) {                   // we cannot send this character, skip it
+       ++str;
+       continue;
+    }
+
     packet_buffer[packet_count] = *str;
     ++packet_count;
 
