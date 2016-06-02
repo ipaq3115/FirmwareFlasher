@@ -646,6 +646,24 @@ void do_command()
       }
       break;
 
+    case hash("calibrate_compass"):
+      delay(5000);
+      Serial_Printf("{\"calibration_values\":");
+      Serial_Printf("[");
+      for (int i = 0; i < 100; i++) {
+        int x, y, z;
+        MAG3110_read(&x, &y, &z);
+        if(i != 0) {
+          Serial_Printf(", ");
+        }
+        Serial_Printf("%d, %d, %d", x, y, z);
+        delay(100);
+      }
+      Serial_Printf("]");
+      Serial_Printf("}");
+      Serial_Print_CRC();
+      break;
+
     case hash("upgrade"):
     case 1078:                                                                   // over the air update of firmware.   DO NOT MOVE THIS!
       upgrade_firmware();
@@ -2274,4 +2292,55 @@ theReadings getReadings (const char* _thisSensor) {                       // get
   //  Serial_Printf("%s, %s, %s, %s, %s, %d\n", _theReadings.reading1, _theReadings.reading2, _theReadings.reading3, _theReadings.reading4, _theReadings.reading5, _theReadings.numberReadings);
   return _theReadings;
 }
+
+//======================================
+
+// read/write device_id and manufacture_date to eeprom
+
+void temp_get_set_device_info() {
+
+    long val;
+
+    // please enter new device ID (lower 4 bytes of BLE MAC address as a long int) followed by '+'
+//    Serial_Print_Line("{\"message\": \"Please enter device mac address (long int) followed by +: \"}\n");
+    val =  Serial_Input_Long("+", 0);              // save to eeprom
+    store(device_id, val);              // save to eeprom
+}
+
+void get_set_device_info(const int _set) {
+
+  if (_set == 1) {
+    long val;
+
+    // please enter new device ID (lower 4 bytes of BLE MAC address as a long int) followed by '+'
+    Serial_Print_Line("{\"message\": \"Please enter device mac address (long int) followed by +: \"}\n");
+    val =  Serial_Input_Long("+", 0);              // save to eeprom
+    store(device_id, val);              // save to eeprom
+
+    // please enter new date of manufacture (yyyymm) followed by '+'
+    Serial_Print_Line("{\"message\": \"Please enter device manufacture date followed by + (example 052016): \"}\n");
+    val = Serial_Input_Long("+", 0);
+    store(device_manufacture, val);
+
+  } // if
+
+  // print
+
+  int v = battery_percent(0);   // measured without load
+    
+  //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
+  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\",\"device_manufacture\":%ld}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
+                (unsigned)eeprom->device_id >> 24,
+                ((unsigned)eeprom->device_id & 0xff0000) >> 16,
+                ((unsigned)eeprom->device_id & 0xff00) >> 8,
+                (unsigned)eeprom->device_id & 0xff, v,
+                DEVICE_FIRMWARE, eeprom->device_manufacture);
+  Serial_Print_CRC();
+
+  return;
+
+} // get_set_device_info()
+
+// ======================================
+
 
