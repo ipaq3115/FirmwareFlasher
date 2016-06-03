@@ -1293,7 +1293,7 @@ void do_protocol()
             while (!pulse_done) {       // wait for LED pulse complete (in ISR)
               //if (abort_cmd())
               //  goto abort;  // or just reboot?
-              sleep_cpu();     // save power - any ISR will cause this to immediately return
+              //sleep_cpu();     // save power - removed, causes race condition
             }
 
             if (_reference != 0) {

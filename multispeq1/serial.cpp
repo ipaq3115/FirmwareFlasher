@@ -22,6 +22,7 @@ static void flush_BLE();
 static int Serial_Port = 3;   // which port to print to: 1 == Serial, 2 == Serial1, 3 = both  (ignored during automatic mode)
 static int automatic = 0;     // automatic means that writes will only go to the serial port that last had a byte read (Serial_Port is ignored)
 static int last_read = 0;     // where last incoming byte was from, 0 = Serial, 1 = Serial1
+static int retry_counter  = 0;  // total number of retries
 int packet_mode = 1;          // wait for ACK every n characters, resend if needed
 int cut_through = 0;          // send bytes as soon as we receive them (vs when packet buffer is full)
 
@@ -239,6 +240,8 @@ static void flush_packet()
 
     if (c == ACK)
       break;                                // note: any other character will cause a retry
+
+    ++retry_counter;                        // for diagnostics
 
   } // for
 
