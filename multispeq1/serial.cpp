@@ -24,7 +24,7 @@ static int automatic = 0;     // automatic means that writes will only go to the
 static int last_read = 0;     // where last incoming byte was from, 0 = Serial, 1 = Serial1
 static int retry_counter  = 0;  // total number of retries
 int packet_mode = 1;          // wait for ACK every n characters, resend if needed
-int cut_through = 0;          // send bytes as soon as we receive them (vs when packet buffer is full)
+int cut_through = 1;          // send bytes as soon as we receive them (vs when packet buffer is full)
 
 // set baud rates
 
@@ -184,7 +184,7 @@ static char packet_buffer[PACKET_SIZE + 1 + 4 + 1 + 1];  // extra room for SEQ t
 static int packet_count = 0;                         // how many bytes currently in the above buffer
 static int seq = 0;                                  // goes A-Z and then wraps back to A - sent with each packet
 const int RETRIES = 5;
-const int RETRY_DELAY = 1000;     // ms
+const int RETRY_DELAY = 250;     // ms
 
 // push a full or partial packet out
 // retry until ACK, give up eventually
@@ -280,7 +280,7 @@ static void print_packet(const char *str)
   } // while
 }  // print_packet()
 
-#define BLE_DELAY 20                    // milli seconds between packets, 20 or 10
+#define BLE_DELAY 10                    // milli seconds between packets, probably 20 or 10
 #define BLE_PACKET_SIZE 20
 
 static char buffer[BLE_PACKET_SIZE + 1];
