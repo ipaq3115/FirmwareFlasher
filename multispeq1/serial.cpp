@@ -184,7 +184,7 @@ static char packet_buffer[PACKET_SIZE + 1 + 4 + 1 + 1];  // extra room for SEQ t
 static int packet_count = 0;                         // how many bytes currently in the above buffer
 static int seq = 0;                                  // goes A-Z and then wraps back to A - sent with each packet
 const int RETRIES = 5;
-const int RETRY_DELAY = 1000;     // ms
+const int RETRY_DELAY = 250;     // ms
 
 // push a full or partial packet out
 // retry until ACK, give up eventually
@@ -280,7 +280,7 @@ static void print_packet(const char *str)
   } // while
 }  // print_packet()
 
-#define BLE_DELAY 10                    // milli seconds between packets, 20 or 10
+#define BLE_DELAY 10                    // milli seconds between packets, probably 20 or 10
 #define BLE_PACKET_SIZE 20
 
 static char buffer[BLE_PACKET_SIZE + 1];

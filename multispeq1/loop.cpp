@@ -655,7 +655,7 @@ void do_command()
       for (int i = 0; i < 100; i++) {
         int x, y, z;
         MAG3110_read(&x, &y, &z);
-        if(i != 0) {
+        if (i != 0) {
           Serial_Printf(", ");
         }
         Serial_Printf("%d, %d, %d", x, y, z);
@@ -1548,27 +1548,30 @@ void do_protocol()
           }
         }
 
+        // print the data
+
         if (spec_on == 0) {
           Serial_Print("\"data_raw\":[");
           if (adc_show == 0) {                                                             // normal condition - show data_raw as per usual
             for (int i = 0; i < size_of_data_raw; i++) {                                     // print data_raw, divided by the number of averages
               Serial_Print((unsigned)(data_raw_average[i] / averages));
-              // if average = 1, then it would be better to print data as it is collected
+              // if average = 1, then it might be better to print data as it is collected
               if (i != size_of_data_raw - 1) {
                 Serial_Print(",");
-              }
-            }
-          }
-          else {                                                                         // if adc_show == 1, show first individual adc's only - do not show normal data_raw (used for signal debugging only)
+              } // if
+            } // for
+          } else {                                                                         // if adc_show == 1, show first individual adc's only - do not show normal data_raw (used for signal debugging only)
             for (int i = 0; i < number_samples.getLong(0); i++) {
               Serial_Print(adc_only[i]);
               if (i != number_samples.getLong(0) - 1) {
                 Serial_Print(",");
               }
-            }
+            } // for
           }
+
           Serial_Print("]}");
         }
+
 
 #ifdef DEBUGSIMPLE
         Serial_Print("# of protocols repeats, current protocol repeat, number of total protocols, current protocol      ");
@@ -2306,12 +2309,12 @@ theReadings getReadings (const char* _thisSensor) {                       // get
 
 void temp_get_set_device_info() {
 
-    long val;
+  long val;
 
-    // please enter new device ID (lower 4 bytes of BLE MAC address as a long int) followed by '+'
-//    Serial_Print_Line("{\"message\": \"Please enter device mac address (long int) followed by +: \"}\n");
-    val =  Serial_Input_Long("+", 0);              // save to eeprom
-    store(device_id, val);              // save to eeprom
+  // please enter new device ID (lower 4 bytes of BLE MAC address as a long int) followed by '+'
+  //    Serial_Print_Line("{\"message\": \"Please enter device mac address (long int) followed by +: \"}\n");
+  val =  Serial_Input_Long("+", 0);              // save to eeprom
+  store(device_id, val);              // save to eeprom
 }
 
 void get_set_device_info(const int _set) {
@@ -2334,7 +2337,7 @@ void get_set_device_info(const int _set) {
   // print
 
   int v = battery_percent(0);   // measured without load
-    
+
   //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
   Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\",\"device_manufacture\":%ld}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
@@ -2349,5 +2352,4 @@ void get_set_device_info(const int _set) {
 } // get_set_device_info()
 
 // ======================================
-
 
