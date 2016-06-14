@@ -6,6 +6,13 @@
 
 /*
 
+make pulsesize and pulsedistance both run through expr()
+added calibration for thickness
+updated detector_read1/2 to 5 samples instead of 50 (reduce actinic effects
+
+to do:
+min and max thickness, so we know open + closed plus error, also if either is maxed then we know something's wrong so don't wait.
+
   add watchdog - need to know max delays
 // update DAC and get lights working in [{}]
 // once lights work, comparison test old and new adc routines, with timing

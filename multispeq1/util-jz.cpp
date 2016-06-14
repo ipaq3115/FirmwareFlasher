@@ -301,7 +301,7 @@ void activity() {
 
 void powerdown() {
 
-  if ((millis() - last_activity > SHUTDOWN /* && !Serial */) || battery_low(0)) {   // if USB is active, no timeout sleep
+  if ((millis() - last_activity > SHUTDOWN  && !Serial) || battery_low(0)) {   // if USB is active, no timeout sleep
 
     // TODO - turn off unneeded peripherals or some pins to high impedance/floating?
     // TODO put accelerometer into lowest power mode

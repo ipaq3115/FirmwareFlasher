@@ -192,6 +192,7 @@ float cosine_internal(float angle) {
   }
 */
 
+
 float measure_hall() {
   float hall_value = (analogRead(HALL_OUT) + analogRead(HALL_OUT) + analogRead(HALL_OUT)) / 3;
   //  Serial_Printf("final hall_value: %f",hall_value);
@@ -206,23 +207,23 @@ void start_on_open_close() {
   float start_position = measure_hall();
   float current_position = start_position;
 
-  // now measure every 200ms until you see the value change to > 10000 counts
-  while (current_position - start_position < 8000) {
+  // now measure every 150ms until you see the value change to 95% of the full range from closed to fully open
+  while (current_position - start_position < .95*(eeprom->thickness_max - eeprom->thickness_min)) {
     current_position = measure_hall();
     //        Serial_Printf("start: %f, current: %f\n", start_position, current_position);
-    delay(200);                                                               // measure every 100ms
-    if (current_position - start_position < -2000) {                              // if the person opened it first (ie they did it wrong and started it with clamp open) - detect and skip to end
+    delay(150);                                                               // measure every 100ms
+    if (current_position - start_position < -.20*(eeprom->thickness_max - eeprom->thickness_min) || current_position == 0 || current_position == 65535) {         // if the person opened it first (ie they did it wrong and started it with clamp open) - detect and skip to end.  Also if the output is maxed or minned then proceed.
       //        Serial_Print("made it");
       goto end;
     }
   }
-  // now measure again every 200ms until you see the value change to < 5000 counts
-  while (current_position  - start_position > 6000) {
+  // now measure again every 150ms until you see the value change to < 65% of the full range from closed to fully open
+  while (current_position  - start_position > .65*(eeprom->thickness_max - eeprom->thickness_min)) {
     current_position = measure_hall();
     //        Serial_Printf("start: %f, current: %f\n", start_position, current_position);
-    delay(200);                                                               // measure every 200ms
+    delay(150);                                                               // measure every 200ms
   }
 end:
-  delay(500);                                                               // make sure the clamp has time to settle onto the leaf.
+  delay(300);                                                               // make sure the clamp has time to settle onto the leaf.
 }
 

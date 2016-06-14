@@ -414,7 +414,9 @@ void do_command()
       //      Serial_Print_Line("{\"message\": \"input thickness calibration values (a, b, d) a for leaf thickness followed by +: \"}");
       store(thickness_a, Serial_Input_Double("+", 0));
       store(thickness_b, Serial_Input_Double("+", 0));
-      store(thickness_d, Serial_Input_Double("+", 0));
+      store(thickness_c, Serial_Input_Double("+", 0));
+      store(thickness_min, Serial_Input_Double("+", 0));
+      store(thickness_max, Serial_Input_Double("+", 0));
       break;
     case 1040:
       //      Serial_Print_Linef("%f, %f",eeprom->detector_offset_slope[0],eeprom->detector_offset_yint[0]);
@@ -1133,8 +1135,10 @@ void do_protocol()
                 _pulsedistance_prev = _pulsedistance;
                 _pulsesize_prev = _pulsesize;
               }
-              _pulsedistance = pulsedistance.getLong(cycle);                                                    // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
-              _pulsesize = pulsesize.getLong(cycle);
+              String distanceString = pulsedistance.getString(cycle);                                                    // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
+              String sizeString = pulsesize.getString(cycle);
+              _pulsedistance = expr(distanceString.c_str());                                                    // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
+              _pulsesize = expr(sizeString.c_str());
               first_flag = 1;                                                                                   // flip flag indicating that it's the 0th pulse and a new cycle
               if (cycle == 0) {                                                                                 // if it's the beginning of a measurement (cycle == 0 and pulse == 0), then...
                 digitalWriteFast(act_background_light_prev, LOW);                                               // turn off actinic background light and...
@@ -1756,15 +1760,15 @@ void get_temperature_humidity_pressure2 (int _averages) {    // read temperature
 
 }
 
-void get_detector_value (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2) {    // read reflectance of LED 5 (940nm) with 20 pulses and averages
+void get_detector_value (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2) {    // read reflectance of LED 5 (940nm) with 5 pulses and averages.  Keep # of pulses low as a large number of pulses could impact the sample
 
   const unsigned  STABILIZE = 10;                                           // this delay gives the LED current controller op amp the time needed to stabilize
-  uint16_t this_sample_adc[48];                                              // initialize the variables to hold the main and reference detector data
+  uint16_t this_sample_adc[48];                                              // initialize the variables to hold the main and reference detector data 
   DAC_set(this_light, par_to_dac(this_intensity, this_light));              // set the DAC, make sure to convert PAR intensity to DAC value
   DAC_change();
   AD7689_set (this_detector - 1);                                           // set ADC channel as specified
 
-  for (uint16_t i = 0; i < 50; i++) {
+  for (uint16_t i = 0; i < 5; i++) {
     noInterrupts();
     digitalWriteFast(LED_to_pin[this_light], HIGH);            // turn on measuring light
     delayMicroseconds(STABILIZE);           // this delay gives the LED current controller op amp the time needed to turn
@@ -1774,7 +1778,7 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
     digitalWriteFast(HOLDM, LOW);          // turn off sample and hold discharge
     delayMicroseconds(this_pulsesize);         // pulse width
     digitalWriteFast(LED_to_pin[this_light], LOW);            // turn off measuring light
-    if (i >= 1 && i <= 49) {               // skip the first and last because I'm paranoid to make 48 total samples :)
+    if (i >= 1 && i <= 4) {               // skip the first and last because I'm paranoid to make 48 total samples :) 
       AD7689_read_array(this_sample_adc, 19);                                              // read detector, average 19 values and save in this_sample_adc
     }
     interrupts();                                             // re-enable interrupts (left off after LED ISR)
@@ -1786,15 +1790,17 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
   if (detector_read1or2 == 1) {                                                                 // save in detector_read1 or 2 depending on which is called
     detector_read1 = median16(this_sample_adc, 19);                                             // using median - 25% improvements over using mean to determine this value
     detector_read1_averaged += detector_read1 / _averages;
+//    Serial_Printf("read1: %f\n",detector_read1);
   }
   else {
     detector_read2 = median16(this_sample_adc, 19);                                             // using median - 25% improvements over using mean to determine this value
     detector_read2_averaged += detector_read2 / _averages;
+//    Serial_Printf("read2: %f\n",detector_read2);
   }
 }
 
-float get_contactless_temp (int _averages) {
-  contactless_temp = (MLX90615_Read(0) + MLX90615_Read(0) + MLX90615_Read(0)) / 3.0;
+float get_contactless_temp (int _averages) {  
+  contactless_temp = (MLX90615_Read(0) + MLX90615_Read(0) + MLX90615_Read(0)) / 3;
   contactless_temp_averaged += contactless_temp / _averages;
 
   return contactless_temp;
@@ -1851,11 +1857,10 @@ float get_thickness (int notRaw, int _averages) {
     sum += analogRead(HALL_OUT);
   }
   thickness_raw = (sum / 1000);
-  thickness = (sum / 1000);
-  // add calibration routine here with calls to thickness_a thickness_b thickness_d;
-  //  thickness += ...
+  thickness = (eeprom->thickness_a*thickness_raw*thickness_raw + eeprom->thickness_b*thickness_raw + eeprom->thickness_c)/1000;   // calibration information is saved in uM, so divide by 1000 to convert back to mm.  
+  
   if (notRaw == 0) {                                              // save the raw values average
-    thickness_raw_averaged += (float)thickness_raw / _averages;
+    thickness_raw_averaged += (float)thickness_raw / _averages; 
     return thickness_raw;
   }
   else if (notRaw == 1) {                                              // save the calibrated values and average
@@ -1902,56 +1907,56 @@ static void environmentals(JsonArray environmental, const int _averages, const i
         Serial_Printf("\"temperature\":%f,\"humidity\":%f,\"pressure\":%f,", temperature_averaged, humidity_averaged, pressure_averaged);
       }
     }
-    if (thisSensor == "temperature_humidity_pressure2") {                   // measure light intensity with par calibration applied
+    else if (thisSensor == "temperature_humidity_pressure2") {                   // measure light intensity with par calibration applied
       get_temperature_humidity_pressure2(_averages);
       if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"temperature2\":%f,\"humidity2\":%f,\"pressure2\":%f,", temperature2_averaged, humidity2_averaged, pressure2_averaged);
       }
     }
 
-    if (thisSensor == "light_intensity") {                   // measure light intensity with par calibration applied
+    else if (thisSensor == "light_intensity") {                   // measure light intensity with par calibration applied
       get_light_intensity(_averages);
       if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"light_intensity\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,\"light_intensity_raw\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged, light_intensity_raw_averaged);
       }
     }
 
-    if (thisSensor == "contactless_temp") {                 // measure contactless temperature
+    else if (thisSensor == "contactless_temp") {                 // measure contactless temperature
       get_contactless_temp(_averages);
       if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"contactless_temp\":%.2f,", contactless_temp_averaged);
       }
     }
 
-    if (thisSensor == "thickness") {                        // measure thickness via hall sensor, with calibration applied
+    else if (thisSensor == "thickness") {                        // measure thickness via hall sensor, with calibration applied
       get_thickness(1, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"thickness\":%.2f,", thickness_averaged);
       }
     }
 
-    if (thisSensor == "thickness_raw") {                    // measure thickness via hall sensor, raw con
+    else if (thisSensor == "thickness_raw") {                    // measure thickness via hall sensor, raw con
       get_thickness(0, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"thickness_raw\":%.2f,", thickness_raw_averaged);
       }
     }
 
-    if (thisSensor == "compass_and_angle") {                             // measure tilt in -180 - 180 degrees
+    else if (thisSensor == "compass_and_angle") {                             // measure tilt in -180 - 180 degrees
       get_compass_and_angle(1, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"compass_direction\":%s,\"compass\":%.2f,\"angle\":%.2f,\"angle_direction\":%s,\"pitch\":%.2f,\"roll\":%.2f,", getDirection(compass_segment(compass_averaged)), compass_averaged, angle_averaged, angle_direction.c_str(), pitch_averaged, roll_averaged);
       }
     }
 
-    if (thisSensor == "compass_and_angle_raw") {                         // measure tilt from -1000 - 1000
+    else if (thisSensor == "compass_and_angle_raw") {                         // measure tilt from -1000 - 1000
       get_compass_and_angle(0, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"x_tilt\":%.2f,\"y_tilt\":%.2f,\"z_tilt\":%.2f,\"x_compass_raw\":%.2f,\"y_compass_raw\":%.2f,\"z_compass_raw\":%.2f,", x_tilt_averaged, y_tilt_averaged, z_tilt_averaged, x_compass_raw_averaged, y_compass_raw_averaged, z_compass_raw_averaged);
       }
     }
 
-    if (thisSensor == "detector_read1") {
+    else if (thisSensor == "detector_read1") {
       int this_light = environmental.getArray(i).getLong(1);
       int this_intensity = environmental.getArray(i).getLong(2);
       int this_detector = environmental.getArray(i).getLong(3);
@@ -1962,7 +1967,7 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       }
     }
 
-    if (thisSensor == "detector_read2") {
+    else if (thisSensor == "detector_read2") {
       int this_light = environmental.getArray(i).getLong(1);
       int this_intensity = environmental.getArray(i).getLong(2);
       int this_detector = environmental.getArray(i).getLong(3);
@@ -1973,7 +1978,7 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       }
     }
 
-    if (thisSensor == "analog_read") {                      // perform analog reads
+    else if (thisSensor == "analog_read") {                      // perform analog reads
       int pin = environmental.getArray(i).getLong(1);
       get_analog_read(pin, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
@@ -1981,7 +1986,7 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       }
     }
 
-    if (thisSensor == "digital_read") {                      // perform digital reads
+    else if (thisSensor == "digital_read") {                      // perform digital reads
       int pin = environmental.getArray(i).getLong(1);
       get_digital_read(pin, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
@@ -1989,14 +1994,14 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       }
     }
 
-    if (thisSensor == "digital_write") {                      // perform digital write
+    else if (thisSensor == "digital_write") {                      // perform digital write
       int pin = environmental.getArray(i).getLong(1);
       int setting = environmental.getArray(i).getLong(2);
       pinMode(pin, OUTPUT);
       digitalWriteFast(pin, setting);
     }
 
-    if (thisSensor == "analog_write") {                      // perform analog write with length of time to apply the pwm
+    else if (thisSensor == "analog_write") {                      // perform analog write with length of time to apply the pwm
       int pin = environmental.getArray(i).getLong(1);
       int setting = environmental.getArray(i).getLong(2);
       int freq = environmental.getArray(i).getLong(3);
@@ -2078,7 +2083,9 @@ void print_calibrations() {
   Serial_Printf("\"detector_offset_yint\": [\"%f\",\"%f\",\"%f\",\"%f\"],\n", eeprom->detector_offset_yint[0], eeprom->detector_offset_yint[1], eeprom->detector_offset_yint[2], eeprom->detector_offset_yint[3]);
   Serial_Printf("\"thickness_a\": \"%f\",\n", eeprom->thickness_a);
   Serial_Printf("\"thickness_b\": \"%f\",\n", eeprom->thickness_b);
-  Serial_Printf("\"thickness_d\": \"%f\",\n", eeprom->thickness_d);
+  Serial_Printf("\"thickness_c\": \"%f\",\n", eeprom->thickness_c);
+  Serial_Printf("\"thickness_min\": \"%f\",\n", eeprom->thickness_min);
+  Serial_Printf("\"thickness_max\": \"%f\",\n", eeprom->thickness_max);
 
   Serial_Print("\"par_to_dac_slope1\": [");
 #if 1          // Greg TODO improved example - note, i should probably start at 1 since the first value isn't used
