@@ -38,11 +38,13 @@ class eeprom_class
      volatile float detector_offset_slope[4];      // slope and yint for detector offsets (detector 1 - 4 as array positions 1 - 4)
      volatile float detector_offset_yint[4];
     /*
-       calibration for leaf thickness (3 parameters - a, b, and d)
+       calibration for leaf thickness (3 parameters - a, b, and c, plus min and max values)
     */
      volatile float thickness_a;
      volatile float thickness_b;
-     volatile float thickness_d;
+     volatile float thickness_c;
+     volatile float thickness_min;
+     volatile float thickness_max;
     /*
        replace calibration_slope and all that just with par_to_dac (and create a simple function for conversion)...- if the relationships is more complicated than just mx+b then add more variables as needed
     */
