@@ -6,27 +6,27 @@
 {
 
 case hash("cut_through"):
-    extern int cut_through;
-    cut_through = 1;
-    break;
-    
+  extern int cut_through;
+  cut_through = 1;
+  break;
+
 case hash("feed_watchdog"):
-    feed_watchdog();
-    break;
+  feed_watchdog();
+  break;
 
 case hash("start_watchdog"):
-    start_watchdog((int)Serial_Input_Long("\r\n+",1000));      // enter time in minutes
-    break;
+  start_watchdog((int)Serial_Input_Long("\r\n+", 1000));     // enter time in minutes
+  break;
 
 case hash("stop_watchdog"):
-    stop_watchdog();
-    break;
+  stop_watchdog();
+  break;
 
 case hash("expr"):
   {
-  char c[100];
-  Serial_Input_Chars(c, "\r\n", 1000, sizeof(c) - 1);  // no plus since that is a operator
-  Serial_Printf("%g\n", expr(c));
+    char c[100];
+    Serial_Input_Chars(c, "\r\n", 1000, sizeof(c) - 1);  // no plus since that is a operator
+    Serial_Printf("%g\n", expr(c));
   }
   break;
 
@@ -42,7 +42,7 @@ case hash("readonce"):                           // access write once flash
   delay(1);
   //Serial_Printf("0,E,F = %x %x %x\n",read_once(0x0), read_once(0xe), read_once(0xf));
   break;
- 
+
 case hash("set_date"):
   {
     Serial_Print_Line("enter GMT hours+min+sec+day+month+year+");
@@ -60,19 +60,11 @@ case hash("set_date"):
   // fall through to print
 case hash("print_date"):
   // example: 2004-02-12T15:19:21.000Z and also seconds since 1970
-  Serial_Printf("{\"device_time\":\"%4.4d-%2.2d-%2.2dT%2.2d:%2.2d:%2.2d.000Z\",\"device_time\":%u}\n", year(), month(), day(), hour(), minute(), second(),now());
-  break;
-
-case hash("powerdown"):
-  // legacy version
-  pinMode(POWERDOWN_REQUEST, OUTPUT);     //  bring P0.6 (2nd pin) low
-  digitalWrite(POWERDOWN_REQUEST, LOW);
-  delay(11000);                  // device should power off here - P0.5 (third pin) should go low
-  digitalWrite(POWERDOWN_REQUEST, HIGH); // put it back
+  Serial_Printf("{\"device_time\":\"%4.4d-%2.2d-%2.2dT%2.2d:%2.2d:%2.2d.000Z\",\"device_time\":%u}\n", year(), month(), day(), hour(), minute(), second(), now());
   break;
 
 case hash("battery"):
-  Serial_Printf("{\"battery\":%d}\n",battery_percent(1));    // test with load
+  Serial_Printf("{\"battery\":%d}\n", battery_percent(1));   // test with load
   break;
 
 case hash("scan_i2c"):
@@ -81,28 +73,34 @@ case hash("scan_i2c"):
 
 case hash("sleep"):
   Serial_Print_Line("start sleeping");
+  turn_off_power();
   sleep_mode(5000);
   Serial_Print_Line("done sleeping");
   break;
 
-case hash("packet_test"):
-  {
-    Serial_Print("let's start with a test, this is more than 20 chars long.\n");
-    Serial_Flush_Output();
-    char c[2];
-    int count = 0;
-    c[1] = 0;
-    for (;;)  {
-      c[0] = Serial_Read();
-      Serial_Print(c);
-      if (c[0] < ' ') continue;
-      ++count;
-      if (c[0] == 'X')
-        break;
-    } // for
-    Serial_Printf("%d chars\n", count);
-    Serial_Flush_Output();
-  }
+case hash("pulse"):
+  Serial_Print_Line("PULSE4/5 on");
+  DAC_set(4, 100);
+  DAC_change();
+  digitalWriteFast(PULSE4, HIGH);
+  DAC_set(5, 100);
+  DAC_change();
+  digitalWriteFast(PULSE5, HIGH);
+  break;
+
+case hash("dac50"):
+  Serial_Print_Line("set all DAC outputs to 50%");
+  DAC_set(1, 2048);
+  DAC_set(2, 2048);
+  DAC_set(3, 2048);
+  DAC_set(4, 2048);
+  DAC_set(5, 2048);
+  DAC_set(6, 2048);
+  DAC_set(7, 2048);
+  DAC_set(8, 2048);
+  DAC_set(9, 2048);
+  DAC_set(10, 2048);
+  DAC_change();
   break;
 
 case hash("compiled"):
@@ -258,5 +256,6 @@ case 4048:
   }
   break;
 #endif
+
 
 }

@@ -26,4 +26,6 @@ void timefromcompiler(void);
 void start_watchdog(int min);
 void stop_watchdog(void);
 void feed_watchdog(void);
-
+void turn_on_power(void);
+void turn_off_power(void);
+void configure_bluetooth(void);

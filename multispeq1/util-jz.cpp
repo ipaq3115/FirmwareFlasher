@@ -16,6 +16,36 @@ void program_once(unsigned char address, unsigned int value);
 
 int jz_test_mode = 0;
 
+// turn on everything
+
+void turn_on_power()
+{
+  // enable 3.3V power
+  pinMode(WAKE_3V3, OUTPUT);
+  digitalWriteFast(WAKE_3V3, LOW);
+
+  // enable 5V and analog power
+  pinMode(WAKE_DC, OUTPUT);
+  digitalWriteFast(WAKE_DC, HIGH);
+
+  delay(10);        // wait for power to stabilize
+}
+
+
+// turn off everything possible
+// change to input/high impedance state and allow pull up/downs to work
+
+void turn_off_power()
+{
+ // disable bat measurement
+  pinMode(BAT_MEAS, INPUT);
+
+  // disable 3.3V power
+  pinMode(WAKE_3V3, INPUT);
+
+  // disable 5V and analog power
+  pinMode(WAKE_DC, INPUT);
+}
 
 void start_watchdog(int minutes)
 {
@@ -182,14 +212,14 @@ int battery_level(int load)
   uint32_t initial_value = 0;
 
   // enable bat measurement
-  pinMode(BATT_ME, OUTPUT);
-  digitalWriteFast(BATT_ME, LOW);
+  pinMode(BAT_MEAS, OUTPUT);
+  digitalWriteFast(BAT_MEAS, LOW);
 
   delayMicroseconds(300);    // has a slow filter circuit
   
   // find voltage before high load
   for (int i = 0 ; i < 100; ++i)
-    initial_value += analogRead(BATT_TEST);  // test A10 analog input
+    initial_value += analogRead(BAT_TEST);  // test A10 analog input
   initial_value /= 100;
 
   //Serial_Printf("initial AD = %d\n",initial_value);
@@ -221,7 +251,7 @@ int battery_level(int load)
     // value after load
     value = 0;
     for (int i = 0 ; i < 100; ++i)
-      value += analogRead(BATT_TEST);  // test A10 analog input
+      value += analogRead(BAT_TEST);  // test A10 analog input
     value /= 100;
 
     // turn off 4 LEDs
@@ -235,7 +265,7 @@ int battery_level(int load)
   }  // if
 
   // set Bat_meas pin to high impedance
-  pinMode(BATT_ME, INPUT); 
+  pinMode(BAT_MEAS, INPUT); 
 
   int milli_volts = 1000 * ((value / 65536.) * REF_VOLTAGE) / ((float)R1 / (R1 + R2));
 
@@ -301,7 +331,7 @@ void activity() {
 
 void powerdown() {
 
-  if ((millis() - last_activity > SHUTDOWN /* && !Serial */) || battery_low(0)) {   // if USB is active, no timeout sleep
+  if ((millis() - last_activity > SHUTDOWN && !Serial ) || battery_low(0)) {   // if USB is active, no timeout sleep
 
     // TODO - turn off unneeded peripherals or some pins to high impedance/floating?
     // TODO put accelerometer into lowest power mode
@@ -309,6 +339,8 @@ void powerdown() {
 
     accel_changed();     // update values with current
 
+    turn_off_power();
+    
     // wake up if the device has changed orientation
     // remain in sleep if battery is low
 
@@ -464,6 +496,99 @@ void timefromcompiler(void) {
 }
 
 #endif
+
+// change Bluetooth Classic module from defaults - only needed once
+
+static const char* bt_response = "OKOKlinvorV1.8OKsetPINOKsetnameOK115200"; // Expected response from bt module after programming is done.
+
+int verifyresults() {                      // This function grabs the response from the bt Module and compares it for validity.
+  int makeSerialStringPosition;
+  int inByte;
+  char serialReadString[50];
+  inByte = Serial1.read();
+  makeSerialStringPosition=0;
+  if (inByte > 0) {                                                // If we see data (inByte > 0)
+    delay(100);                                                    // Allow serial data time to collect 
+    while (makeSerialStringPosition < 38){                         // Stop reading once the string should be gathered (37 chars long)
+      serialReadString[makeSerialStringPosition] = inByte;         // Save the data in a character array
+      makeSerialStringPosition++;                                  // Increment position in array
+      inByte = Serial1.read();                                          // Read next byte
+    }
+    serialReadString[38] = (char) 0;                               // Null the last character
+    if(strncmp(serialReadString,bt_response,37) == 0) {               // Compare results
+      return(1);                                                    // Results Match, return true..
+    }
+    Serial_Print("VERIFICATION FAILED!!!, EXPECTED: ");           // Debug Messages
+    Serial_Print_Line(bt_response);
+    Serial_Print("VERIFICATION FAILED!!!, RETURNED: ");           // Debug Messages
+    Serial_Print_Line(serialReadString);
+    return(0);                                                    // Results FAILED, return false..
+  } 
+  else {                                                                            // In case we haven't received anything back from module
+    Serial_Print_Line("VERIFICATION FAILED!!!, No answer from the bt module ");        // Debug Messages
+    Serial_Print_Line("Check your connections and/or baud rate");
+    return(0);                                                                      // Results FAILED, return false..
+  }
+}
+
+
+void configure_bluetooth () {
+  // Bluetooth Programming Sketch for Arduino v1.2
+  // By: Ryan Hunt <admin@nayr.net>
+  // License: CC-BY-SA
+  //
+  // Standalone Bluetooth Programer for setting up inexpnecive bluetooth modules running linvor firmware.
+  // This Sketch expects a bt device to be plugged in upon start. 
+  // You can open Serial Monitor to watch the progress or wait for the LED to blink rapidly to signal programing is complete.
+  // If programming fails it will enter command where you can try to do it manually through the Arduino Serial Monitor.
+  // When programming is complete it will send a test message across the line, you can see the message by pairing and connecting
+  // with a terminal application. (screen for linux/osx, hyperterm for windows)
+  //
+  // Hookup bt-RX to PIN 11, bt-TX to PIN 10, 5v and GND to your bluetooth module.
+  //
+  // Defaults are for OpenPilot Use, For more information visit: http://wiki.openpilot.org/display/Doc/Serial+Bluetooth+Telemetry
+  Serial_Print("{\"response\": \"");
+  // Enter bluetooth device name as seen by other bluetooth devices (20 char max), followed by '+'.
+  char name[100];
+  Serial_Input_Chars(name,"+",60000);  
+  // Enter current bluetooth device baud rate, followed by '+' (if new jy-mcu,it's probably 9600, if it's already had firmware installed by 115200)
+  long baud_now = Serial_Input_Long("+",60000);  
+  // PLEASE NOTE - the pairing key has been set automatically to '1234'.
+  int pin =         1234;                    // Pairing Code for Module, 4 digits only.. (0000-9999)
+  int led =         13;                      // Pin of Blinking LED, default should be fine.
+  //char* testMsg =   "PhotosynQ changing bluetooth name!!"; //
+  //int x;
+  int wait =        1000;                    // How long to wait between commands (1s), dont change this.
+  pinMode(led, OUTPUT);
+  Serial.begin(115200);                      // Speed of Debug Console
+  // Configuring bluetooth module for use with PhotosynQ, please wait.
+  Serial1.begin(baud_now);                        // Speed of your bluetooth module, 9600 is default from factory.
+  digitalWrite(led, HIGH);                 // Turn on LED to signal programming has started
+  delay(wait);
+  Serial1.print("AT");
+  delay(wait);
+  Serial1.print("AT+VERSION");
+  delay(wait);
+  Serial.print("Setting PIN : ");          // Set PIN
+  Serial.println(pin);
+  Serial1.print("AT+PIN"); 
+  Serial1.print(pin); 
+  delay(wait);
+  Serial.print("Setting NAME: ");          // Set NAME
+  Serial.print(name);
+  Serial1.print("AT+NAME");
+  Serial1.print(name); 
+  delay(wait);
+  Serial.println("Setting BAUD: 115200");   // Set baudrate to 115200
+  Serial1.print("AT+BAUD8");                   
+  delay(wait);
+  if (verifyresults()) {                   // Check configuration
+    Serial_Print_Line("Configuration verified");
+  } 
+  digitalWrite(led, LOW);                 // Turn off LED to show failure.
+  Serial_Print_Line("\"}");                  // close out JSON
+  Serial_Print_Line("");
+}
 
 
 

@@ -7,9 +7,9 @@
 /*
 
   add watchdog - need to know max delays
-// update DAC and get lights working in [{}]
-// once lights work, comparison test old and new adc routines, with timing
-//
+  // update DAC and get lights working in [{}]
+  // once lights work, comparison test old and new adc routines, with timing
+  //
   change 0,1 to before/after for environmentals
   consider adding _raw option as "raw" option in json
 
@@ -189,17 +189,13 @@
 // includes
 #include "defines.h"
 #include <i2c_t3.h>
-#include <Time.h>                                                             // enable real time clock library
-#include "json/JsonParser.h"
-#include "utility/mcp4728.h"              // delete this once PAR is fixed
+#include <Time.h>                   // enable real time clock library
 #include "DAC.h"
-#include "utility/AD7689.h"               // external ADC
+#include "utility/AD7689.h"         // external ADC
 #define EXTERN
 #include "eeprom.h"
-//#include <ADC.h>                  // internal ADC
 #include "serial.h"
-#include "utility/crc32.h"
-#include <SPI.h>    // include the new SPI library
+#include <SPI.h>                    // include the new SPI library
 #include "util.h"
 #include <TimeLib.h>
 
@@ -207,15 +203,12 @@
 int MAG3110_init(void);           // initialize compass
 int MMA8653FC_init(void);         // initialize accelerometer
 void MLX90615_init(void);         // initialize contactless temperature sensor
-void PAR_init(void);               // initialize PAR and RGB sensor
+void PAR_init(void);              // initialize PAR and RGB sensor
+void init_chips(void);            // initialize anything that loses state when powered down
 
 // This routine is called first
-// Note: assume that this routine may be called multiple times - watch for memory leaks
 
 void setup() {
-
-  // TODO
-  // turn on BLE module
 
   // delay(700);             // doesn't work reliably
 
@@ -229,8 +222,13 @@ void setup() {
   // initialize SPI bus
   SPI.begin ();
 
-  // initialize DACs
-  DAC_init();
+  turn_on_power();
+
+  eeprom_initialize();      // eeprom
+  assert(sizeof(eeprom_class) < 2048);      // check that we haven't exceeded eeprom space
+
+  // initialize various ICs
+  init_chips();
 
   // set up MCU pins
 
@@ -238,19 +236,11 @@ void setup() {
   for (unsigned i = 1; i < NUM_LEDS + 1; ++i)
     pinMode(LED_to_pin[i], OUTPUT);
 
-  //pinMode(HALL_OUT, INPUT);                       // set hall effect sensor to input so it can be read
-  //pinMode(DEBUG_DC, INPUT_PULLUP);
-  //pinMode(DEBUG_DD, INPUT_PULLUP);
-
   // pins used to turn on/off detector integration/discharge
   pinMode(HOLDM, OUTPUT);
   digitalWriteFast(HOLDM, HIGH);                  // discharge cap
   pinMode(HOLDADD, OUTPUT);
   digitalWriteFast(HOLDADD, HIGH);                // discharge cap
-
-  // enable bat measurement
-  pinMode(BATT_ME, OUTPUT);
-  digitalWriteFast(BATT_ME, LOW);
 
 #if CORALSPEQ == 1
   // Set pinmodes for the coralspeq
@@ -266,9 +256,6 @@ void setup() {
   //digitalWrite(SPEC_GAIN, LOW); //LOW Gain
 #endif
 
-  MAG3110_init();           // initialize compass
-  MMA8653FC_init();         // initialize accelerometer
-
   // ADC config
   analogReference(EXTERNAL);
   analogReadResolution(16);
@@ -280,21 +267,33 @@ void setup() {
   }
   analogReference(INTERNAL);   // 1.20V
 
-  // pressure/humidity/temp sensors
-  bme1.begin(0x77);
-  bme2.begin(0x76);
+  setTime(Teensy3Clock.get());              // set time from RTC
 
-  PAR_init();               // color sensor
-  eeprom_initialize();      // eeprom
-
-  assert(sizeof(eeprom_class) < 2048);                    // check that we haven't exceeded eeprom space
-
-  setTime(Teensy3Clock.get());             // set time from RTC
-
-  Serial_Print(DEVICE_NAME);               // note: this may not display because Serial isn't ready
+  Serial_Print(DEVICE_NAME);                // note: this may not display because Serial isn't ready
   Serial_Print_Line(" Ready");
 
 }  // setup() - now execute loop()
+
+
+// initialize all peripheral ICs that lose state when powered down
+// called from setup() and after other power ons
+
+void init_chips()
+{
+  DAC_init();               // initialize DACs
+
+  PAR_init();               // color sensor
+
+  MAG3110_init();           // initialize compass
+
+  MMA8653FC_init();         // initialize accelerometer
+
+  bme1.begin(0x77);         // pressure/humidity/temp sensors
+  bme2.begin(0x76);
+
+  // no init for MLX90615 or Hall sensor
+  
+}  // init_chips()
 
 
 #if CORAL_SPEQ == 1

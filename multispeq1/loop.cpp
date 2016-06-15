@@ -44,6 +44,8 @@ float get_contactless_temp (int _averages);
 void get_detector_value (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2);
 void get_temperature_humidity_pressure (int _averages);
 void get_temperature_humidity_pressure2 (int _averages);
+void init_chips(void);
+
 struct theReadings {                                            // use to return which readings are associated with the environmental_array calls
   const char* reading1;
   const char* reading2;
@@ -62,47 +64,38 @@ theReadings getReadings (const char* _thisSensor);                        // get
 
 void loop() {
 
-  // read and process n+ commands from the serial port until we see the start of a json
+  // read and process n+ commands or json protocols from the serial port 
 
+  //turn_off_power();         // save battery
+
+  // read until we get a character - primary idle loop
+  int c;
+  
   for (;;) {
-    int c = Serial_Peek();
+    c = Serial_Peek();
 
-    if (c == -1) {
-      powerdown();            // power down if no activity for x seconds (could also be a timer interrupt)
+    if (c != -1)            // received something
+      break;
 
-      yield();                      // allow programmer to run
+    powerdown();            // power down if no activity for x seconds (could also be a timer interrupt)
 
-      for (int i = 0; i < 10; ++i)  // 10 ms
-        sleep_cpu();                // save power - low impact since power stays on
+    yield();                // execute background tasks
 
-      continue;                     // nothing available, try again
-    }
-
-    activity();             // record fact that we have seen activity (used with powerdown())
-
-    crc32_init();
-
-    if (c == '[')
-      break;                // start of json, exit this for loop to process it
-
-    // received a non '[' char - processs n+ command
-
-    do_command();
-
-    Serial_Flush_Output();
+    for (int i = 0; i < 10; ++i)  // 10 ms
+      sleep_cpu();                // save power - low impact since cpu stays on
 
   } // for
 
-  // here if not a + command
+  activity();               // record fact that we have seen activity (used with powerdown())
 
-  // read in and process a protocol (starts with '[', ends with '!' or timeout)
-  // example: [{"pulses": [150],"a_lights": [[3]],"a_intensities": [[50]],"pulsedistance": 1000,"m_intensities": [[125]],"pulsesize": 2,"detectors": [[3]],"meas_lights": [[1]],"protocols": 1}]<newline>
+  crc32_init();
 
-  do_protocol();
+  if (c == '[')
+    do_protocol();          // start of json
+  else
+    do_command();           // received a non '[' char - processs command
 
   Serial_Flush_Output();
-
-  return;
 
 } // loop()
 
@@ -140,10 +133,12 @@ void do_command()
   else
     val = hash(choose);             // convert alpha command to an int
 
+  turn_on_power();                  // is normally off, but many of the below commands need it
+
   // process command
   switch (val) {
 
-      static int dataArray[3][100];  // Kevin TODO - delete this
+    // static int dataArray[3][100];  // Kevin TODO - delete this
 
     case hash("hello"):
     case 1000:                                                                    // print "Ready" to USB and/or Bluetooth
@@ -256,7 +251,7 @@ void do_command()
       break;
     case 1014:
       Serial_Print_Line("PULSE4");
-      DAC_set(4, 50);
+      DAC_set(4, 100);
       DAC_change();
       digitalWriteFast(PULSE4, HIGH);
       delay(1000);
@@ -626,6 +621,7 @@ void do_command()
         }
       }
 
+#if 0
     case hash("collect"):
       Serial_Print("Disconnect the cable");
       delay(5000);
@@ -645,6 +641,7 @@ void do_command()
         Serial_Printf("%d, %d, %d \n", dataArray[0][i], dataArray[1][i], dataArray[2][i]);
       }
       break;
+#endif
 
     case hash("calibrate_compass"):
       delay(5000);
@@ -762,6 +759,8 @@ void do_protocol()
 
   } // no more need for the serial input buffer
 
+  turn_on_power();
+
   // check battery before proceeding
   if (battery_low(1)) {
     Serial_Print("{\"error\":\"battery is too low\"}");
@@ -827,7 +826,7 @@ void do_protocol()
       int quit = 0;
 
       for (int u = 0; u < protocols; u++) {                                                    // the number of times to repeat the current protocol
-        uint16_t open_close_start = hashTable.getLong("open_close_start");            // if open_close_start == 1, then the user must open and close the clamp in order to proceed with the measurement (as measured by hall sensor)
+        //uint16_t open_close_start = hashTable.getLong("open_close_start");            // if open_close_start == 1, then the user must open and close the clamp in order to proceed with the measurement (as measured by hall sensor)
         JsonArray save_eeprom    = hashTable.getArray("save");                                  // save values to the eeprom.
         JsonArray recall_eeprom  = hashTable.getArray("recall");                                // userdef values to recall
         JsonArray number_samples = hashTable.getArray("number_samples");                       // number of samples on the cap during sample + hold phase (default is 40);
