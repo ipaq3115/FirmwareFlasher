@@ -12,6 +12,7 @@ changed packet_mode to 0
 added bluetooth_configure command to 1009+ or "bluetooth_configure"
 removed device_manufacture
 set #define BLE_DELAY  to 0 (no delay between packets)
+
   add watchdog - need to know max delays
   // update DAC and get lights working in [{}]
   // once lights work, comparison test old and new adc routines, with timing
