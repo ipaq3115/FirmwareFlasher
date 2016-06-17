@@ -68,12 +68,17 @@ case hash("battery"):
   break;
 
 case hash("scan_i2c"):
+  Serial_Print_Line("0x0E = compass, 0x1D = accel, 0x61 = DAC1?, 0x63 = DAC2?, 0x5B = IR, 0x76/77 = BME280s, 0x29 = PAR/color");
   scan_i2c();
   break;
 
 case hash("sleep"):
   Serial_Print_Line("start sleeping");
-  turn_off_power();
+  // disable 5V power
+  turn_off_5V();
+  // disable 3.3V power
+  turn_off_3V3();
+  // TODO any pins needed
   sleep_mode(5000);
   Serial_Print_Line("done sleeping");
   break;
