@@ -30,4 +30,5 @@ void turn_on_5V(void);
 void turn_off_5V(void);
 void turn_on_3V3(void);
 void turn_off_3V3(void);
+void shutoff(void);
 void configure_bluetooth(void);

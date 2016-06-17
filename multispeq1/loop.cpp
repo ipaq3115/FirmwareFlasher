@@ -134,7 +134,8 @@ void do_command()
     val = hash(choose);             // convert alpha command to an int
 
   turn_on_5V();                  // is normally off, but many of the below commands need it
-
+  delay(1000);
+  
   // process command
   switch (val) {
 

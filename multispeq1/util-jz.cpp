@@ -8,6 +8,7 @@
 #include "eeprom.h"
 #include "utility/crc32.h"
 #include "DAC.h"
+#include "utility/AD7689.h"
 #include "util.h"
 #include "serial.h"
 #include <SPI.h>                    // include the new SPI library
@@ -29,7 +30,7 @@ void turn_on_5V()
   // enable 5V and analog power - also DAC, ADC, Hall effect sensor
   pinMode(WAKE_DC, OUTPUT);
   digitalWriteFast(WAKE_DC, HIGH);
-  delay(10);        // wait for power to stabilize
+  delay(100);        // wait for power to stabilize
   // initialize 5V chips
   DAC_init();               // initialize DACs (5V)
   // note: ADC is initialized at use time
@@ -46,7 +47,7 @@ void turn_on_3V3()
   // enable 3.3 V
   pinMode(WAKE_3V3, OUTPUT);
   digitalWriteFast(WAKE_DC, LOW);
-  delay(10);
+  delay(100);
 
   // initialize 3.3V chips
   PAR_init();               // color sensor
@@ -341,7 +342,22 @@ void activity() {
   last_activity = millis();
 }
 
-// if not on USB and there hasn't been any activity for x seconds, then power down BLE and sleep
+
+// shut off things to save power
+
+void shutoff()
+{
+    unset_pins();
+    SPI.end();
+    Serial.end();
+    Serial1.end();
+    DAC_shutdown();
+    AD7689_shutdown();
+    turn_off_5V();
+    turn_off_3V3();   //  note: accelerometer + i2c bus stays powered
+}
+
+// if not on USB and there hasn't been any activity for x seconds, then power down most things and sleep
 
 void powerdown() {
 
@@ -351,15 +367,8 @@ void powerdown() {
 
     accel_changed();     // update values with current
 
-    // do everything possible to save power
-
-    unset_pins();
-    SPI.end();
-    Serial.end();
-    Serial1.end();
-    DAC_shutdown();
-    turn_off_5V();
-    turn_off_3V3();   //  note: accelerometer + i2c bus stays powered
+    shutoff();           // save power
+    
     // TODO accelerometer mode
 
     // wake up if the device has changed orientation

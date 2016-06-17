@@ -74,13 +74,11 @@ case hash("scan_i2c"):
 
 case hash("sleep"):
   Serial_Print_Line("start sleeping");
-  // disable 5V power
-  turn_off_5V();
-  // disable 3.3V power
-  turn_off_3V3();
-  // TODO any pins needed
-  sleep_mode(5000);
+  delay(500);
+  shutoff();
+  sleep_mode(15000);
   Serial_Print_Line("done sleeping");
+  delay(500);
   break;
 
 case hash("pulse"):

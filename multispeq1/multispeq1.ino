@@ -207,10 +207,8 @@ void setup_pins(void);            // initialize pins
 
 // This routine is called first
 
-void setup() {
-
-  // delay(700);             // doesn't work reliably
-
+void setup() 
+{
   // set up serial ports (Serial and Serial1)
   Serial_Set(4);             // auto switch between USB and BLE
   Serial_Begin(115200);
@@ -227,9 +225,9 @@ void setup() {
   // set up MCU pins
   setup_pins();
 
-  // turn on 3.3V power and initialize ICs - leave 5V and analog power off
+  // turn on 3.3V power and initialize ICs
   turn_on_3V3();
-
+ 
 #if CORALSPEQ == 1
   // Set pinmodes for the coralspeq
   //pinMode(SPEC_EOS, INPUT);
