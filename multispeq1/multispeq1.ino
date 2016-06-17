@@ -6,13 +6,12 @@
 
 /*
 
-make pulsesize and pulsedistance both run through expr()
-added calibration for thickness
-updated detector_read1/2 to 5 samples instead of 50 (reduce actinic effects
-
-to do:
-min and max thickness, so we know open + closed plus error, also if either is maxed then we know something's wrong so don't wait.
-
+prepare for bluetooth classic
+changed baud rate to 115200 from 57600
+changed packet_mode to 0
+added bluetooth_configure command to 1009+ or "bluetooth_configure"
+removed device_manufacture
+set #define BLE_DELAY  to 0 (no delay between packets)
   add watchdog - need to know max delays
   // update DAC and get lights working in [{}]
   // once lights work, comparison test old and new adc routines, with timing
@@ -214,10 +213,10 @@ void setup() {
 
   // set up serial ports (Serial and Serial1)
   Serial_Set(4);             // auto switch between USB and BLE
-  Serial_Begin(57600);
+  Serial_Begin(115200);
 
   // Set up I2C bus - CAUTION: any subsequent calls to Wire.begin() will mess this up
-  Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_400);  // using alternative wire library
+  Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_800);  // using alternative wire library
 
   // initialize SPI bus
   SPI.begin ();

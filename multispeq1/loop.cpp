@@ -45,6 +45,8 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
 void get_temperature_humidity_pressure (int _averages);
 void get_temperature_humidity_pressure2 (int _averages);
 void init_chips(void);
+void configure_bluetooth(void);
+
 
 struct theReadings {                                            // use to return which readings are associated with the environmental_array calls
   const char* reading1;
@@ -208,12 +210,14 @@ void do_command()
       get_set_device_info(0);
       break;
 
+    case hash("set_device_info"):
     case 1008:
-      temp_get_set_device_info();
+      get_set_device_info(1);
       break;
 
-    case hash("set_device_info"):
-      get_set_device_info(1);
+    case hash("configure_bluetooth"):
+    case 1009:
+      configure_bluetooth();
       break;
 
     case 1011:
@@ -262,7 +266,7 @@ void do_command()
       DAC_change();
       digitalWriteFast(PULSE5, HIGH);
       delay(1000);
-      digitalWriteFast(PULSE5, LOW);
+      digitalWriteFast(PULSE5, LOW); 
       DAC_set(5, 0);
       DAC_change();
       break;
@@ -1945,7 +1949,7 @@ static void environmentals(JsonArray environmental, const int _averages, const i
     else if (thisSensor == "compass_and_angle") {                             // measure tilt in -180 - 180 degrees
       get_compass_and_angle(1, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"compass_direction\":%s,\"compass\":%.2f,\"angle\":%.2f,\"angle_direction\":%s,\"pitch\":%.2f,\"roll\":%.2f,", getDirection(compass_segment(compass_averaged)), compass_averaged, angle_averaged, angle_direction.c_str(), pitch_averaged, roll_averaged);
+        Serial_Printf("\"compass_direction\":%s,\"compass\":\"%.2f\",\"angle\":%.2f,\"angle_direction\":%s,\"pitch\":%.2f,\"roll\":%.2f,", getDirection(compass_segment(compass_averaged)), compass_averaged, angle_averaged, angle_direction.c_str(), pitch_averaged, roll_averaged);
       }
     }
 
@@ -2069,7 +2073,6 @@ void print_calibrations() {
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
                 (unsigned)eeprom->device_id & 0xff
                );
-  Serial_Printf("\"device_manufacture\": \"%d\",\n", eeprom->device_manufacture);
   Serial_Printf("\"mag_bias\": [\"%f\",\"%f\",\"%f\"],\n", eeprom->mag_bias[0], eeprom->mag_bias[1], eeprom->mag_bias[2]);
   Serial_Printf("\"mag_cal\": [[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"]],\n", eeprom->mag_cal[0][0], eeprom->mag_cal[0][1], eeprom->mag_cal[0][2], eeprom->mag_cal[1][0], eeprom->mag_cal[1][1], eeprom->mag_cal[1][2], eeprom->mag_cal[2][0], eeprom->mag_cal[2][1], eeprom->mag_cal[2][2]);
   Serial_Printf("\"accel_bias\": [\"%f\",\"%f\",\"%f\"],\n", eeprom->accel_bias[0], eeprom->accel_bias[1], eeprom->accel_bias[2]);
@@ -2302,32 +2305,15 @@ theReadings getReadings (const char* _thisSensor) {                       // get
 
 //======================================
 
-// read/write device_id and manufacture_date to eeprom
-
-void temp_get_set_device_info() {
-
-  long val;
-
-  // please enter new device ID (lower 4 bytes of BLE MAC address as a long int) followed by '+'
-  //    Serial_Print_Line("{\"message\": \"Please enter device mac address (long int) followed by +: \"}\n");
-  val =  Serial_Input_Long("+", 0);              // save to eeprom
-  store(device_id, val);              // save to eeprom
-}
-
 void get_set_device_info(const int _set) {
 
   if (_set == 1) {
     long val;
 
     // please enter new device ID (lower 4 bytes of BLE MAC address as a long int) followed by '+'
-    Serial_Print_Line("{\"message\": \"Please enter device mac address (long int) followed by +: \"}\n");
+    //    Serial_Print_Line("{\"message\": \"Please enter device mac address (long int) followed by +: \"}\n");
     val =  Serial_Input_Long("+", 0);              // save to eeprom
     store(device_id, val);              // save to eeprom
-
-    // please enter new date of manufacture (yyyymm) followed by '+'
-    Serial_Print_Line("{\"message\": \"Please enter device manufacture date followed by + (example 052016): \"}\n");
-    val = Serial_Input_Long("+", 0);
-    store(device_manufacture, val);
 
   } // if
 
@@ -2336,12 +2322,12 @@ void get_set_device_info(const int _set) {
   int v = battery_percent(0);   // measured without load
 
   //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
-  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\",\"device_manufacture\":%ld}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
+  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\"}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
                 (unsigned)eeprom->device_id & 0xff, v,
-                DEVICE_FIRMWARE, eeprom->device_manufacture);
+                DEVICE_FIRMWARE);
   Serial_Print_CRC();
 
   return;

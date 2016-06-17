@@ -23,7 +23,7 @@ static int Serial_Port = 3;   // which port to print to: 1 == Serial, 2 == Seria
 static int automatic = 0;     // automatic means that writes will only go to the serial port that last had a byte read (Serial_Port is ignored)
 static int last_read = 0;     // where last incoming byte was from, 0 = Serial, 1 = Serial1
 static int retry_counter  = 0;  // total number of retries
-int packet_mode = 1;          // wait for ACK every n characters, resend if needed
+int packet_mode = 0;          // wait for ACK every n characters, resend if needed
 int cut_through = 1;          // send bytes as soon as we receive them (vs when packet buffer is full)
 
 // set baud rates
@@ -280,7 +280,7 @@ static void print_packet(const char *str)
   } // while
 }  // print_packet()
 
-#define BLE_DELAY 10                    // milli seconds between packets, probably 20 or 10
+#define BLE_DELAY 0                    // milli seconds between packets, probably 20 or 10
 #define BLE_PACKET_SIZE 20
 
 static char buffer[BLE_PACKET_SIZE + 1];
