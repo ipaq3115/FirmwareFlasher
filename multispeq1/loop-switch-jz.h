@@ -75,10 +75,36 @@ case hash("scan_i2c"):
 case hash("sleep"):
   Serial_Print_Line("start sleeping");
   delay(500);
-  shutoff();
-  sleep_mode(15000);
+  int accel_changed();
+
+  accel_changed();   // get an initial reading
+  shutoff();         // turn off pins and power
+
+ #if 0
+  sleep_mode(60000);    // sleep till interrupt
+#else
+
+  for (;;) {                 // sleep, but poll accelerometer
+      // turn I2C back on
+      //Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_100);  // using alternative wire library
+      //delay(100);
+      
+      if (accel_changed() /* && !battery_low(0) */)
+        break;
+      else {
+        //pinMode(18, INPUT);       // turn I2C off
+        //pinMode(19, INPUT);
+        //turn_off_3V3();
+        sleep_mode(200);          // sleep for 200 ms (can be much longer if accel interrupts on movement)
+      }
+  }
+#endif
+
+  setup();
+  delay(3000);
   Serial_Print_Line("done sleeping");
   delay(500);
+  Serial_Flush_Output();
   break;
 
 case hash("pulse"):

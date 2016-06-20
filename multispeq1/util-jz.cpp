@@ -12,6 +12,7 @@
 #include "util.h"
 #include "serial.h"
 #include <SPI.h>                    // include the new SPI library
+#include <i2c_t3.h>
 
 unsigned int read_once(unsigned char address);
 void program_once(unsigned char address, unsigned int value);
@@ -21,6 +22,7 @@ int jz_test_mode = 0;
 // function definitions used in this file
 int MAG3110_init(void);           // initialize compass
 int MMA8653FC_init(void);         // initialize accelerometer
+int MMA8653FC_low_power(void);    // accelerometer
 void MLX90615_init(void);         // initialize contactless temperature sensor
 void PAR_init(void);              // initialize PAR and RGB sensor
 void unset_pins(void);            // change pin states to save power
@@ -334,7 +336,7 @@ int accel_changed()
   return changed;
 }  // accel_changed()
 
-const unsigned long SHUTDOWN = 240 * 1000;   // power down after X ms of inactivity
+const unsigned long SHUTDOWN = (4 * 60 * 1000);   // power down after X ms of inactivity
 static unsigned long last_activity = millis();
 
 // record that we have seen serial port activity (used with powerdown())
@@ -347,28 +349,28 @@ void activity() {
 
 void shutoff()
 {
-    unset_pins();
-    SPI.end();
-    Serial.end();
-    Serial1.end();
-    DAC_shutdown();
-    AD7689_shutdown();
-    turn_off_5V();
-    turn_off_3V3();   //  note: accelerometer + i2c bus stays powered
+  unset_pins();
+  SPI.end();
+  Serial.end();
+  Serial1.end();
+  DAC_shutdown();
+  AD7689_shutdown();
+  MMA8653FC_low_power();         //  leave accelerometer active
+  turn_off_5V();
+  turn_off_3V3();   //  note: accelerometer stays powered
 }
 
 // if not on USB and there hasn't been any activity for x seconds, then power down most things and sleep
 
 void powerdown() {
 
-  if ((millis() - last_activity > SHUTDOWN && !Serial ) || battery_low(0)) {   // if USB is active, no timeout sleep
-    
+  if ((millis() - last_activity > SHUTDOWN  && !Serial ) || battery_low(0)) {   // if USB is active, no timeout sleep
+
     // TODO - have accelerometer create interrupt to wake up
 
-    accel_changed();     // update values with current
-
+    accel_changed();     // update values with
     shutoff();           // save power
-    
+
     // TODO accelerometer mode
 
     // wake up if the device has changed orientation
@@ -376,13 +378,13 @@ void powerdown() {
 
     for (;;) {
       while (battery_low(0))
-        sleep_mode(60000);    // sleep much longer for low bat
+        sleep_mode(60000);        // sleep much longer for low bat
 
-      if (accel_changed() && !battery_low(0))     
+      if (accel_changed() && !battery_low(0))
         break;
-      else
+      else 
         sleep_mode(200);          // sleep for 200 ms (can be much longer if accel interrupts on movement)
-
+        
     } // for
 
     // note, peripherals and pins are now in an unknown state
@@ -407,6 +409,9 @@ void sleep_mode(const int n)
 {
   // Set Low Power Timer wake up in milliseconds.
   config.setTimer(n);      // milliseconds
+
+  // set interrupt to wakeup
+  config.pinMode(WAKE_TILT, INPUT_PULLUP, RISING);  // was INPUT_PULLUP
 
 #ifdef USE_HIBERNATE
   Snooze.hibernate( config );

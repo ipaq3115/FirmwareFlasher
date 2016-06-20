@@ -275,15 +275,13 @@ void setup_pins()
   digitalWriteFast(HOLDADD, HIGH);                // discharge cap
 }
 
-void unset_pins()     // save power, set to high impedance
-{
-  // set up LED on/off pins
-  for (unsigned i = 1; i < NUM_LEDS + 1; ++i)
-    pinMode(LED_to_pin[i], INPUT);
 
-  // pins used to turn on/off detector integration/discharge
-  pinMode(HOLDM, INPUT);
-  pinMode(HOLDADD, INPUT);
+void unset_pins()     // save power, set pins to high impedance
+{
+  // turn off every pin
+  for (unsigned i = 0; i < 33; ++i)
+     if (i != 18 && i != 19 && i != WAKE_DC && i != WAKE_3V3) pinMode(i, INPUT);  // leave I2C and power control on
+
 }
 
 

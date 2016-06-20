@@ -12,6 +12,7 @@
 #include <TimeLib.h>
 #include "util.h"
 #include "malloc.h"
+#include <i2c_t3.h>
 
 // function declarations
 
