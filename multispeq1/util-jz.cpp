@@ -8,44 +8,61 @@
 #include "eeprom.h"
 #include "utility/crc32.h"
 #include "DAC.h"
+#include "utility/AD7689.h"
 #include "util.h"
 #include "serial.h"
+#include <SPI.h>                    // include the new SPI library
+#include <i2c_t3.h>
 
 unsigned int read_once(unsigned char address);
 void program_once(unsigned char address, unsigned int value);
 
 int jz_test_mode = 0;
 
-// turn on everything
+// function definitions used in this file
+int MAG3110_init(void);           // initialize compass
+int MMA8653FC_init(void);         // initialize accelerometer
+int MMA8653FC_low_power(void);    // accelerometer
+void MLX90615_init(void);         // initialize contactless temperature sensor
+void PAR_init(void);              // initialize PAR and RGB sensor
+void unset_pins(void);            // change pin states to save power
 
-void turn_on_power()
+void turn_on_5V()
 {
-  // enable 3.3V power
-  pinMode(WAKE_3V3, OUTPUT);
-  digitalWriteFast(WAKE_3V3, LOW);
-
-  // enable 5V and analog power
+  // enable 5V and analog power - also DAC, ADC, Hall effect sensor
   pinMode(WAKE_DC, OUTPUT);
   digitalWriteFast(WAKE_DC, HIGH);
-
-  delay(10);        // wait for power to stabilize
+  delay(100);        // wait for power to stabilize
+  // initialize 5V chips
+  DAC_init();               // initialize DACs (5V)
+  // note: ADC is initialized at use time
 }
 
-
-// turn off everything possible
-// change to input/high impedance state and allow pull up/downs to work
-
-void turn_off_power()
+void turn_off_5V()
 {
- // disable bat measurement
-  pinMode(BAT_MEAS, INPUT);
-
-  // disable 3.3V power
-  pinMode(WAKE_3V3, INPUT);
-
   // disable 5V and analog power
-  pinMode(WAKE_DC, INPUT);
+  pinMode(WAKE_DC, INPUT);    // change to input/high impedance state and allow pull up/downs to work
 }
+
+void turn_on_3V3()
+{
+  // enable 3.3 V
+  pinMode(WAKE_3V3, OUTPUT);
+  digitalWriteFast(WAKE_DC, LOW);
+  delay(100);
+
+  // initialize 3.3V chips
+  PAR_init();               // color sensor
+  MAG3110_init();           // initialize compass
+  MMA8653FC_init();         // initialize accelerometer
+  bme1.begin(0x77);         // pressure/humidity/temp sensors
+  bme2.begin(0x76);
+}
+
+void turn_off_3V3() {
+  pinMode(WAKE_3V3, INPUT);  // change to input/high impedance state and allow pull up/downs to work
+}
+
 
 void start_watchdog(int minutes)
 {
@@ -216,7 +233,7 @@ int battery_level(int load)
   digitalWriteFast(BAT_MEAS, LOW);
 
   delayMicroseconds(300);    // has a slow filter circuit
-  
+
   // find voltage before high load
   for (int i = 0 ; i < 100; ++i)
     initial_value += analogRead(BAT_TEST);  // test A10 analog input
@@ -227,8 +244,8 @@ int battery_level(int load)
   uint32_t value = initial_value;
 
   // TODO verify that load effects voltage
-  
-  if (load) {   // flash LEDs if needed to create load
+
+  if (load) {   // flash LEDs if needed to create load - be sure that 5V power is on
 
     // set DAC values to 1/4 of full output to create load
     DAC_set(5, 4096 / 4);
@@ -265,7 +282,7 @@ int battery_level(int load)
   }  // if
 
   // set Bat_meas pin to high impedance
-  pinMode(BAT_MEAS, INPUT); 
+  pinMode(BAT_MEAS, INPUT);
 
   int milli_volts = 1000 * ((value / 65536.) * REF_VOLTAGE) / ((float)R1 / (R1 + R2));
 
@@ -281,16 +298,16 @@ int battery_percent(int load)
   // Serial_Printf("level = %d, load = %d\n",v,load);
 
   float min_level;
-  
+
   if (load)
-     min_level = BAT_MIN_LOADED * 1000;     // consider this min charge level on a lithium battery when loaded
+    min_level = BAT_MIN_LOADED * 1000;     // consider this min charge level on a lithium battery when loaded
   else
-     min_level = BAT_MIN * 1000;            // consider this min charge level on a lithium battery when loaded
-      
+    min_level = BAT_MIN * 1000;            // consider this min charge level on a lithium battery when loaded
+
   const float max_level = BAT_MAX * 1000;   // consider this fully charged
 
   v = round(((v - min_level) / (max_level - min_level)) * 100);     // express as %
-  v = constrain(v,0,100);
+  v = constrain(v, 0, 100);
 
   // Serial_Printf("v = %d\n",v);
 
@@ -319,7 +336,7 @@ int accel_changed()
   return changed;
 }  // accel_changed()
 
-const unsigned long SHUTDOWN = 240 * 1000;   // power down after X ms of inactivity
+const unsigned long SHUTDOWN = (4 * 60 * 1000);   // power down after X ms of inactivity
 static unsigned long last_activity = millis();
 
 // record that we have seen serial port activity (used with powerdown())
@@ -327,36 +344,55 @@ void activity() {
   last_activity = millis();
 }
 
-// if not on USB and there hasn't been any activity for x seconds, then power down BLE and sleep
+
+// shut off things to save power
+
+void shutoff()
+{
+  SPI.end();
+  Serial.end();
+  Serial1.end();
+  DAC_shutdown();
+  AD7689_shutdown();
+  MMA8653FC_low_power();         //  leave accelerometer active
+  turn_off_5V();
+  turn_off_3V3();   //  note: accelerometer stays powered
+  unset_pins();
+}
+
+// if not on USB and there hasn't been any activity for x seconds, then power down most things and sleep
 
 void powerdown() {
 
-  if ((millis() - last_activity > SHUTDOWN && !Serial ) || battery_low(0)) {   // if USB is active, no timeout sleep
+  if ((millis() - last_activity > SHUTDOWN  /* && !Serial */ ) || battery_low(0)) {   // if USB is active, no timeout sleep
 
-    // TODO - turn off unneeded peripherals or some pins to high impedance/floating?
-    // TODO put accelerometer into lowest power mode
     // TODO - have accelerometer create interrupt to wake up
 
-    accel_changed();     // update values with current
+    accel_changed();     // update values with current position
+    shutoff();           // save power
 
-    turn_off_power();
-    
+    // TODO accelerometer interrupt mode
+
     // wake up if the device has changed orientation
-    // remain in sleep if battery is low
+    int count = 0;
 
     for (;;) {
-      while (battery_low(0)) 
-        sleep_mode(60000);    // sleep much longer for low bat
-
-      // note: Accel runs down to 2V - ie, battery is fine
-      if (accel_changed() && !battery_low(0))     //       Accel requires ~2ms from power on.  So leave it powered.
+      if (accel_changed())
         break;
       else
-        sleep_mode(200);          // sleep for 200 ms (can be much longer if accel interrupts on movement)
+        sleep_mode(333);          // sleep for x ms
 
+      if (++count > (1000 / 333) * 60 * 60 * 24 * 5) {  // after ~5 days, go into a lower power sleep
+        pinMode(18, INPUT);                             // turn off I2C pins
+        pinMode(19, INPUT);                             // or use Wire.end()?
+        // TODO sleep accelerometer
+        for (;;) {
+          sleep_mode(60000);                            // sleep until reset button
+        }
+      } // if
     } // for
 
-    // note, peripherals are now in an unknown state
+    // note, peripherals and pins are now in an unknown state
     // calling setup() + turn on peripherals might also work and would preserve ram contents (allowing hibernate in more places)
 
     // reboot to turn everything on and re-intialize peripherals
@@ -378,6 +414,9 @@ void sleep_mode(const int n)
 {
   // Set Low Power Timer wake up in milliseconds.
   config.setTimer(n);      // milliseconds
+
+  // set interrupt to wakeup
+  config.pinMode(WAKE_TILT, INPUT_PULLUP, RISING);  // was INPUT_PULLUP
 
 #ifdef USE_HIBERNATE
   Snooze.hibernate( config );
@@ -506,28 +545,28 @@ int verifyresults() {                      // This function grabs the response f
   int inByte;
   char serialReadString[50];
   inByte = Serial1.read();
-  makeSerialStringPosition=0;
+  makeSerialStringPosition = 0;
   if (inByte > 0) {                                                // If we see data (inByte > 0)
-    delay(100);                                                    // Allow serial data time to collect 
-    while (makeSerialStringPosition < 38){                         // Stop reading once the string should be gathered (37 chars long)
+    delay(100);                                                    // Allow serial data time to collect
+    while (makeSerialStringPosition < 38) {                        // Stop reading once the string should be gathered (37 chars long)
       serialReadString[makeSerialStringPosition] = inByte;         // Save the data in a character array
       makeSerialStringPosition++;                                  // Increment position in array
       inByte = Serial1.read();                                          // Read next byte
     }
     serialReadString[38] = (char) 0;                               // Null the last character
-    if(strncmp(serialReadString,bt_response,37) == 0) {               // Compare results
-      return(1);                                                    // Results Match, return true..
+    if (strncmp(serialReadString, bt_response, 37) == 0) {            // Compare results
+      return (1);                                                   // Results Match, return true..
     }
     Serial_Print("VERIFICATION FAILED!!!, EXPECTED: ");           // Debug Messages
     Serial_Print_Line(bt_response);
     Serial_Print("VERIFICATION FAILED!!!, RETURNED: ");           // Debug Messages
     Serial_Print_Line(serialReadString);
-    return(0);                                                    // Results FAILED, return false..
-  } 
+    return (0);                                                   // Results FAILED, return false..
+  }
   else {                                                                            // In case we haven't received anything back from module
     Serial_Print_Line("VERIFICATION FAILED!!!, No answer from the bt module ");        // Debug Messages
     Serial_Print_Line("Check your connections and/or baud rate");
-    return(0);                                                                      // Results FAILED, return false..
+    return (0);                                                                     // Results FAILED, return false..
   }
 }
 
@@ -538,7 +577,7 @@ void configure_bluetooth () {
   // License: CC-BY-SA
   //
   // Standalone Bluetooth Programer for setting up inexpnecive bluetooth modules running linvor firmware.
-  // This Sketch expects a bt device to be plugged in upon start. 
+  // This Sketch expects a bt device to be plugged in upon start.
   // You can open Serial Monitor to watch the progress or wait for the LED to blink rapidly to signal programing is complete.
   // If programming fails it will enter command where you can try to do it manually through the Arduino Serial Monitor.
   // When programming is complete it will send a test message across the line, you can see the message by pairing and connecting
@@ -550,9 +589,9 @@ void configure_bluetooth () {
   Serial_Print("{\"response\": \"");
   // Enter bluetooth device name as seen by other bluetooth devices (20 char max), followed by '+'.
   char name[100];
-  Serial_Input_Chars(name,"+",60000);  
+  Serial_Input_Chars(name, "+", 60000);
   // Enter current bluetooth device baud rate, followed by '+' (if new jy-mcu,it's probably 9600, if it's already had firmware installed by 115200)
-  long baud_now = Serial_Input_Long("+",60000);  
+  long baud_now = Serial_Input_Long("+", 60000);
   // PLEASE NOTE - the pairing key has been set automatically to '1234'.
   int pin =         1234;                    // Pairing Code for Module, 4 digits only.. (0000-9999)
   int led =         13;                      // Pin of Blinking LED, default should be fine.
@@ -571,20 +610,20 @@ void configure_bluetooth () {
   delay(wait);
   Serial.print("Setting PIN : ");          // Set PIN
   Serial.println(pin);
-  Serial1.print("AT+PIN"); 
-  Serial1.print(pin); 
+  Serial1.print("AT+PIN");
+  Serial1.print(pin);
   delay(wait);
   Serial.print("Setting NAME: ");          // Set NAME
   Serial.print(name);
   Serial1.print("AT+NAME");
-  Serial1.print(name); 
+  Serial1.print(name);
   delay(wait);
   Serial.println("Setting BAUD: 115200");   // Set baudrate to 115200
-  Serial1.print("AT+BAUD8");                   
+  Serial1.print("AT+BAUD8");
   delay(wait);
   if (verifyresults()) {                   // Check configuration
     Serial_Print_Line("Configuration verified");
-  } 
+  }
   digitalWrite(led, LOW);                 // Turn off LED to show failure.
   Serial_Print_Line("\"}");                  // close out JSON
   Serial_Print_Line("");

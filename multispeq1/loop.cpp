@@ -12,6 +12,7 @@
 #include <TimeLib.h>
 #include "util.h"
 #include "malloc.h"
+#include <i2c_t3.h>
 
 // function declarations
 
@@ -66,9 +67,7 @@ theReadings getReadings (const char* _thisSensor);                        // get
 
 void loop() {
 
-  // read and process n+ commands or json protocols from the serial port 
-
-//  turn_off_power();         // save battery
+  turn_off_5V();         // save battery - turn off a few things
 
   // read until we get a character - primary idle loop
   int c;
@@ -135,8 +134,9 @@ void do_command()
   else
     val = hash(choose);             // convert alpha command to an int
 
-  turn_on_power();                  // is normally off, but many of the below commands need it
-
+  turn_on_5V();                  // is normally off, but many of the below commands need it
+  delay(1000);
+  
   // process command
   switch (val) {
 
@@ -202,7 +202,6 @@ void do_command()
         DAC_change();
       }
       break;
-
 
     case 1006:
       print_calibrations();
@@ -323,6 +322,7 @@ void do_command()
       DAC_set(10, 0);
       DAC_change();
       break;
+
     case 1021:                                                                            // variety of test commands used during development
       {
 
@@ -742,9 +742,9 @@ void do_protocol()
 
   } // no more need for the serial input buffer
 
-  turn_on_power();
+  turn_on_5V();
 
-  // check battery before proceeding
+  // check battery with load before proceeding
   if (battery_low(1)) {
     Serial_Print("{\"error\":\"battery is too low\"}");
     Serial_Print_CRC();

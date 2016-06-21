@@ -197,8 +197,6 @@ set #define BLE_DELAY  to 0 (no delay between packets)
 #include "defines.h"
 #include <i2c_t3.h>
 #include <Time.h>                   // enable real time clock library
-#include "DAC.h"
-#include "utility/AD7689.h"         // external ADC
 #define EXTERN
 #include "eeprom.h"
 #include "serial.h"
@@ -206,19 +204,12 @@ set #define BLE_DELAY  to 0 (no delay between packets)
 #include "util.h"
 #include <TimeLib.h>
 
-// function definitions used in this file
-int MAG3110_init(void);           // initialize compass
-int MMA8653FC_init(void);         // initialize accelerometer
-void MLX90615_init(void);         // initialize contactless temperature sensor
-void PAR_init(void);              // initialize PAR and RGB sensor
-void init_chips(void);            // initialize anything that loses state when powered down
+void setup_pins(void);            // initialize pins
 
 // This routine is called first
 
-void setup() {
-
-  // delay(700);             // doesn't work reliably
-
+void setup() 
+{
   // set up serial ports (Serial and Serial1)
   Serial_Set(4);             // auto switch between USB and BLE
   Serial_Begin(115200);
@@ -229,26 +220,15 @@ void setup() {
   // initialize SPI bus
   SPI.begin ();
 
-  turn_on_power();
-
   eeprom_initialize();      // eeprom
   assert(sizeof(eeprom_class) < 2048);      // check that we haven't exceeded eeprom space
 
-  // initialize various ICs
-  init_chips();
-
   // set up MCU pins
+  setup_pins();
 
-  // set up LED on/off pins
-  for (unsigned i = 1; i < NUM_LEDS + 1; ++i)
-    pinMode(LED_to_pin[i], OUTPUT);
-
-  // pins used to turn on/off detector integration/discharge
-  pinMode(HOLDM, OUTPUT);
-  digitalWriteFast(HOLDM, HIGH);                  // discharge cap
-  pinMode(HOLDADD, OUTPUT);
-  digitalWriteFast(HOLDADD, HIGH);                // discharge cap
-
+  // turn on 3.3V power and initialize ICs
+  turn_on_3V3();
+ 
 #if CORALSPEQ == 1
   // Set pinmodes for the coralspeq
   //pinMode(SPEC_EOS, INPUT);
@@ -282,25 +262,27 @@ void setup() {
 }  // setup() - now execute loop()
 
 
-// initialize all peripheral ICs that lose state when powered down
-// called from setup() and after other power ons
-
-void init_chips()
+void setup_pins()
 {
-  DAC_init();               // initialize DACs
+  // set up LED on/off pins
+  for (unsigned i = 1; i < NUM_LEDS + 1; ++i)
+    pinMode(LED_to_pin[i], OUTPUT);
 
-  PAR_init();               // color sensor
+  // pins used to turn on/off detector integration/discharge
+  pinMode(HOLDM, OUTPUT);
+  digitalWriteFast(HOLDM, HIGH);                  // discharge cap
+  pinMode(HOLDADD, OUTPUT);
+  digitalWriteFast(HOLDADD, HIGH);                // discharge cap
+}
 
-  MAG3110_init();           // initialize compass
 
-  MMA8653FC_init();         // initialize accelerometer
-
-  bme1.begin(0x77);         // pressure/humidity/temp sensors
-  bme2.begin(0x76);
-
-  // no init for MLX90615 or Hall sensor
-  
-}  // init_chips()
+void unset_pins()     // save power, set pins to high impedance
+{
+  // turn off almost every pin
+  for (unsigned i = 0; i < 33; ++i)
+     if (i != 18 && i != 19 && i != WAKE_DC && i != WAKE_3V3)  // leave I2C and power control on
+        pinMode(i, INPUT);  
+}
 
 
 #if CORAL_SPEQ == 1
