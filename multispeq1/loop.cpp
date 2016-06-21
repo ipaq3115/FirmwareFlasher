@@ -79,7 +79,7 @@ void loop() {
     if (c != -1)            // received something
       break;
 
-    powerdown();            // power down if no activity for x seconds (could also be a timer interrupt)
+//    powerdown();            // power down if no activity for x seconds (could also be a timer interrupt)
 
     yield();                // execute background tasks
 
@@ -370,80 +370,63 @@ void do_command()
 
     //CLEANME- can we consolidate these print statements at all?  Especially the debugs "error" statements below?
 
-    case 1030:
-      //      Serial_Print("{\"message\": \"input 3 magnetometer bias values, each followed by +: \"}");
+    case 1030: // 3 magnetometer bias values
       store(mag_bias[0], Serial_Input_Double("+", 0));
       store(mag_bias[1], Serial_Input_Double("+", 0));
       store(mag_bias[2], Serial_Input_Double("+", 0));
       break;
 
-    case 1031:
-      //      Serial_Print("{\"message\": \"input 9 magnetometer calibration values, each followed by +: \"}");
+    case 1031: // 9 magnetometer calibration values
       for (uint16_t i = 0; i < 3; i++) {
         for (uint16_t j = 0; j < 3; j++) {
           store(mag_cal[j][i], Serial_Input_Double("+", 0));
         }
       }
       break;
-    case 1032:
-      //      Serial_Print("{\"message\": \"input 3 accelerometer bias values, each followed by +: \"}");
+    case 1032: // 3 accelerometer bias values
       store(accel_bias[0], Serial_Input_Double("+", 0));
       store(accel_bias[1], Serial_Input_Double("+", 0));
       store(accel_bias[2], Serial_Input_Double("+", 0));
       break;
-    case 1033:
-      //      Serial_Print("{\"message\": \"input 9 accelerometer calibration values, each followed by +: \"}");
+    case 1033: // 9 accelerometer calibration values
       for (uint16_t i = 0; i < 3; i++) {
         for (uint16_t j = 0; j < 3; j++) {
           store(accel_cal[j][i], Serial_Input_Double("+", 0));
         }
       }
       break;
-    case 1034:
-      //      Serial_Print_Line(eeprom->light_slope_all);
-      //      Serial_Print_Line("{\"message\": \"input light slope for ambient par calibration followed by +: \"}");
+    case 1034: // PAR calibration values
       store(light_slope_all, Serial_Input_Double("+", 0));
       store(light_slope_r, Serial_Input_Double("+", 0));
       store(light_slope_g, Serial_Input_Double("+", 0));
       store(light_slope_b, Serial_Input_Double("+", 0));
       store(light_yint, Serial_Input_Double("+", 0));
       break;
-    case 1039:
-      //      Serial_Print_Linef("%f, %f, %f",eeprom->thickness_a,eeprom->thickness_a,eeprom->thickness_a);
-      //      Serial_Print_Line("{\"message\": \"input thickness calibration values (a, b, d) a for leaf thickness followed by +: \"}");
+    case 1039: // thickness values (poly regression + min + max)
       store(thickness_a, Serial_Input_Double("+", 0));
       store(thickness_b, Serial_Input_Double("+", 0));
       store(thickness_c, Serial_Input_Double("+", 0));
       store(thickness_min, Serial_Input_Double("+", 0));
       store(thickness_max, Serial_Input_Double("+", 0));
       break;
-    case 1040:
-      //      Serial_Print_Linef("%f, %f",eeprom->detector_offset_slope[0],eeprom->detector_offset_yint[0]);
-      //      Serial_Print_Line("{\"message\": \"input detector offset for detector 1 (main detector) followed by +: \"}");
+    case 1040: // detector 1 offset
       store(detector_offset_slope[0], Serial_Input_Double("+", 0));
       store(detector_offset_yint[0], Serial_Input_Double("+", 0));
       break;
-    case 1041:
-      //      Serial_Print_Linef("%f, %f",eeprom->detector_offset_slope[1],eeprom->detector_offset_yint[1]);
-      //      Serial_Print_Line("{\"message\": \"input detector offset for detector 2 (reference on main) followed by +: \"}");
+    case 1041: // detector 2 offset
       store(detector_offset_slope[1], Serial_Input_Double("+", 0));
       store(detector_offset_yint[1], Serial_Input_Double("+", 0));
       break;
-    case 1042:
-      //      Serial_Print_Linef("%f, %f",eeprom->detector_offset_slope[2],eeprom->detector_offset_yint[2]);
-      //      Serial_Print_Line("{\"message\": \"input detector offset for detector 3 (clamp detector) followed by +: \"}");
+    case 1042: // detector 3 offset
       store(detector_offset_slope[2], Serial_Input_Double("+", 0));
       store(detector_offset_yint[2], Serial_Input_Double("+", 0));
       break;
-    case 1043:
-      //      Serial_Print_Linef("%f, %f",eeprom->detector_offset_slope[3],eeprom->detector_offset_yint[3]);
-      //      Serial_Print_Line("{\"message\": \"input detector offset for detector 4 (reference on clamp) followed by +: \"}");
+    case 1043: // detector 4 offset
       store(detector_offset_slope[3], Serial_Input_Double("+", 0));
       store(detector_offset_yint[3], Serial_Input_Double("+", 0));
       break;
-    case 1044:
+    case 1044: // LED PAR calibration (poly fit)
       {
-        //      Serial_Print_Line("{\"message\": \"input the LED #, slope1, slope 2, and y intercept for LED PAR calibration, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
         for (;;) {
           int led = Serial_Input_Double("+", 0);
           if (led == -1) {                                    // user can bail with -1+ setting as LED
@@ -460,9 +443,8 @@ void do_command()
         }
       }
       break;
-    case 1045:
+    case 1045: // IR baseline correction slope and yint
       {
-        //      Serial_Print_Line("{\"message\": \"input the IR baseline slope and yint: \"}");
         for (;;) {
           int led = Serial_Input_Double("+", 0);
           if (led == -1) {                                    // user can bail with -1+ setting as LED
@@ -478,9 +460,8 @@ void do_command()
         }
       }
       break;
-    case 1046:
+    case 1046: // calibration of absorbance (for example, SPAD), intensity level 1
       {
-        //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 1, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
         for (;;) {
           int led = Serial_Input_Double("+", 0);
           if (led == -1) {                                    // user can bail with -1+ setting as LED
@@ -497,9 +478,8 @@ void do_command()
       }
       break;
 
-    case 1047:
+    case 1047: // calibration of absorbance (for example, SPAD), intensity level 2
       {
-        //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 2, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
         for (;;) {
           int led = Serial_Input_Double("+", 0);
           if (led == -1) {                                    // user can bail with -1+ setting as LED
@@ -515,9 +495,8 @@ void do_command()
         }
       }
       break;
-    case 1048:
+    case 1048: // calibration of absorbance (for example, SPAD), intensity level 2
       {
-        //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 3, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
         for (;;) {
           int led = Serial_Input_Double("+", 0);
           if (led == -1) {                                    // user can bail with -1+ setting as LED
@@ -534,9 +513,8 @@ void do_command()
       }
       break;
 
-    case 1049:
+    case 1049: // absorbance blanks (true blank, single paper, 3 paper folded)
       {
-        //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for blank at thickness 1 (true blank), thickness 2 (1 piece of white paper), and thickness 3 (3 pieces of white paper), each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
         for (;;) {
           int led = Serial_Input_Double("+", 0);
           if (led == -1) {                                    // user can bail with -1+ setting as LED
@@ -554,9 +532,8 @@ void do_command()
       }
       break;
 
-    case 1050:
+    case 1050: // userdefined saved values
       {
-        //      Serial_Print_Line("{\"message\": \"input the LED #, slope, and y intercept for color calibration 3, each followed by +.  Set LED to -1 followed by + to exit loop: \"}");
         for (;;) {
           int userdefID = Serial_Input_Double("+", 0);
           if (userdefID == -1) {                                    // user can bail with -1+ setting as LED
@@ -1639,7 +1616,7 @@ void do_protocol()
 abort:
 
   Serial_Print("]}");                // terminate output json
-  Serial_Print_CRC();
+  Serial_Print_CRC();             // TODO put this back in one android app is fixed
   Serial_Flush_Output();
 
   act_background_light = 0;          // ??
