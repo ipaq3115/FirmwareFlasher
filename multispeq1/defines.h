@@ -13,7 +13,7 @@ const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 #define CORAL_SPEQ 0
 
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
-#define DEVICE_FIRMWARE "1.05"
+#define DEVICE_FIRMWARE "1.06"
 #define DEVICE_NAME "MultispeQ"
 #define DEVICE_VERSION "1"
      

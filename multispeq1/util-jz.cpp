@@ -49,7 +49,7 @@ void turn_on_3V3()
   // enable 3.3 V
   pinMode(WAKE_3V3, OUTPUT);
   digitalWriteFast(WAKE_DC, LOW);
-  delay(2);
+  delay(500);
 
   // initialize 3.3V chips
   PAR_init();               // color sensor
@@ -382,7 +382,7 @@ void powerdown() {
       else
         sleep_mode(333);          // sleep for x ms
 
-      if (++count > (1000 / 333) * 60 * 60 * 24 * 5) {  // after ~5 days, go into a lower power sleep
+      if (++count > (1000 / 333) * 60 * 60 * 24 * 1) {  // after ~1 days, go into a lower power sleep
         pinMode(18, INPUT);                             // turn off I2C pins
         pinMode(19, INPUT);                             // or use Wire.end()?
         // TODO sleep accelerometer

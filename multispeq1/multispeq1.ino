@@ -210,6 +210,10 @@ void setup_pins(void);            // initialize pins
 
 void setup() 
 {
+
+  turn_off_5V();
+
+  
   // set up serial ports (Serial and Serial1)
   Serial_Set(4);             // auto switch between USB and BLE
   Serial_Begin(115200);

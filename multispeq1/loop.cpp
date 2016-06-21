@@ -78,15 +78,15 @@ void loop() {
     if (c != -1)            // received something
       break;
 
-//    powerdown();            // power down if no activity for x seconds (could also be a timer interrupt)
+    powerdown();            // power down if no activity for x seconds (could also be a timer interrupt)
 
     yield();                // execute background tasks
 
-    sleep_cpu();            // save power - low impact since cpu stays on
+    sleep_cpu();                // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.  
 
   } // for
 
-  activity();               // record fact that we have seen activity (used with powerdown())
+//  activity();               // record fact that we have seen activity (used with powerdown())
 
   crc32_init();
 
@@ -132,7 +132,7 @@ void do_command()
     val = atoi(choose);
   else
     val = hash(choose);             // convert alpha command to an int
- 
+  
   // process command
   switch (val) {
 
@@ -187,6 +187,7 @@ void do_command()
 
     case 1003:
       {
+        turn_on_5V();                  // turn on 5V to turn on the lights
         Serial_Print_Line("\"message\": \"Enter led # setting followed by +: \"}");
         int led =  Serial_Input_Double("+", 0);
         Serial_Print_Line("\"message\": \"Enter dac setting followed by +:  \"}");
@@ -221,8 +222,9 @@ void do_command()
       break;
 
     case 1011:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE1");
-      DAC_set(1, 50);
+      DAC_set(1, 300);
       DAC_change();
       digitalWriteFast(PULSE1, HIGH);
       delay(1000);
@@ -231,8 +233,9 @@ void do_command()
       DAC_change();
       break;
     case 1012:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE2");
-      DAC_set(2, 50);
+      DAC_set(2, 300);
       DAC_change();
       digitalWriteFast(PULSE2, HIGH);
       delay(1000);
@@ -241,8 +244,9 @@ void do_command()
       DAC_change();
       break;
     case 1013:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE3");
-      DAC_set(3, 50);
+      DAC_set(3, 300);
       DAC_change();
       digitalWriteFast(PULSE3, HIGH);
       delay(1000);
@@ -250,9 +254,10 @@ void do_command()
       DAC_set(3, 0);
       DAC_change();
       break;
-    case 1014:   
+    case 1014:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE4");
-      DAC_set(4, 100);
+      DAC_set(4, 300);
       DAC_change();
       digitalWriteFast(PULSE4, HIGH);
       delay(1000);
@@ -261,8 +266,9 @@ void do_command()
       DAC_change();
       break;
     case 1015:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE5");
-      DAC_set(5, 50);
+      DAC_set(5, 150);
       DAC_change();
       digitalWriteFast(PULSE5, HIGH);
       delay(1000);
@@ -271,8 +277,9 @@ void do_command()
       DAC_change();
       break;
     case 1016:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE6");
-      DAC_set(6, 50);
+      DAC_set(6, 100);
       DAC_change();
       digitalWriteFast(PULSE6, HIGH);
       delay(1000);
@@ -281,8 +288,9 @@ void do_command()
       DAC_change();
       break;
     case 1017:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE7");
-      DAC_set(7, 50);
+      DAC_set(7, 300);
       DAC_change();
       digitalWriteFast(PULSE7, HIGH);
       delay(1000);
@@ -291,8 +299,9 @@ void do_command()
       DAC_change();
       break;
     case 1018:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE8");
-      DAC_set(8, 50);
+      DAC_set(8, 100);
       DAC_change();
       digitalWriteFast(PULSE8, HIGH);
       delay(1000);
@@ -301,8 +310,9 @@ void do_command()
       DAC_change();
       break;
     case 1019:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE9");
-      DAC_set(9, 50);
+      DAC_set(9, 100);
       DAC_change();
       digitalWriteFast(PULSE9, HIGH);
       delay(1000);
@@ -311,8 +321,9 @@ void do_command()
       DAC_change();
       break;
     case 1020:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE10");
-      DAC_set(10, 50);
+      DAC_set(10, 100);
       DAC_change();
       digitalWriteFast(PULSE10, HIGH);
       delay(1000);
@@ -561,6 +572,7 @@ void do_command()
       break;
 
     case 1053:
+      turn_on_5V();                  // turn on 5V to turn on the lights
       {
         int leave = 0;
         while (leave != -1) {
@@ -666,6 +678,7 @@ void do_command()
 
 void do_protocol()
 {
+  
   const int serial_buffer_size = 6000;                                        // max size of the incoming jsons
   const int max_jsons = 15;                                                   // max number of protocols per measurement
   const int MAX_JSON_ELEMENTS = 700;      //
@@ -717,7 +730,10 @@ void do_protocol()
       //Serial_Print(serial_buffer);
       //Serial_Print("\"}");
 
-      Serial_Print("{\"error\":\"bad json protocol (braces or CRC)\"}");
+//      Serial_Print("{\"error\":\"bad json protocol (braces or CRC)\"}");
+      Serial_Print("{\"error\":\"bad json protocol (braces or CRC)\"              ");
+      Serial_Print(serial_buffer);
+      Serial_Print("\"}");
       Serial_Print_CRC();
       Serial_Flush_Output();
       return;
@@ -740,8 +756,6 @@ void do_protocol()
 
   } // no more need for the serial input buffer
 
-  turn_on_5V();
-
   // check battery with load before proceeding
   if (battery_low(1)) {
     Serial_Print("{\"error\":\"battery is too low\"}");
@@ -758,6 +772,8 @@ void do_protocol()
     Serial_Printf("Incoming JSON %d as received by Teensy : %s\n", i, json2[i].c_str());
   } // for
 #endif
+
+  turn_on_5V();                             // turn on the +5V circuit
 
   int v = battery_level(0);   // test without load
 
