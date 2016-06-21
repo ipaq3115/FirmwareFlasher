@@ -32,7 +32,7 @@ void turn_on_5V()
   // enable 5V and analog power - also DAC, ADC, Hall effect sensor
   pinMode(WAKE_DC, OUTPUT);
   digitalWriteFast(WAKE_DC, HIGH);
-  delay(100);        // wait for power to stabilize
+  delay(500);                 // wait for power to stabilize
   // initialize 5V chips
   DAC_init();               // initialize DACs (5V)
   // note: ADC is initialized at use time
@@ -49,7 +49,7 @@ void turn_on_3V3()
   // enable 3.3 V
   pinMode(WAKE_3V3, OUTPUT);
   digitalWriteFast(WAKE_DC, LOW);
-  delay(100);
+  delay(2);
 
   // initialize 3.3V chips
   PAR_init();               // color sensor

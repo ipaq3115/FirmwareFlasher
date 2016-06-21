@@ -82,8 +82,7 @@ void loop() {
 
     yield();                // execute background tasks
 
-    for (int i = 0; i < 10; ++i)  // 10 ms
-      sleep_cpu();                // save power - low impact since cpu stays on
+    sleep_cpu();            // save power - low impact since cpu stays on
 
   } // for
 
@@ -133,10 +132,7 @@ void do_command()
     val = atoi(choose);
   else
     val = hash(choose);             // convert alpha command to an int
-
-  turn_on_5V();                  // is normally off, but many of the below commands need it
-  delay(1000);
-  
+ 
   // process command
   switch (val) {
 
@@ -148,7 +144,9 @@ void do_command()
       Serial_Print_Line(" Ready");
       break;
 
-    case 1001:                                                                      // standard startup routine for new device
+    case 1001:  
+      turn_on_5V();                     // is normally off, but many of the below commands need it
+      // standard startup routine for new device
       DAC_set_address(LDAC1, 0, 1);                                                 // Set DAC addresses to 1,2,3 assuming addresses are unset and all are factory (0,0,0)
       DAC_set_address(LDAC2, 0, 2);
       DAC_set_address(LDAC3, 0, 3);
@@ -252,7 +250,7 @@ void do_command()
       DAC_set(3, 0);
       DAC_change();
       break;
-    case 1014:
+    case 1014:   
       Serial_Print_Line("PULSE4");
       DAC_set(4, 100);
       DAC_change();
