@@ -278,10 +278,10 @@ void setup_pins()
 
 void unset_pins()     // save power, set pins to high impedance
 {
-  // turn off every pin
+  // turn off almost every pin
   for (unsigned i = 0; i < 33; ++i)
-     if (i != 18 && i != 19 && i != WAKE_DC && i != WAKE_3V3) pinMode(i, INPUT);  // leave I2C and power control on
-
+     if (i != 18 && i != 19 && i != WAKE_DC && i != WAKE_3V3)  // leave I2C and power control on
+        pinMode(i, INPUT);  
 }
 
 

@@ -349,7 +349,6 @@ void activity() {
 
 void shutoff()
 {
-  unset_pins();
   SPI.end();
   Serial.end();
   Serial1.end();
@@ -358,33 +357,39 @@ void shutoff()
   MMA8653FC_low_power();         //  leave accelerometer active
   turn_off_5V();
   turn_off_3V3();   //  note: accelerometer stays powered
+  unset_pins();
 }
 
 // if not on USB and there hasn't been any activity for x seconds, then power down most things and sleep
 
 void powerdown() {
 
-  if ((millis() - last_activity > SHUTDOWN  && !Serial ) || battery_low(0)) {   // if USB is active, no timeout sleep
+  if ((millis() - last_activity > SHUTDOWN  /* && !Serial */ ) || battery_low(0)) {   // if USB is active, no timeout sleep
 
     // TODO - have accelerometer create interrupt to wake up
 
-    accel_changed();     // update values with
+    accel_changed();     // update values with current position
     shutoff();           // save power
 
-    // TODO accelerometer mode
+    // TODO accelerometer interrupt mode
 
     // wake up if the device has changed orientation
-    // remain in sleep if battery is low
+    int count = 0;
 
     for (;;) {
-      while (battery_low(0))
-        sleep_mode(60000);        // sleep much longer for low bat
-
-      if (accel_changed() && !battery_low(0))
+      if (accel_changed())
         break;
-      else 
-        sleep_mode(200);          // sleep for 200 ms (can be much longer if accel interrupts on movement)
-        
+      else
+        sleep_mode(333);          // sleep for x ms
+
+      if (++count > (1000 / 333) * 60 * 60 * 24 * 5) {  // after ~5 days, go into a lower power sleep
+        pinMode(18, INPUT);                             // turn off I2C pins
+        pinMode(19, INPUT);                             // or use Wire.end()?
+        // TODO sleep accelerometer
+        for (;;) {
+          sleep_mode(60000);                            // sleep until reset button
+        }
+      } // if
     } // for
 
     // note, peripherals and pins are now in an unknown state
