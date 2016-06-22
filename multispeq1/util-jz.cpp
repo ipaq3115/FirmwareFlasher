@@ -350,12 +350,12 @@ void activity() {
 
 void shutoff()
 {
-  SPI.end();
-  Serial.end();
-  Serial1.end();
-  DAC_shutdown();
-  AD7689_shutdown();
-  MMA8653FC_low_power();         //  leave accelerometer active
+  //SPI.end();
+  //Serial.end();
+  //Serial1.end();
+  //DAC_shutdown();
+  //AD7689_shutdown();
+  //MMA8653FC_low_power();         //  leave accelerometer active
   turn_off_5V();
   turn_off_3V3();   //  note: accelerometer stays powered
   unset_pins();
@@ -395,6 +395,13 @@ void powerdown() {
 
     // note, peripherals and pins are now in an unknown state
     // calling setup() + turn on peripherals might also work and would preserve ram contents (allowing hibernate in more places)
+
+    // avoid a surge, turn on 3V & 5V/analog now
+    pinMode(WAKE_3V3, OUTPUT);
+    digitalWriteFast(WAKE_DC, LOW);
+    pinMode(WAKE_DC, OUTPUT);
+    digitalWriteFast(WAKE_DC, HIGH);
+    //delay(1000);                 // wait for power to stabilize
 
     // reboot to turn everything on and re-intialize peripherals
 #define CPU_RESTART_ADDR ((uint32_t *)0xE000ED0C)
