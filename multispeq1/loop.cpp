@@ -67,26 +67,29 @@ theReadings getReadings (const char* _thisSensor);                        // get
 
 void loop() {
 
-  turn_off_5V();         // save battery - turn off a few things
+// turning off 5V here causes USB serial to not recognize commands upon wakeup from powerdown
+//  turn_off_5V();         // save battery - turn off a few things
 
   // read until we get a character - primary idle loop
   int c;
-  
+
+  activity();               // record fact that we have seen activity (used with powerdown()), make sure it's recorded after the latest protocol or command is completed.
+
   for (;;) {
     c = Serial_Peek();
 
     if (c != -1)            // received something
       break;
 
+      yield();                // execute background tasks - make sure to push all of the data out of the serial
+
     powerdown();            // power down if no activity for x seconds (could also be a timer interrupt)
 
-    yield();                // execute background tasks
+    //    yield();                // execute background tasks
 
-    sleep_cpu();                // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.  
+    //    sleep_cpu();                // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
 
   } // for
-
-//  activity();               // record fact that we have seen activity (used with powerdown())
 
   crc32_init();
 
@@ -132,7 +135,7 @@ void do_command()
     val = atoi(choose);
   else
     val = hash(choose);             // convert alpha command to an int
-  
+
   // process command
   switch (val) {
 
@@ -144,7 +147,7 @@ void do_command()
       Serial_Print_Line(" Ready");
       break;
 
-    case 1001:  
+    case 1001:
       turn_on_5V();                     // is normally off, but many of the below commands need it
       // standard startup routine for new device
       DAC_set_address(LDAC1, 0, 1);                                                 // Set DAC addresses to 1,2,3 assuming addresses are unset and all are factory (0,0,0)
@@ -272,7 +275,7 @@ void do_command()
       DAC_change();
       digitalWriteFast(PULSE5, HIGH);
       delay(1000);
-      digitalWriteFast(PULSE5, LOW); 
+      digitalWriteFast(PULSE5, LOW);
       DAC_set(5, 0);
       DAC_change();
       break;
@@ -678,7 +681,7 @@ void do_command()
 
 void do_protocol()
 {
-  
+
   const int serial_buffer_size = 6000;                                        // max size of the incoming jsons
   const int max_jsons = 15;                                                   // max number of protocols per measurement
   const int MAX_JSON_ELEMENTS = 700;      //
@@ -730,10 +733,10 @@ void do_protocol()
       //Serial_Print(serial_buffer);
       //Serial_Print("\"}");
 
-//      Serial_Print("{\"error\":\"bad json protocol (braces or CRC)\"}");
+      //      Serial_Print("{\"error\":\"bad json protocol (braces or CRC)\"}");
       Serial_Print("{\"error\":\"bad json protocol (braces or CRC)\"              ");
       Serial_Print(serial_buffer);
-      Serial_Print("\"}");
+      Serial_Print("      \"}");
       Serial_Print_CRC();
       Serial_Flush_Output();
       return;
@@ -1760,7 +1763,7 @@ void get_temperature_humidity_pressure2 (int _averages) {    // read temperature
 void get_detector_value (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2) {    // read reflectance of LED 5 (940nm) with 5 pulses and averages.  Keep # of pulses low as a large number of pulses could impact the sample
 
   const unsigned  STABILIZE = 10;                                           // this delay gives the LED current controller op amp the time needed to stabilize
-  uint16_t this_sample_adc[48];                                              // initialize the variables to hold the main and reference detector data 
+  uint16_t this_sample_adc[48];                                              // initialize the variables to hold the main and reference detector data
   DAC_set(this_light, par_to_dac(this_intensity, this_light));              // set the DAC, make sure to convert PAR intensity to DAC value
   DAC_change();
   AD7689_set (this_detector - 1);                                           // set ADC channel as specified
@@ -1775,7 +1778,7 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
     digitalWriteFast(HOLDM, LOW);          // turn off sample and hold discharge
     delayMicroseconds(this_pulsesize);         // pulse width
     digitalWriteFast(LED_to_pin[this_light], LOW);            // turn off measuring light
-    if (i >= 1 && i <= 4) {               // skip the first and last because I'm paranoid to make 48 total samples :) 
+    if (i >= 1 && i <= 4) {               // skip the first and last because I'm paranoid to make 48 total samples :)
       AD7689_read_array(this_sample_adc, 19);                                              // read detector, average 19 values and save in this_sample_adc
     }
     interrupts();                                             // re-enable interrupts (left off after LED ISR)
@@ -1787,16 +1790,16 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
   if (detector_read1or2 == 1) {                                                                 // save in detector_read1 or 2 depending on which is called
     detector_read1 = median16(this_sample_adc, 19);                                             // using median - 25% improvements over using mean to determine this value
     detector_read1_averaged += detector_read1 / _averages;
-//    Serial_Printf("read1: %f\n",detector_read1);
+    //    Serial_Printf("read1: %f\n",detector_read1);
   }
   else {
     detector_read2 = median16(this_sample_adc, 19);                                             // using median - 25% improvements over using mean to determine this value
     detector_read2_averaged += detector_read2 / _averages;
-//    Serial_Printf("read2: %f\n",detector_read2);
+    //    Serial_Printf("read2: %f\n",detector_read2);
   }
 }
 
-float get_contactless_temp (int _averages) {  
+float get_contactless_temp (int _averages) {
   contactless_temp = (MLX90615_Read(0) + MLX90615_Read(0) + MLX90615_Read(0)) / 3;
   contactless_temp_averaged += contactless_temp / _averages;
 
@@ -1854,10 +1857,10 @@ float get_thickness (int notRaw, int _averages) {
     sum += analogRead(HALL_OUT);
   }
   thickness_raw = (sum / 1000);
-  thickness = (eeprom->thickness_a*thickness_raw*thickness_raw + eeprom->thickness_b*thickness_raw + eeprom->thickness_c)/1000;   // calibration information is saved in uM, so divide by 1000 to convert back to mm.  
-  
+  thickness = (eeprom->thickness_a * thickness_raw * thickness_raw + eeprom->thickness_b * thickness_raw + eeprom->thickness_c) / 1000; // calibration information is saved in uM, so divide by 1000 to convert back to mm.
+
   if (notRaw == 0) {                                              // save the raw values average
-    thickness_raw_averaged += (float)thickness_raw / _averages; 
+    thickness_raw_averaged += (float)thickness_raw / _averages;
     return thickness_raw;
   }
   else if (notRaw == 1) {                                              // save the calibrated values and average

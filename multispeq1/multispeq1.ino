@@ -211,9 +211,6 @@ void setup_pins(void);            // initialize pins
 void setup() 
 {
 
-  turn_off_5V();
-
-  
   // set up serial ports (Serial and Serial1)
   Serial_Set(4);             // auto switch between USB and BLE
   Serial_Begin(115200);
@@ -232,7 +229,8 @@ void setup()
 
   // turn on 3.3V power and initialize ICs
   turn_on_3V3();
- 
+  turn_on_5V();                  // LEAVE THIS HERE!  Lots of hard to troubleshoot problems emerge if this is removed.
+
 #if CORALSPEQ == 1
   // Set pinmodes for the coralspeq
   //pinMode(SPEC_EOS, INPUT);
