@@ -81,13 +81,9 @@ void loop() {
     if (c != -1)            // received something
       break;
 
-      yield();                // execute background tasks - make sure to push all of the data out of the serial
+    powerdown();            // power down if no activity for x seconds
 
-    powerdown();            // power down if no activity for x seconds (could also be a timer interrupt)
-
-    //    yield();                // execute background tasks
-
-    //    sleep_cpu();                // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
+    // sleep_cpu();         // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
 
   } // for
 
@@ -759,6 +755,8 @@ void do_protocol()
 
   } // no more need for the serial input buffer
 
+  turn_on_5V();                             // turn on the +5V and analog circuits
+
   // check battery with load before proceeding
   if (battery_low(1)) {
     Serial_Print("{\"error\":\"battery is too low\"}");
@@ -775,8 +773,6 @@ void do_protocol()
     Serial_Printf("Incoming JSON %d as received by Teensy : %s\n", i, json2[i].c_str());
   } // for
 #endif
-
-  turn_on_5V();                             // turn on the +5V circuit
 
   int v = battery_level(0);   // test without load
 

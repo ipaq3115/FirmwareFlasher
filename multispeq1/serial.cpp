@@ -43,13 +43,7 @@ void Serial_Flush_Input(void)
     Serial_Read();
 }
 
-// TODO send a SYN/keepalive, but only if 10 seconds have passed
-void Serial_SYN(void)
-{
-
-}
-
-// specify which ports to send output to
+// specify which ports to send output to  (1 = USB, 2 = BT, 3 = both, 4 = automatic)
 void Serial_Set(int s)
 {
   //  assert(s > 0 && s <= 4);

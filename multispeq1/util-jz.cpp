@@ -33,7 +33,7 @@ void turn_on_5V()
   pinMode(WAKE_DC, OUTPUT);
   digitalWriteFast(WAKE_DC, HIGH);
   delay(1000);                 // wait for power to stabilize
-  // initialize 5V chips
+  // (re)initialize 5V chips
   DAC_init();               // initialize DACs (5V)
   // note: ADC is initialized at use time
 }
