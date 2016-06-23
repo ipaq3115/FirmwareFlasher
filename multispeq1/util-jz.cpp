@@ -23,6 +23,8 @@ int jz_test_mode = 0;
 int MAG3110_init(void);           // initialize compass
 int MMA8653FC_init(void);         // initialize accelerometer
 int MMA8653FC_low_power(void);    // accelerometer
+int MMA8653FC_standby(void);      // accelerometer
+void MMA8653FC_read(int *axeXnow, int *axeYnow, int *axeZnow);
 void MLX90615_init(void);         // initialize contactless temperature sensor
 void PAR_init(void);              // initialize PAR and RGB sensor
 void unset_pins(void);            // change pin states to save power
@@ -315,8 +317,7 @@ int battery_percent(int load)
 }
 
 // return 1 if the accelerometer values haved changed
-#define ACCEL_CHANGE 60
-void MMA8653FC_read(int *axeXnow, int *axeYnow, int *axeZnow);
+#define ACCEL_CHANGE 60                 // how much change to any axis to wake up
 
 int accel_changed()
 {
@@ -345,7 +346,6 @@ void activity() {
   last_activity = millis();
 }
 
-
 // shut off things to save power
 
 void shutoff()
@@ -355,9 +355,9 @@ void shutoff()
   //Serial1.end();
   //DAC_shutdown();
   //AD7689_shutdown();
-  //MMA8653FC_low_power();         //  leave accelerometer active
+  //MMA8653FC_low_power();  //  leave accelerometer active
   turn_off_5V();
-  turn_off_3V3();   //  note: accelerometer stays powered
+  turn_off_3V3();           //  note: accelerometer stays powered
   unset_pins();
 }
 
@@ -367,15 +367,13 @@ void powerdown() {
 
   if ((millis() - last_activity > SHUTDOWN  /* && !Serial */ ) || battery_low(0)) {   // if USB is active, no timeout sleep
 
-    // TODO - have accelerometer create interrupt to wake up
-
     accel_changed();     // update values with current position
     shutoff();           // save power
 
     // TODO accelerometer interrupt mode
 
     // wake up if the device has changed orientation
-    int count = 0;
+    int count = 0;                // when to switch to deeper sleep
 
     for (;;) {
       if (accel_changed())
@@ -384,9 +382,9 @@ void powerdown() {
         sleep_mode(333);          // sleep for x ms
 
       if (++count > (1000 / 333) * 60 * 60 * 24 * 1) {  // after ~1 days, go into a lower power sleep
+        MMA8653FC_standby();                            // sleep accelerometer
         pinMode(18, INPUT);                             // turn off I2C pins
         pinMode(19, INPUT);                             // or use Wire.end()?
-        // TODO sleep accelerometer
         for (;;) {
           sleep_mode(60000);                            // sleep until reset button
         }
@@ -482,6 +480,8 @@ void scan_i2c(void)
 } // scan_i2c()
 
 #if 0
+
+// convert ascii number to int
 
 int conv2d(const char* p) {
   int v = 0;
