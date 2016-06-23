@@ -426,7 +426,7 @@ void sleep_mode(const int n)
   config.setTimer(n);      // milliseconds
 
   // set interrupt to wakeup
-  //config.pinMode(WAKE_TILT, INPUT_PULLUP, RISING);  // was INPUT_PULLUP
+  //config.pinMode(WAKE_TILT, INPUT, CHANGE);  // was INPUT_PULLUP
 
 #ifdef USE_HIBERNATE
   Snooze.hibernate( config );
