@@ -134,7 +134,7 @@ MMA8653FC_init ()
   I2C_SEND (ctrl_reg1, 0X00);	        // standby to be able to configure
 
   I2C_SEND (xyz_data_cfg, B00000000);	// 2G full range mode
-  I2C_SEND (ctrl_reg1, B00000001);	// Output data rate at 800Hz, no auto wake, no auto scale adjust, no fast read mode
+  I2C_SEND (ctrl_reg1, B00100001);	// Output data rate at 50Hz, no auto wake, no auto scale adjust, no fast read mode, active
 
   if (MMA8653_who_am_i() == whoami_val)
     return 0;                          // OK
@@ -160,6 +160,12 @@ void MMA8653FC_low_power()
   
   I2C_SEND (ctrl_reg1,  B01101001);	// Output data rate at 12Hz, active
 }
+
+void MMA8653FC_standby()
+{
+  I2C_SEND (ctrl_reg1,  0X00);	        // standby mode for lowest power
+}
+
 
 //------------------------------------------------------------------
 
