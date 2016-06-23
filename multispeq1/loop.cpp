@@ -226,7 +226,7 @@ void do_command()
       DAC_set(1, 300);
       DAC_change();
       digitalWriteFast(PULSE1, HIGH);
-      delay(1000);
+      delay(5000);
       digitalWriteFast(PULSE1, LOW);
       DAC_set(1, 0);
       DAC_change();
@@ -237,7 +237,7 @@ void do_command()
       DAC_set(2, 300);
       DAC_change();
       digitalWriteFast(PULSE2, HIGH);
-      delay(1000);
+      delay(5000);
       digitalWriteFast(PULSE2, LOW);
       DAC_set(2, 0);
       DAC_change();
@@ -248,7 +248,7 @@ void do_command()
       DAC_set(3, 300);
       DAC_change();
       digitalWriteFast(PULSE3, HIGH);
-      delay(1000);
+      delay(5000);
       digitalWriteFast(PULSE3, LOW);
       DAC_set(3, 0);
       DAC_change();
@@ -259,7 +259,7 @@ void do_command()
       DAC_set(4, 300);
       DAC_change();
       digitalWriteFast(PULSE4, HIGH);
-      delay(1000);
+      delay(5000);
       digitalWriteFast(PULSE4, LOW);
       DAC_set(4, 0);
       DAC_change();
