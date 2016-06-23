@@ -58,6 +58,26 @@ void loop ()
 
 }  // loop()
 
+
+#if 0
+// Example Serial_Printf() if needed as a reference.  With this, you need to write Serial_Print() (probably easier).
+#define SIZE 200
+
+void Serial_Printf(const char * format, ... )
+{
+  char string[SIZE + 1];        // Warning: fixed buffer size
+  va_list v_List;
+  va_start( v_List, format );
+  vsnprintf( string, SIZE, format, v_List );
+
+  //  assert(strlen(string) < SIZE);
+
+  string[SIZE] = 0;
+  Serial_Print(string);
+  va_end( v_List );
+}
+#endif
+
 #endif
 
 // ********************************************************************************************
