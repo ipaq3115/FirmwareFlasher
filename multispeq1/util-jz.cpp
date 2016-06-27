@@ -365,7 +365,7 @@ void shutoff()
 
 void powerdown() {
 
-  if ((millis() - last_activity > SHUTDOWN  /* && !Serial */ ) || battery_low(0)) {   // if USB is active, no timeout sleep
+  if ((millis() - last_activity > SHUTDOWN && !Serial) || battery_low(0)) {   // if USB is active, no timeout sleep
 
     accel_changed();     // update values with current position
     shutoff();           // save power
@@ -381,7 +381,7 @@ void powerdown() {
       else
         sleep_mode(333);          // sleep for x ms
 
-      if (++count > (1000 / 333) * 60 * 60 * 24 * 1) {  // after ~1 days, go into a lower power sleep
+      if (++count > (1000 / 333) * 60 * 60 * 24 / 2) {  // after ~12 hours (1/2 a day), go into a lower power sleep
         MMA8653FC_standby();                            // sleep accelerometer
         pinMode(18, INPUT);                             // turn off I2C pins
         pinMode(19, INPUT);                             // or use Wire.end()?

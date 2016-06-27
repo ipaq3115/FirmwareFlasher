@@ -68,7 +68,7 @@ theReadings getReadings (const char* _thisSensor);                        // get
 void loop() {
 
 // turning off 5V here causes USB serial to not recognize commands upon wakeup from powerdown
-//  turn_off_5V();         // save battery - turn off a few things
+  turn_off_5V();         // save battery - turn off a few things
 
   // read until we get a character - primary idle loop
   int c;

@@ -230,7 +230,7 @@ void setup()
   // turn on 3.3V power and initialize ICs
   turn_on_3V3();
   turn_on_5V();                  // LEAVE THIS HERE!  Lots of hard to troubleshoot problems emerge if this is removed.
-
+  
 #if CORALSPEQ == 1
   // Set pinmodes for the coralspeq
   //pinMode(SPEC_EOS, INPUT);
