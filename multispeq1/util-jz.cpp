@@ -337,8 +337,8 @@ int accel_changed()
   return changed;
 }  // accel_changed()
 
-const unsigned long SHUTDOWN = (4 * 60 * 1000);   // power down after X ms of inactivity
-//const unsigned long SHUTDOWN = (20 * 1000);   // quick powerdown, used for testing
+const unsigned long SHUTDOWN = (4 * 60 * 1000);   // power down after X min of inactivity
+//const unsigned long SHUTDOWN = (20 * 1000);     // quick powerdown, used for testing
 static unsigned long last_activity = millis();
 
 // record that we have seen serial port activity (used with powerdown())
@@ -346,7 +346,7 @@ void activity() {
   last_activity = millis();
 }
 
-// shut off things to save power
+// shut off most things to save power
 
 void shutoff()
 {
@@ -389,11 +389,11 @@ void powerdown() {
       else
         sleep_mode(333);          // sleep for x ms
 
-      if (++count > (1000 / 333) * 60 * 60 * 24 / 2) {  // after ~12 hours (1/2 a day), go into a lower power sleep
+      if (++count > (1000 / 333) * 60 * 60 * 12) {      // after ~12 hours, go into a lower power sleep
         MMA8653FC_standby();                            // sleep accelerometer
         pinMode(18, INPUT);                             // turn off I2C pins
         pinMode(19, INPUT);                             // or use Wire.end()?
-        deep_sleep();  // TODO switch to set eeprom value then reboot
+        deep_sleep();                                   // TODO switch to set eeprom value then reboot (will get even lower power draw)
       } // if
     } // for
 

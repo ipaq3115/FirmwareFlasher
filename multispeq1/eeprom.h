@@ -73,7 +73,7 @@ class eeprom_class
     // user set values
     volatile float userdef[NUM_USERDEFS + 1];
 
-    volatile char sleep;     // set to 1 to sleep on boot
+    volatile char sleep;     // TODO set to 1 to sleep on boot
 };
 
 // where to store permanent data (teensy 3 specific)
