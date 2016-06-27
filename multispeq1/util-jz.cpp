@@ -361,6 +361,14 @@ void shutoff()
   unset_pins();
 }
 
+static void reboot()
+{
+    // reboot to turn everything on and re-intialize peripherals
+#define CPU_RESTART_ADDR ((uint32_t *)0xE000ED0C)
+#define CPU_RESTART_VAL 0x5FA0004
+    *CPU_RESTART_ADDR = CPU_RESTART_VAL;
+}
+
 // if not on USB and there hasn't been any activity for x seconds, then power down most things and sleep
 
 void powerdown() {
@@ -385,9 +393,7 @@ void powerdown() {
         MMA8653FC_standby();                            // sleep accelerometer
         pinMode(18, INPUT);                             // turn off I2C pins
         pinMode(19, INPUT);                             // or use Wire.end()?
-        for (;;) {
-          sleep_mode(60000);                            // sleep until reset button
-        }
+        deep_sleep();  // TODO switch to set eeprom value then reboot
       } // if
     } // for
 
@@ -402,10 +408,8 @@ void powerdown() {
     //delay(1000);                 // wait for power to stabilize
 
     // reboot to turn everything on and re-intialize peripherals
-#define CPU_RESTART_ADDR ((uint32_t *)0xE000ED0C)
-#define CPU_RESTART_VAL 0x5FA0004
-    *CPU_RESTART_ADDR = CPU_RESTART_VAL;
-
+    reboot();
+    
   } // if
 }  // powerdown()
 
@@ -422,7 +426,7 @@ void sleep_mode(const int n)
   config.setTimer(n);      // milliseconds
 
   // set interrupt to wakeup
-  config.pinMode(WAKE_TILT, INPUT_PULLUP, RISING);  // was INPUT_PULLUP
+  //config.pinMode(WAKE_TILT, INPUT, CHANGE);  // was INPUT_PULLUP
 
 #ifdef USE_HIBERNATE
   Snooze.hibernate( config );
@@ -432,6 +436,18 @@ void sleep_mode(const int n)
 
 } // sleep_mode()
 
+
+static SnoozeBlock config2;
+
+// sleep forever (until reset switch is pressed)
+void deep_sleep()
+{
+ #ifdef USE_HIBERNATE
+  Snooze.hibernate( config );
+#else
+  Snooze.deepSleep( config );
+#endif         
+}
 
 // print message for every I2C device on the bus
 // original author unknown

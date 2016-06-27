@@ -210,9 +210,13 @@ void setup_pins(void);            // initialize pins
 
 void setup() 
 {
+  if (eeprom->sleep == 1) {     // sleep forever if requested
+     store(sleep,0);            // but don't sleep after next reboot
+     deep_sleep();
+  }
 
   // set up serial ports (Serial and Serial1)
-  Serial_Set(4);             // auto switch between USB and BLE
+  Serial_Set(4);                // auto switch between USB and BLE
   Serial_Begin(115200);
 
   // Set up I2C bus - CAUTION: any subsequent calls to Wire.begin() will mess this up
