@@ -133,10 +133,8 @@ void do_command()
   else
     val = hash(choose);             // convert alpha command to an int
 
-  // process command
+  // process single commands
   switch (val) {
-
-    // static int dataArray[3][100];  // Kevin TODO - delete this
 
     case hash("hello"):
     case 1000:                                                                    // print "Ready" to USB and/or Bluetooth
@@ -211,16 +209,17 @@ void do_command()
       get_set_device_info(0);
       break;
 
-    case hash("set_device_info"):
+    case hash("set_device_info"):  // set the device name and 
     case 1008:
       get_set_device_info(1);
       break;
 
-    case hash("configure_bluetooth"):
+    case hash("configure_bluetooth"):  // set the bluetooth name and baud rate
     case 1009:
       configure_bluetooth();
       break;
 
+    case hash("LED_1"):
     case 1011:
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE1");
@@ -232,6 +231,7 @@ void do_command()
       DAC_set(1, 0);
       DAC_change();
       break;
+    case hash("LED_2"):
     case 1012:
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE2");
@@ -243,6 +243,7 @@ void do_command()
       DAC_set(2, 0);
       DAC_change();
       break;
+    case hash("LED_3"):
     case 1013:
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE3");
@@ -254,6 +255,7 @@ void do_command()
       DAC_set(3, 0);
       DAC_change();
       break;
+    case hash("LED_4"):
     case 1014:
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE4");
@@ -265,6 +267,7 @@ void do_command()
       DAC_set(4, 0);
       DAC_change();
       break;
+    case hash("LED_5"):
     case 1015:
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE5");
@@ -276,6 +279,7 @@ void do_command()
       DAC_set(5, 0);
       DAC_change();
       break;
+    case hash("LED_6"):
     case 1016:
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE6");
@@ -287,6 +291,7 @@ void do_command()
       DAC_set(6, 0);
       DAC_change();
       break;
+    case hash("LED_7"):
     case 1017:
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE7");
@@ -298,6 +303,7 @@ void do_command()
       DAC_set(7, 0);
       DAC_change();
       break;
+    case hash("LED_8"):
     case 1018:
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE8");
@@ -309,6 +315,7 @@ void do_command()
       DAC_set(8, 0);
       DAC_change();
       break;
+    case hash("LED_9"):
     case 1019:
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE9");
@@ -320,6 +327,7 @@ void do_command()
       DAC_set(9, 0);
       DAC_change();
       break;
+    case hash("LED_10"):
     case 1020:
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE10");
@@ -332,6 +340,7 @@ void do_command()
       DAC_change();
       break;
 
+    case hash("set_serial"):
     case 1021:                                                                            // variety of test commands used during development
       {
 
@@ -379,12 +388,13 @@ void do_command()
 
     //CLEANME- can we consolidate these print statements at all?  Especially the debugs "error" statements below?
 
+    case hash("set_magnetometer_bias"):
     case 1030: // 3 magnetometer bias values
       store(mag_bias[0], Serial_Input_Double("+", 0));
       store(mag_bias[1], Serial_Input_Double("+", 0));
       store(mag_bias[2], Serial_Input_Double("+", 0));
       break;
-
+    case hash("set_magnetometer"):
     case 1031: // 9 magnetometer calibration values
       for (uint16_t i = 0; i < 3; i++) {
         for (uint16_t j = 0; j < 3; j++) {
@@ -392,11 +402,13 @@ void do_command()
         }
       }
       break;
+    case hash("set_accelerometer_bias"):
     case 1032: // 3 accelerometer bias values
       store(accel_bias[0], Serial_Input_Double("+", 0));
       store(accel_bias[1], Serial_Input_Double("+", 0));
       store(accel_bias[2], Serial_Input_Double("+", 0));
       break;
+    case hash("set_accelerometer"):
     case 1033: // 9 accelerometer calibration values
       for (uint16_t i = 0; i < 3; i++) {
         for (uint16_t j = 0; j < 3; j++) {
@@ -404,6 +416,7 @@ void do_command()
         }
       }
       break;
+    case hash("set_par"):
     case 1034: // PAR calibration values
       store(light_slope_all, Serial_Input_Double("+", 0));
       store(light_slope_r, Serial_Input_Double("+", 0));
@@ -411,6 +424,7 @@ void do_command()
       store(light_slope_b, Serial_Input_Double("+", 0));
       store(light_yint, Serial_Input_Double("+", 0));
       break;
+    case hash("set_thickness"):
     case 1039: // thickness values (poly regression + min + max)
       store(thickness_a, Serial_Input_Double("+", 0));
       store(thickness_b, Serial_Input_Double("+", 0));
@@ -418,22 +432,27 @@ void do_command()
       store(thickness_min, Serial_Input_Double("+", 0));
       store(thickness_max, Serial_Input_Double("+", 0));
       break;
+    case hash("set_detector1_offset"):
     case 1040: // detector 1 offset
       store(detector_offset_slope[0], Serial_Input_Double("+", 0));
       store(detector_offset_yint[0], Serial_Input_Double("+", 0));
       break;
+    case hash("set_detector2_offset"):
     case 1041: // detector 2 offset
       store(detector_offset_slope[1], Serial_Input_Double("+", 0));
       store(detector_offset_yint[1], Serial_Input_Double("+", 0));
       break;
+    case hash("set_detector3_offset"):
     case 1042: // detector 3 offset
       store(detector_offset_slope[2], Serial_Input_Double("+", 0));
       store(detector_offset_yint[2], Serial_Input_Double("+", 0));
       break;
+    case hash("set_detector4_offset"):
     case 1043: // detector 4 offset
       store(detector_offset_slope[3], Serial_Input_Double("+", 0));
       store(detector_offset_yint[3], Serial_Input_Double("+", 0));
       break;
+    case hash("set_led_par"):
     case 1044: // LED PAR calibration (poly fit)
       {
         for (;;) {
@@ -452,6 +471,7 @@ void do_command()
         }
       }
       break;
+    case hash("set_ir_correction"):
     case 1045: // IR baseline correction slope and yint
       {
         for (;;) {
@@ -469,6 +489,7 @@ void do_command()
         }
       }
       break;
+    case hash("set_absorbance_1"):
     case 1046: // calibration of absorbance (for example, SPAD), intensity level 1
       {
         for (;;) {
@@ -486,7 +507,7 @@ void do_command()
         }
       }
       break;
-
+    case hash("set_absorbance_2"):
     case 1047: // calibration of absorbance (for example, SPAD), intensity level 2
       {
         for (;;) {
@@ -504,6 +525,7 @@ void do_command()
         }
       }
       break;
+    case hash("set_absorbance_3"):
     case 1048: // calibration of absorbance (for example, SPAD), intensity level 2
       {
         for (;;) {
@@ -521,7 +543,7 @@ void do_command()
         }
       }
       break;
-
+    case hash("set_absorbance_blanks"):
     case 1049: // absorbance blanks (true blank, single paper, 3 paper folded)
       {
         for (;;) {
@@ -540,7 +562,7 @@ void do_command()
         }
       }
       break;
-
+    case hash("set_user_defined"):
     case 1050: // userdefined saved values
       {
         for (;;) {
@@ -558,10 +580,12 @@ void do_command()
       }
       break;
 
+    case hash("print_magnetometer_bias"):
     case 1051:
       Serial_Printf("Magnetometer Bias: %f, %f, %f", eeprom->mag_bias[0], eeprom->mag_bias[1], eeprom->mag_bias[2]);
       break;
 
+    case hash("print_magnetometer"):
     case 1052:
       Serial_Print_Line("Magnetometer Rotation: ");
       for (int i = 0; i < 3; i++) {
@@ -856,16 +880,15 @@ void do_protocol()
           act_background_light =  0;                                                            // change to new background actinic light
         }
         else {
-          act_background_light =  hashTable.getLong("act_background_light");
+          act_background_light =  hashTable.getLong("act_background_light");                    // DEPRECIATED as of 6/29/216
         }
-
         //averaging0 - 1 - 30
         //averaging1 - 1 - 30
         //resolution0 - 2 - 16
         //resolution1 - 2 - 16
         //conversion_speed - 0 - 5
         //sampling_speed - 0 - 5
-
+/*
         int averaging0 =          hashTable.getLong("averaging");                               // # of ADC internal averages
         if (averaging0 == 0) {                                                                   // if averaging0 don't exist, set it to 10 automatically.
           averaging0 = 10;
@@ -884,6 +907,7 @@ void do_protocol()
         if (sampling_speed == 0) {                                                                   // if sampling_speed don't exist, set it to 3 automatically.
           sampling_speed = 3;
         }
+*/
         //        int tcs_to_act =            hashTable.getLong("tcs_to_act");                               // sets the % of response from the tcs light sensor to act as actinic during the run (values 1 - 100).  If tcs_to_act is not defined (ie == 0), then the act_background_light intensity is set to actintensity1.
         //int offset_off =          hashTable.getLong("offset_off");                               // turn off detector offsets (default == 0 which is on, set == 1 to turn offsets off)
 
