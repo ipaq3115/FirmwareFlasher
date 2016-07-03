@@ -78,7 +78,13 @@ case hash("sleep"):
   int accel_changed();
 
   accel_changed();   // get an initial reading
-  shutoff();         // turn off pins and power
+  shutoff();         // turn off most pins and power
+  
+  MMA8653FC_standby();                            // sleep accelerometer
+  pinMode(18, INPUT);                             // turn off I2C pins
+  pinMode(19, INPUT);                             // or use Wire.end()?
+
+  deep_sleep();
 
 #if 0
   sleep_mode(60000);    // sleep till interrupt
