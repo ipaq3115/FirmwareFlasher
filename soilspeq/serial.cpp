@@ -1,5 +1,5 @@
 
-// Serial routines that can read/write to either or both Serial devices (Serial (USB) and Serial1 (BLE)) based on a setting
+// Serial routines that can read/write to either or both Serial devices (Serial (USB) and Serial2 (BLE)) based on a setting
 // It also maintains and prints a CRC value
 // Can use a packet mode that resends
 
@@ -19,9 +19,9 @@ static void Serial_Print_BLE(const char *str);
 static void print_packet(const char *str);
 static void flush_BLE();
 
-static int Serial_Port = 3;   // which port to print to: 1 == Serial, 2 == Serial1, 3 = both  (ignored during automatic mode)
+static int Serial_Port = 3;   // which port to print to: 1 == Serial, 2 == Serial2, 3 = both  (ignored during automatic mode)
 static int automatic = 0;     // automatic means that writes will only go to the serial port that last had a byte read (Serial_Port is ignored)
-static int last_read = 0;     // where last incoming byte was from, 0 = Serial, 1 = Serial1
+static int last_read = 0;     // where last incoming byte was from, 0 = Serial, 1 = Serial2
 static int retry_counter  = 0;  // total number of retries
 int packet_mode = 0;          // wait for ACK every n characters, resend if needed
 int cut_through = 1;          // send bytes as soon as we receive them (vs when packet buffer is full)
@@ -33,7 +33,7 @@ void Serial_Begin(int rate)
   //  assert(rate >= 9600 && rate <= 115200);
 
   Serial.begin(115200);   // USB serial port, baud rate is irrelevant
-  Serial1.begin(rate);    // for BLE, 57600 is standard
+  Serial2.begin(rate);    // for Bluetooth
 }
 
 // discard all available input
@@ -79,9 +79,9 @@ void Serial_Printf(const char * format, ... )
 int Serial_Read()
 {
   for (;;) {
-    if (Serial1.available()) {
+    if (Serial2.available()) {
       last_read = 1;
-      return Serial1.read();
+      return Serial2.read();
     }
     if (Serial && Serial.available())  {
       last_read = 0;
@@ -98,7 +98,7 @@ unsigned Serial_Available()
   if (Serial)
     count += Serial.available();
 
-  count += Serial1.available();
+  count += Serial2.available();
 
   return count;
 }  // Serial_Available()
@@ -106,8 +106,8 @@ unsigned Serial_Available()
 
 int Serial_Peek()
 {
-  if (Serial1.available())
-    return Serial1.peek();
+  if (Serial2.available())
+    return Serial2.peek();
 
   if (Serial && Serial.available())
     return Serial.peek();
@@ -209,8 +209,8 @@ static void flush_packet()
   // keep sending it until we get an ACK or we give up
   for (int i = 0; i < RETRIES; ++i) {
 
-    while (Serial1.available())          // flush input
-      Serial1.read();
+    while (Serial2.available())          // flush input
+      Serial2.read();
 
     if (cut_through && i == 0)          // first try, only send the SEQ/CRC/ETX - payload already went out
       Serial_Print_BLE(packet_buffer + payload_count);
@@ -224,10 +224,10 @@ static void flush_packet()
     unsigned t = millis();
 
     while (millis() - t < RETRY_DELAY) {
-      if (Serial1.peek() != -1) {
+      if (Serial2.peek() != -1) {
         do {                                // got some character (probably ACK or NAK)
-          c = Serial1.read();
-        } while (Serial1.peek() != -1);     // remove any excess characters
+          c = Serial2.read();
+        } while (Serial2.peek() != -1);     // remove any excess characters
         break;
       }
     } // while
@@ -306,8 +306,8 @@ static void flush_BLE()
     return;
 
   buffer[count] = 0;            // null terminate the string
-  Serial1.print(buffer);        // send it  FIXME
-  Serial1.flush();              // make sure it goes out
+  Serial2.print(buffer);        // send it  FIXME
+  Serial2.flush();              // make sure it goes out
   delay(BLE_DELAY);             // wait for transmission to avoid overrunning buffers
   count = 0;
 }

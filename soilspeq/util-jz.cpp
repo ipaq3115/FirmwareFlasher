@@ -564,7 +564,7 @@ void timefromcompiler(void) {
 
 static const char* bt_response = "OKOKlinvorV1.8OKsetPINOKsetnameOK115200"; // Expected response from bt module after programming is done.
 
-int verifyresults() {                      // This function grabs the response from the bt Module and compares it for validity.
+static int verifyresults() {                      // This function grabs the response from the bt Module and compares it for validity.
   int makeSerialStringPosition;
   int inByte;
   char serialReadString[50];

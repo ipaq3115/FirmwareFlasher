@@ -47,6 +47,7 @@ void get_temperature_humidity_pressure (int _averages);
 void get_temperature_humidity_pressure2 (int _averages);
 void init_chips(void);
 void configure_bluetooth(void);
+void do_soil(void);
 
 
 struct theReadings {                                            // use to return which readings are associated with the environmental_array calls
@@ -67,8 +68,8 @@ theReadings getReadings (const char* _thisSensor);                        // get
 
 void loop() {
 
-// turning off 5V here causes USB serial to not recognize commands upon wakeup from powerdown
-//  turn_off_5V();         // save battery - turn off a few things
+  // turning off 5V here causes USB serial to not recognize commands upon wakeup from powerdown
+  //  turn_off_5V();         // save battery - turn off a few things
 
   // read until we get a character - primary idle loop
   int c;
@@ -90,7 +91,7 @@ void loop() {
   crc32_init();
 
   if (c == '[')
-    do_protocol();          // start of json
+    do_soil();              // start of json
   else
     do_command();           // received a non '[' char - processs command
 
@@ -2326,5 +2327,53 @@ void get_set_device_info(const int _set) {
 
 } // get_set_device_info()
 
+
 // ======================================
+
+#include "kSeries.h" //include kSeries Library for CO2
+
+// print the co2 values every second for n minutes.  Ignore the json protocol.
+
+void do_soil()
+{
+  delay(1000);
+  Serial_Flush_Input();     // discard protocol
+    
+  kSeries K_30(12, 13);     // Initialize a kSeries Sensor with pin 12 as Rx and 13 as Tx
+
+  Serial_Printf("{\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_name\":\"%s\"",
+                DEVICE_VERSION,
+                (unsigned)eeprom->device_id >> 24,
+                ((unsigned)eeprom->device_id & 0xff0000) >> 16,
+                ((unsigned)eeprom->device_id & 0xff00) >> 8,
+                (unsigned)eeprom->device_id & 0xff, 
+                DEVICE_FIRMWARE, DEVICE_NAME);
+
+  if (year() >= 2016)
+    Serial_Printf(",\"device_time\":%u", now());
+
+  Serial_Printf(",\"soil_moisture\":%d, \"temperature\":%g, \"humidity\":%g", analogRead(A0), bme1.readTempC(), bme1.readHumidity());
+  Serial_Print(",\"sample\":[");
+  
+  unsigned long start = millis(); 
+
+  // print multiple CO2 values
+  
+  for (;;) {
+    int co2 = K_30.getCO2('p');         // returns co2 value in ppm ('p') or percent ('%')
+    Serial_Printf("%d",co2);
+
+    if (millis() - start > 5 * 60 * 1000)            // exit after n minutes
+       break;
+
+    Serial_Print(",");
+    while ((millis() - start) % 1000 != 0)  {}       // wait till next second
+    
+  } // for
+
+  Serial_Print("]}");             // terminate output json
+  Serial_Print_CRC();            
+  Serial_Flush_Output();
+  
+}  // do_soil()
 
