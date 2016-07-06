@@ -199,6 +199,7 @@ float measure_hall() {
   return hall_value;
 }
 
+
 void start_on_open_close() {
   // take an initial measurement as a baseline (closed position)
   for (uint16_t i = 0; i < 10; i++) {                            // throw away values to make sure the first value is correct
@@ -206,37 +207,91 @@ void start_on_open_close() {
   }
   float start_position = measure_hall();
   float current_position = start_position;
+  float clamp_closed = eeprom->thickness_min;
+  float clamp_open = eeprom->thickness_max;
+  int isFlipped = 1;                                    // account for the direction of the magnet installed in the device
+  if (eeprom->thickness_min > eeprom->thickness_max) {
+//    Serial.print("white device: thickness_min > thickness_max so clamp_closed = thickness_max, and clamp_open = thickness_min");
+    clamp_closed = eeprom->thickness_max;
+    clamp_open = eeprom->thickness_min;
+    isFlipped = 0;
+  }
+  else {
+//    Serial.print("black device: thickness_min < thickness_max so clamp_closed = thickness_min, and clamp_open = thickness_max");
+  }
   int start_time = millis();
-  // now measure every 150ms until you see the value change to 65% of the full range from closed to fully open
-  while (start_position - current_position < .65 * (eeprom->thickness_min - eeprom->thickness_max)) {
-    current_position = measure_hall();
-    /*
-        Serial.printf("95% to exit, %f < %f\n", start_position - current_position, .85*(eeprom->thickness_min - eeprom->thickness_max));
-        Serial.printf("95% to exit, current: %f, start: %f, max: %f, min: %f\n", current_position,start_position,eeprom->thickness_max,eeprom->thickness_min);
-    */
-    delay(150);                                                               // measure every 100ms
-    if (start_position - current_position < -.20 * (eeprom->thickness_min - eeprom->thickness_max) || current_position == 0 || current_position == 65535 || millis() - start_time > 30000) {       // if the person opened it first (ie they did it wrong and started it with clamp open) - detect and skip to end.  Also if the output is maxed or minned then proceed.
-      /*
-            Serial.printf("if statement to exit, %f < %f\n", start_position - current_position, -.20*(eeprom->thickness_min - eeprom->thickness_max));
-            Serial.print("exit 1\n");
-      */
-      goto end;
+
+
+
+
+  if (isFlipped == 0) { // this is the white device
+    // now measure every 150ms until you see the value change to 65% of the full range from closed to fully open
+    while (start_position - current_position < .75 * (clamp_open - clamp_closed)) {
+      current_position = measure_hall();
+          /*
+      Serial.printf("1st isflipped = 0 75% to exit, %f < %f\n", start_position - current_position, .75 * (clamp_open - clamp_closed));
+      Serial.printf("1st isflipped = 0 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
+          */
+      delay(150);                                                               // measure every 100ms
+      if (start_position - current_position < -.20 * (clamp_open - clamp_closed) || current_position == 0 || current_position == 65535 || millis() - start_time > 30000) {       // if the person opened it first (ie they did it wrong and started it with clamp open) - detect and skip to end.  Also if the output is maxed or minned then proceed.
+              /*
+        Serial.printf("if statement to exit, %f < %f\n", start_position - current_position, -.20 * (clamp_open - clamp_closed));
+        Serial.print("exit 1\n");
+              */
+        goto end;
+      }
+    }
+
+    // now measure again every 150ms until you see the value change to < 65% of the full range from closed to fully open
+    while (start_position - current_position > .75 * (clamp_open - clamp_closed)) {
+      current_position = measure_hall();
+          /*
+      Serial.printf("2st isflipped = 0 75% to exit, %f > %f\n", start_position - current_position, .75 * (clamp_open - clamp_closed));
+      Serial.printf("2st isflipped = 0 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
+          */
+      if (millis() - start_time > 30000) { // if it's been more than 30 seconds,then bail
+        goto end;
+      }
+      delay(150);                                                               // measure every 150ms
     }
   }
-  // now measure again every 150ms until you see the value change to < 65% of the full range from closed to fully open
-  while (start_position - current_position > .75 * (eeprom->thickness_min - eeprom->thickness_max)) {
-    current_position = measure_hall();
-    /*
-        Serial.printf("65% to exit, %f > %f\n", start_position - current_position, .65*(eeprom->thickness_max - eeprom->thickness_min));
-        Serial.printf("65% to exit, current: %f, start: %f, max: %f, min: %f\n", current_position,start_position,eeprom->thickness_max, eeprom->thickness_min);
-    */
-   if (millis() - start_time > 30000) { // if it's been more than 30 seconds,then bail
-      goto end;
+
+  else if (isFlipped == 1) { // this is the black device.  Same as white device but subtract current_position from start_position instead of other way around
+    // now measure every 150ms until you see the value change to 75% of the full range from closed to fully open
+    while (current_position - start_position < .75 * (clamp_open - clamp_closed)) {
+      current_position = measure_hall();
+          /*
+      Serial.printf("1st isflipped = 1 75% to exit, %f < %f\n", current_position - start_position, .75 * (clamp_open - clamp_closed));
+      Serial.printf("1st isflipped = 1 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
+          */
+      delay(150);                                                               // measure every 100ms
+      if (current_position - start_position < -.20 * (clamp_open - clamp_closed) || current_position == 0 || current_position == 65535 || millis() - start_time > 30000) {       // if the person opened it first (ie they did it wrong and started it with clamp open) - detect and skip to end.  Also if the output is maxed or minned then proceed.
+              /*
+        Serial.printf("if statement to exit, %f < %f\n", current_position - start_position, -.20 * (clamp_open - clamp_closed));
+        Serial.print("exit 1\n");
+              */
+        goto end;
+      }
     }
-    delay(150);                                                               // measure every 150ms
-  }
+
+    // now measure again every 150ms until you see the value change to < 75% of the full range from closed to fully open
+    while (current_position - start_position > .75 * (clamp_open - clamp_closed)) {
+      current_position = measure_hall();
+          /*
+      Serial.printf("2st isflipped = 1 75% to exit, %f > %f\n", current_position - start_position, .75 * (clamp_open - clamp_closed));
+      Serial.printf("2st isflipped = 1 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
+          */
+      if (millis() - start_time > 30000) { // if it's been more than 7 seconds,then bail
+        goto end;
+      }
+      delay(150);                                                               // measure every 150ms
+    }
 end:
-  delay(300);                                                               // make sure the clamp has time to settle onto the leaf.
-//  Serial.print("exit 2\n");
+    delay(300);                                                               // make sure the clamp has time to settle onto the leaf.
+    //  Serial.print("exit 2\n");
+  }
 }
+
+
+
 
