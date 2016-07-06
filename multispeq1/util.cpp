@@ -224,7 +224,7 @@ void start_on_open_close() {
     }
   }
   // now measure again every 150ms until you see the value change to < 65% of the full range from closed to fully open
-  while (start_position - current_position > .65 * (eeprom->thickness_min - eeprom->thickness_max)) {
+  while (start_position - current_position > .75 * (eeprom->thickness_min - eeprom->thickness_max)) {
     current_position = measure_hall();
     /*
         Serial.printf("65% to exit, %f > %f\n", start_position - current_position, .65*(eeprom->thickness_max - eeprom->thickness_min));
