@@ -1061,8 +1061,8 @@ void do_protocol()
         detector_read1 = detector_read1_averaged = 0;
         detector_read2 = detector_read2_averaged = 0;
 
-        analog_read = digital_read = 0;
-        analog_read_averaged = digital_read_averaged = 0;
+        analog_read = digital_read = adc_read = 0;
+        analog_read_averaged = digital_read_averaged = adc_read_averaged = 0;
 
         //!!! when offset gets recalculated I need to reposition this later, since pulsesize is now an array
         //        calculate_offset(pulsesize);                                                                    // calculate the offset, based on the pulsesize and the calibration values (ax+b)
@@ -1909,6 +1909,12 @@ float get_digital_read (int pin, int _averages) {
   return analog_read;
 }
 
+float get_adc_read (int adc_channel, int _averages) {       // adc channels 1 - 4 available through USB 3.0 port.  Actual channels are 4 - 7, so take user value and add 3
+  adc_read = AD7689_read(adc_channel + 3);
+  adc_read_averaged += (float) adc_read / _averages;
+  return adc_read;
+}
+
 // check for commands to read various envirmental sensors
 // also output the value on the final call
 
@@ -2003,7 +2009,7 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int pin = environmental.getArray(i).getLong(1);
       get_analog_read(pin, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"analog_read\":%f,", analog_read);
+        Serial_Printf("\"analog_read\":%f,", analog_read_averaged);
       }
     }
 
@@ -2011,7 +2017,15 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int pin = environmental.getArray(i).getLong(1);
       get_digital_read(pin, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"digital_read\":%f,", digital_read);
+        Serial_Printf("\"digital_read\":%f,", digital_read_averaged);
+      }
+    }
+
+    else if (thisSensor == "adc_read") {                      // perform digital reads
+      int adc_channel = environmental.getArray(i).getLong(1);
+      get_adc_read(adc_channel, _averages);
+      if (count == _averages - 1 && oneOrArray == 0) {
+        Serial_Printf("\"adc_read\":%f,", adc_read_averaged);
       }
     }
 
@@ -2270,6 +2284,10 @@ theReadings getReadings (const char* _thisSensor) {                       // get
   }
   else if (!strcmp(_thisSensor, "analog_read")) {
     _theReadings.reading1 = "analog_read";
+    _theReadings.numberReadings = 1;
+  }
+  else if (!strcmp(_thisSensor, "adc_read")) {
+    _theReadings.reading1 = "adc_read";
     _theReadings.numberReadings = 1;
   }
   else if (!strcmp(_thisSensor, "temperature_humidity_pressure2")) {
