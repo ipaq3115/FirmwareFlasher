@@ -145,8 +145,8 @@ case hash("compiled"):
   break;
 
 case hash("temp"):
-  Serial_Printf("BME2801 Temp = %fC, Humidity = %fC\n", bme1.readTempC(), bme1.readHumidity());
-  Serial_Printf("BME2802 Temp = %fC, Humidity = %fC\n", bme2.readTempC(), bme2.readHumidity());
+  Serial_Printf("BME2801 Temp = %gC, Humidity = %g%%\n", bme1.readTemperature(), bme1.readHumidity());
+  Serial_Printf("BME2802 Temp = %gC, Humidity = %g%%\n", bme2.readTemperature(), bme2.readHumidity());
   break;
 
 case hash("memory"):
