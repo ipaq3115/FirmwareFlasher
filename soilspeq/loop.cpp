@@ -172,8 +172,8 @@ void do_command()
           }
           int hall = (sum / samples);
           delay(1);
-          float temperature1 = bme1.readTempC();
-          float temperature2 = bme2.readTempC();
+          float temperature1 = bme1.readTemperature();
+          float temperature2 = bme2.readTemperature();
           float relative_humidity1 = bme1.readHumidity();
           float relative_humidity2 = bme2.readHumidity();
           float pressure1 = bme1.readPressure() / 100;
@@ -1734,7 +1734,7 @@ int abort_cmd()
 
 void get_temperature_humidity_pressure (int _averages) {    // read temperature, relative humidity, and pressure BME280 module
 
-  temperature = bme1.readTempC();                // temperature in C
+  temperature = bme1.readTemperature();                // temperature in C
   humidity = bme1.readHumidity();                      // humidity in %
   pressure = bme1.readPressure() / 100;               // pressure in millibar
 
@@ -1747,7 +1747,7 @@ void get_temperature_humidity_pressure (int _averages) {    // read temperature,
 
 void get_temperature_humidity_pressure2 (int _averages) {    // read temperature, relative humidity, and pressure BME280 module
 
-  temperature2 = bme2.readTempC();
+  temperature2 = bme2.readTemperature();
   humidity2 = bme2.readHumidity();
   pressure2 = bme2.readPressure() / 100;
 
@@ -2352,7 +2352,7 @@ void do_soil()
   if (year() >= 2016)
     Serial_Printf(",\"device_time\":%u", now());
 
-  Serial_Printf(",\"soil_moisture\":%d, \"temperature\":%g, \"humidity\":%g", analogRead(A0), bme1.readTempC(), bme1.readHumidity());
+  Serial_Printf(",\"soil_moisture\":%d, \"temperature\":%g, \"humidity\":%g", analogRead(A0), bme1.readTemperature(), bme1.readHumidity());
   Serial_Print(",\"sample\":[");
   
   unsigned long start = millis(); 

@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <stdint.h>
-#include "utility/SparkFunBME280.h"      // temp/humidity/pressure sensor
+#include "utility/Adafruit_BME280.h"      // temp/humidity/pressure sensor
 
 //#define DEBUG 1         // uncomment to add full debug features
 const int DEBUGSIMPLE= 0;   // uncomment to add partial debug features
@@ -179,8 +179,8 @@ EXTERN float analog_read, digital_read;
 EXTERN float analog_read_averaged, digital_read_averaged;
 
 // pressure/temp/humidity sensors
-EXTERN BME280 bme1;        // I2C sensor
-EXTERN BME280 bme2;
+EXTERN Adafruit_BME280 bme1;        // I2C sensor
+EXTERN Adafruit_BME280 bme2;
 
 // Coral SpeQ
 //////////////////////PIN DEFINITIONS FOR CORALSPEQ////////////////////////
