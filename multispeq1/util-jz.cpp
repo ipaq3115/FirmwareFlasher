@@ -57,11 +57,8 @@ void turn_on_3V3()
   PAR_init();               // color sensor
   MAG3110_init();           // initialize compass
   MMA8653FC_init();         // initialize accelerometer
-  Serial_Print_Line("x");
   bme1.begin(0x77);         // pressure/humidity/temp sensors
-  Serial_Print_Line("y");
   bme2.begin(0x76);
-  Serial_Print_Line("z");
 }
 
 void turn_off_3V3() {
@@ -340,7 +337,7 @@ int accel_changed()
   return changed;
 }  // accel_changed()
 
-const unsigned long SHUTDOWN = (4 * 60 * 1000);   // power down after X min of inactivity
+const unsigned long SHUTDOWN = (4 * 60 * 1000);   // power down after X min or seconds of inactivity (in msec)
 //const unsigned long SHUTDOWN = (20 * 1000);     // quick powerdown, used for testing
 static unsigned long last_activity = millis();
 
@@ -387,12 +384,12 @@ void powerdown() {
     int count = 0;                // when to switch to deeper sleep
 
     for (;;) {
-      if (accel_changed())
+      if (accel_changed() || Serial)
         break;
       else
         sleep_mode(333);          // sleep for x ms
 
-      if (++count > (1000 / 333) * 60 * 60 * 12) {      // after ~12 hours, go into a lower power sleep
+      if (++count > (1000 / 333) * 60 * 60 * 10) {      // after ~10 hours, go into a lower power sleep
         MMA8653FC_standby();                            // sleep accelerometer
         pinMode(18, INPUT);                             // turn off I2C pins
         pinMode(19, INPUT);                             // or use Wire.end()?
