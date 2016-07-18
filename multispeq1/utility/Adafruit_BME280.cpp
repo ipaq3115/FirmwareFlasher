@@ -43,7 +43,7 @@ bool Adafruit_BME280::begin(uint8_t a) {
 
   if (_cs == -1) {
     // i2c
-    Wire.begin();
+    //Wire.begin();
   } else {
     digitalWrite(_cs, HIGH);
     pinMode(_cs, OUTPUT);

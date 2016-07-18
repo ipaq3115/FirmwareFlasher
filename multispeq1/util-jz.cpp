@@ -57,8 +57,11 @@ void turn_on_3V3()
   PAR_init();               // color sensor
   MAG3110_init();           // initialize compass
   MMA8653FC_init();         // initialize accelerometer
+  Serial_Print_Line("x");
   bme1.begin(0x77);         // pressure/humidity/temp sensors
+  Serial_Print_Line("y");
   bme2.begin(0x76);
+  Serial_Print_Line("z");
 }
 
 void turn_off_3V3() {
