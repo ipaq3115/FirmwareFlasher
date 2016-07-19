@@ -3,7 +3,7 @@
 
 // setup() - initize things on startup
 // main loop is in loop.cpp
-
+// commented out all dac_set, dac_change, functions in loop.cpp, as well as the detector calls (AD7689).  Set data_raw equal to zero for all
 
 // includes
 #include "defines.h"
@@ -29,7 +29,7 @@ void setup()
   // Set up I2C bus - CAUTION: any subsequent calls to Wire.begin() will mess this up
   Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_800);  // using alternative wire library
 
-  bme1.begin(0x77);         // pressure/humidity/temp sensors
+//  bme1.begin(0x77);         // pressure/humidity/temp sensors
 
   eeprom_initialize();      // eeprom
   assert(sizeof(eeprom_class) < 2048);      // check that we haven't exceeded eeprom space

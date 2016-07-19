@@ -13,6 +13,7 @@
 #include "util.h"
 #include "malloc.h"
 #include <i2c_t3.h>
+#include "kSeries.h" //include kSeries Library for CO2    
 
 // function declarations
 
@@ -47,7 +48,8 @@ void get_temperature_humidity_pressure (int _averages);
 void get_temperature_humidity_pressure2 (int _averages);
 void init_chips(void);
 void configure_bluetooth(void);
-void do_soil(void);
+kSeries K_30(12, 13);                                                 // create K_30 co2 sensor object
+//void do_soil(void);
 
 
 struct theReadings {                                            // use to return which readings are associated with the environmental_array calls
@@ -91,7 +93,8 @@ void loop() {
   crc32_init();
 
   if (c == '[')
-    do_soil();              // start of json
+//    do_soil();              // start of json
+    do_protocol();
   else
     do_command();           // received a non '[' char - processs command
 
@@ -1040,6 +1043,9 @@ void do_protocol()
         analog_read = digital_read = 0;
         analog_read_averaged = digital_read_averaged = 0;
 
+        co2 = 0;
+        co2_averaged = 0;
+
         //!!! when offset gets recalculated I need to reposition this later, since pulsesize is now an array
         //        calculate_offset(pulsesize);                                                                    // calculate the offset, based on the pulsesize and the calibration values (ax+b)
 
@@ -1170,7 +1176,7 @@ void do_protocol()
             }
 
             if (_reference == 0) {                                                                      // If the reference detector isn't turned on, then we need to set the ADC first
-              AD7689_set (detector - 1);        // set ADC channel as specified
+//              AD7689_set (detector - 1);        // set ADC channel as specified
             }
 
             if (PULSERDEBUG) {
@@ -1248,21 +1254,21 @@ void do_protocol()
 
               //            Serial_Printf("_meas_light = %d, par_to_dac = %d, _m_intensity = %d, dac_lights = %d\n",_meas_light,par_to_dac(_m_intensity, _meas_light),_m_intensity,dac_lights);
               if (!dac_lights) {                                                                            // evaluate as an expression...
-                DAC_set(_meas_light, par_to_dac(_m_intensity, _meas_light));                                // set the DAC, make sure to convert PAR intensity to DAC value
+//                DAC_set(_meas_light, par_to_dac(_m_intensity, _meas_light));                                // set the DAC, make sure to convert PAR intensity to DAC value
               }
               else {                                                                                      // otherwise evaluate directly as a number to enter into the DAC
-                DAC_set(_meas_light, _m_intensity);                                // set the DAC, make sure to convert PAR intensity to DAC value
+//                DAC_set(_meas_light, _m_intensity);                                // set the DAC, make sure to convert PAR intensity to DAC value
               }
 
-              DAC_change();
+//              DAC_change();
 
               for (unsigned i = 0; i < NUM_LEDS; i++) {                         // set the DAC lights for actinic lights in the current pulse set
                 if (_a_lights[i] != 0) {                                        // if there's a light there, then change it, otherwise skip
                   if (!dac_lights) {                                                                            // evaluate as an expression...
-                    DAC_set(_a_lights[i], par_to_dac(_a_intensities[i], _a_lights[i]));
+//                    DAC_set(_a_lights[i], par_to_dac(_a_intensities[i], _a_lights[i]));
                   }
                   else {                                                                                      // otherwise evaluate directly as a number to enter into the DAC
-                    DAC_set(_a_lights[i], _a_intensities[i]);
+//                    DAC_set(_a_lights[i], _a_intensities[i]);
                   }
                   if (PULSERDEBUG) {
                     Serial_Printf("actinic pin : %d \nactinic intensity %d \n", _a_lights[i], _a_intensities[i]);
@@ -1295,10 +1301,10 @@ void do_protocol()
             }
 
             if (_reference != 0) {
-              AD7689_read_arrays((detector - 1), sample_adc, (_reference - 1), sample_adc_ref, _number_samples); // also reads reference detector - note this function takes detectors 0 - 3, so must subtract detector value by 1
+//              AD7689_read_arrays((detector - 1), sample_adc, (_reference - 1), sample_adc_ref, _number_samples); // also reads reference detector - note this function takes detectors 0 - 3, so must subtract detector value by 1
             }
             else {
-              AD7689_read_array(sample_adc, _number_samples);                                              // just reads the detector defined by the user
+//              AD7689_read_array(sample_adc, _number_samples);                                              // just reads the detector defined by the user
             }
 
             interrupts();                                             // re-enable interrupts (left off after LED ISR)
@@ -1349,8 +1355,8 @@ void do_protocol()
               //              Serial_Print("],");
             }
 
-            data = median16(sample_adc, _number_samples);                                  // using median - 25% improvements over using mean to determine this value
-
+//            data = median16(sample_adc, _number_samples);                                  // using median - 25% improvements over using mean to determine this value
+            data = 0;
             if (_reference != 0) {                                                        // if also using reference, then ...
               data_ref = median16(sample_adc_ref, _number_samples);                       // generate median of reference values
               if (_reference_flag == 0) {                                                 // if this is the first pulse set which uses the reference, then flip the flag noting that a reference measurement has been taken, and collect the main and reference detectors starting measurements for normalization
@@ -1364,7 +1370,7 @@ void do_protocol()
                 Serial_Printf("reference_start = %d, reference_now = %d,       _main_start = %d, main_now = %d", (int) _reference_start, (int) data_ref, (int) _main_start, (int) data);
               } // PULSERDEBUG
 
-              data = data - _main_start * (data_ref - _reference_start) / _reference_start; // adjust main value according to the % change in the reference relative to main on the first pulse.  You adjust the main in the opposite direction of the reference (to compensate)
+//              data = data - _main_start * (data_ref - _reference_start) / _reference_start; // adjust main value according to the % change in the reference relative to main on the first pulse.  You adjust the main in the opposite direction of the reference (to compensate)
 
               if (PULSERDEBUG) {
                 float changed = (data_ref - _reference_start) / _reference_start;
@@ -1386,7 +1392,7 @@ void do_protocol()
                   } // PULSERDEBUG
                 }
               }
-              DAC_change();                                                                               // initiate actinic lights which were set above
+//              DAC_change();                                                                               // initiate actinic lights which were set above
 
               for (unsigned i = 0; i < NUM_LEDS; i++) {                            // Turn on all the new actinic lights for this pulse set
                 if (_a_lights[i] != 0) {                                                                 // just skip it if it's zero
@@ -1463,7 +1469,7 @@ void do_protocol()
           }
 
           if (background_on == 1) {
-            DAC_change();                                                                               // initiate actinic lights which were set above
+//            DAC_change();                                                                               // initiate actinic lights which were set above
             digitalWriteFast(act_background_light, HIGH);                                // turn on actinic background light in case it was off previously.
           }
           else {
@@ -1885,6 +1891,12 @@ float get_digital_read (int pin, int _averages) {
   return analog_read;
 }
 
+float get_co2 (int _averages) {
+  co2 = K_30.getCO2('p');         // returns co2 value in ppm ('p') or percent ('%')
+  co2_averaged += (float) co2 / _averages;
+  return co2;
+}
+
 // check for commands to read various envirmental sensors
 // also output the value on the final call
 
@@ -1910,7 +1922,12 @@ static void environmentals(JsonArray environmental, const int _averages, const i
         Serial_Printf("\"temperature2\":%f,\"humidity2\":%f,\"pressure2\":%f,", temperature2_averaged, humidity2_averaged, pressure2_averaged);
       }
     }
-
+    else if (thisSensor == "co2") {                                // measure K-30 co2
+      get_co2(_averages);
+      if (count == _averages - 1 && oneOrArray == 0) {
+        Serial_Printf("\"co2\":%f,", co2_averaged);
+      }
+    }
     else if (thisSensor == "light_intensity") {                   // measure light intensity with par calibration applied
       get_light_intensity(_averages);
       if (count == _averages - 1 && oneOrArray == 0) {
@@ -2244,6 +2261,10 @@ theReadings getReadings (const char* _thisSensor) {                       // get
     _theReadings.reading3 = "pressure";
     _theReadings.numberReadings = 3;
   }
+  else if (!strcmp(_thisSensor, "co2")) {
+    _theReadings.reading1 = "co2";
+    _theReadings.numberReadings = 1;
+  }  
   else if (!strcmp(_thisSensor, "analog_read")) {
     _theReadings.reading1 = "analog_read";
     _theReadings.numberReadings = 1;
@@ -2328,6 +2349,7 @@ void get_set_device_info(const int _set) {
 } // get_set_device_info()
 
 
+/*
 // ======================================
 
 #include "kSeries.h" //include kSeries Library for CO2
@@ -2376,4 +2398,6 @@ void do_soil()
   Serial_Flush_Output();
   
 }  // do_soil()
+
+*/
 

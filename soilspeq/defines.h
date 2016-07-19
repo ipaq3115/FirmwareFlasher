@@ -14,7 +14,7 @@ const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
 #define DEVICE_FIRMWARE ".5"
-#define DEVICE_NAME "SoilspeQ"
+#define DEVICE_NAME "MultispeQ"
 #define DEVICE_VERSION "1"
      
 //////////////////////PIN DEFINITIONS AND TEENSY SETTINGS////////////////////////
@@ -177,6 +177,8 @@ EXTERN float detector_read1_averaged, detector_read2_averaged;
 
 EXTERN float analog_read, digital_read;
 EXTERN float analog_read_averaged, digital_read_averaged;
+
+EXTERN float co2, co2_averaged;
 
 // pressure/temp/humidity sensors
 EXTERN Adafruit_BME280 bme1;        // I2C sensor

@@ -213,6 +213,12 @@ float variable(const char *name)
   } else if (strcmp( name, "digital_read_averaged" ) == 0 ) {
     value = digital_read_averaged;
 
+  } else if (strcmp( name, "co2" ) == 0 ) {
+    value = co2;
+
+  } else if (strcmp( name, "co2_averaged" ) == 0 ) {
+    value = co2_averaged;
+
   } else  if (strncmp( name, "detector_offset_slope[", 22) == 0 ) {
     unsigned index = atoi(name + 22);
     if (index < 4)
