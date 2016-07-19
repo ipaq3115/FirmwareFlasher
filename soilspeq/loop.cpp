@@ -48,9 +48,8 @@ void get_temperature_humidity_pressure (int _averages);
 void get_temperature_humidity_pressure2 (int _averages);
 void init_chips(void);
 void configure_bluetooth(void);
-kSeries K_30(12, 13);                                                 // create K_30 co2 sensor object
-//void do_soil(void);
 
+//void do_soil(void);
 
 struct theReadings {                                            // use to return which readings are associated with the environmental_array calls
   const char* reading1;
@@ -1892,6 +1891,7 @@ float get_digital_read (int pin, int _averages) {
 }
 
 float get_co2 (int _averages) {
+  kSeries K_30(12, 13);                                                 // create K_30 co2 sensor object
   co2 = K_30.getCO2('p');         // returns co2 value in ppm ('p') or percent ('%')
   co2_averaged += (float) co2 / _averages;
   return co2;

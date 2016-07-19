@@ -27,7 +27,14 @@ int MMA8653FC_standby(void);      // accelerometer
 void MMA8653FC_read(int *axeXnow, int *axeYnow, int *axeZnow);
 void MLX90615_init(void);         // initialize contactless temperature sensor
 void PAR_init(void);              // initialize PAR and RGB sensor
-void unset_pins(void);            // change pin states to save power
+
+void unset_pins()     // save power, set pins to high impedance
+{
+  // turn off almost every pin
+  for (unsigned i = 0; i < 33; ++i)
+    if (i != 18 && i != 19 && i != WAKE_DC && i != WAKE_3V3)  // leave I2C and power control on
+      pinMode(i, INPUT);
+}
 
 void turn_on_5V()
 {
@@ -652,7 +659,6 @@ void configure_bluetooth () {
   Serial_Print_Line("\"}");                  // close out JSON
   Serial_Print_Line("");
 }
-
 
 
 

@@ -22,6 +22,8 @@ void setup_pins(void);            // initialize pins
 
 void setup()
 {
+  delay(4000);
+
   // set up serial ports (Serial and Serial1)
   Serial_Set(4);                // auto switch between USB and BLE
   Serial_Begin(115200);
@@ -29,10 +31,12 @@ void setup()
   // Set up I2C bus - CAUTION: any subsequent calls to Wire.begin() will mess this up
   Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_800);  // using alternative wire library
 
-//  bme1.begin(0x77);         // pressure/humidity/temp sensors
+  // pressure/humidity/temp sensors
+  bme1.begin(0x77);
 
-  eeprom_initialize();      // eeprom
-  assert(sizeof(eeprom_class) < 2048);      // check that we haven't exceeded eeprom space
+  // initialize eeprom space + make sure we haven't exceeded the maximum
+  eeprom_initialize();      
+  assert(sizeof(eeprom_class) < 2048);
 
   // set up MCU pins
   setup_pins();
@@ -40,27 +44,11 @@ void setup()
   analogReference(EXTERNAL);   // 3.3V
   analogReadResolution(16);
   analogReadAveraging(4);
-
   setTime(Teensy3Clock.get());              // set time from RTC
-
   Serial_Print(DEVICE_NAME);                // note: this may not display because Serial isn't ready
   Serial_Print_Line(" Ready");
 
 }  // setup() - now execute loop()
 
-
-void setup_pins()
-{
-
-}
-
-
-void unset_pins()     // save power, set pins to high impedance
-{
-  // turn off almost every pin
-  for (unsigned i = 0; i < 33; ++i)
-    if (i != 18 && i != 19 && i != WAKE_DC && i != WAKE_3V3)  // leave I2C and power control on
-      pinMode(i, INPUT);
-}
-
+void setup_pins() {}
 
