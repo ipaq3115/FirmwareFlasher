@@ -43,7 +43,7 @@ void start_on_open_close(void);
 void get_compass_and_angle (int notRaw, int _averages);
 float get_thickness (int notRaw, int _averages);
 float get_contactless_temp (int _averages);
-void get_detector_value (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2);
+void get_detector_value (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2or3);
 void get_temperature_humidity_pressure (int _averages);
 void get_temperature_humidity_pressure2 (int _averages);
 void init_chips(void);
@@ -83,7 +83,7 @@ void loop() {
     if (c != -1)            // received something
       break;
 
-    powerdown();            // power down if no activity for x seconds
+//    powerdown();            // power down if no activity for x seconds
 
     // sleep_cpu();         // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
 
@@ -1038,6 +1038,7 @@ void do_protocol()
 
         detector_read1 = detector_read1_averaged = 0;
         detector_read2 = detector_read2_averaged = 0;
+        detector_read3 = detector_read3_averaged = 0;
 
         analog_read = digital_read = 0;
         analog_read_averaged = digital_read_averaged = 0;
@@ -1762,7 +1763,7 @@ void get_temperature_humidity_pressure2 (int _averages) {    // read temperature
 
 }
 
-void get_detector_value (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2) {    // read reflectance of LED 5 (940nm) with 5 pulses and averages.  Keep # of pulses low as a large number of pulses could impact the sample
+void get_detector_value (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2or3) {    // read reflectance of LED 5 (940nm) with 5 pulses and averages.  Keep # of pulses low as a large number of pulses could impact the sample
 
   const unsigned  STABILIZE = 10;                                           // this delay gives the LED current controller op amp the time needed to stabilize
   uint16_t this_sample_adc[48];                                              // initialize the variables to hold the main and reference detector data
@@ -1789,15 +1790,20 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
     delayMicroseconds(2000);                                  // wait until next pulse, pulse distance == 2000
   }
 
-  if (detector_read1or2 == 1) {                                                                 // save in detector_read1 or 2 depending on which is called
+  if (detector_read1or2or3 == 1) {                                                                 // save in detector_read1 or 2 depending on which is called
     detector_read1 = median16(this_sample_adc, 19);                                             // using median - 25% improvements over using mean to determine this value
     detector_read1_averaged += detector_read1 / _averages;
     //    Serial_Printf("read1: %f\n",detector_read1);
   }
-  else {
+  else if (detector_read1or2or3 == 2) {
     detector_read2 = median16(this_sample_adc, 19);                                             // using median - 25% improvements over using mean to determine this value
     detector_read2_averaged += detector_read2 / _averages;
     //    Serial_Printf("read2: %f\n",detector_read2);
+  }
+  else if (detector_read1or2or3 == 3) {
+    detector_read3 = median16(this_sample_adc, 19);                                             // using median - 25% improvements over using mean to determine this value
+    detector_read3_averaged += detector_read3 / _averages;
+    //    Serial_Printf("read3: %f\n",detector_read3);
   }
 }
 
@@ -1989,6 +1995,17 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 2);     // save as "detector_read2" from get_detector_value function
       if (count == _averages - 1 && oneOrArray == 0) {
         Serial_Printf("\"detector_read2\":%f,", detector_read2_averaged);
+      }
+    }
+
+    else if (thisSensor == "detector_read3") {
+      int this_light = environmental.getArray(i).getLong(1);
+      int this_intensity = environmental.getArray(i).getLong(2);
+      int this_detector = environmental.getArray(i).getLong(3);
+      int this_pulsesize = environmental.getArray(i).getLong(4);
+      get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 2);     // save as "detector_read3" from get_detector_value function
+      if (count == _averages - 1 && oneOrArray == 0) {
+        Serial_Printf("\"detector_read3\":%f,", detector_read2_averaged);
       }
     }
 
@@ -2307,6 +2324,10 @@ theReadings getReadings (const char* _thisSensor) {                       // get
   }
   else if (!strcmp(_thisSensor, "detector_read2")) {
     _theReadings.reading1 = "detector_read2";
+    _theReadings.numberReadings = 1;
+  }
+  else if (!strcmp(_thisSensor, "detector_read3")) {
+    _theReadings.reading1 = "detector_read3";
     _theReadings.numberReadings = 1;
   }
   else {                                                                          // output invalid entry if the entered sensor call is not on the list
