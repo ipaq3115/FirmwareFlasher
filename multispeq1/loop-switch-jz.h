@@ -140,6 +140,14 @@ case hash("dac50"):                 // for testing
   DAC_change();
   break;
 
+case hash("adc_check"):                 // for testing
+  turn_on_5V();                     // is normally off, but many of the below commands need it
+  Serial_Print_Line("All ADC values");
+  for (int i = 0; i < 8; ++i) {
+      Serial_Printf("AD %d = %d\n",i,AD7689_read(i));
+  }
+  break;
+  
 case hash("compiled"):
   Serial_Printf("Compiled on: %s %s\n", __DATE__, __TIME__);
   break;

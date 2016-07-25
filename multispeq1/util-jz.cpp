@@ -373,8 +373,11 @@ void reboot()
 
 void powerdown() {
 
-  if (!Serial && (((millis() - last_activity) > SHUTDOWN) || battery_low(0) )) {   // if USB is active, no timeout sleep
+  if ( !Serial &&  (((millis() - last_activity) > SHUTDOWN) || battery_low(0) )) {   // if USB is active, no timeout sleep
 
+    Serial_Printf("switching to low power\n");
+    delay(100);
+    
     accel_changed();     // update values with current position
     shutoff();           // save power
 
@@ -384,7 +387,7 @@ void powerdown() {
     int count = 0;                // when to switch to deeper sleep
 
     for (;;) {
-      if (accel_changed() || Serial)
+      if (accel_changed()  || Serial )
         break;
       else
         sleep_mode(333);          // sleep for x ms
@@ -403,9 +406,10 @@ void powerdown() {
     // avoid a surge, turn on 3V & 5V/analog now
     pinMode(WAKE_3V3, OUTPUT);
     digitalWriteFast(WAKE_DC, LOW);
+    delay(100);
     pinMode(WAKE_DC, OUTPUT);
     digitalWriteFast(WAKE_DC, HIGH);
-    //delay(1000);                 // wait for power to stabilize
+    delay(100);                 // wait for power to stabilize
 
     // reboot to turn everything on and re-intialize peripherals
     reboot();

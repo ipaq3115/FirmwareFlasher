@@ -231,9 +231,9 @@ void setup()
   // set up MCU pins
   setup_pins();
 
-  // turn on 3.3V power and initialize ICs
-  turn_on_3V3();
+  // turn on power and initialize ICs
   turn_on_5V();                  // LEAVE THIS HERE!  Lots of hard to troubleshoot problems emerge if this is removed.
+  turn_on_3V3();
   
 #if CORALSPEQ == 1
   // Set pinmodes for the coralspeq
