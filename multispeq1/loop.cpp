@@ -48,6 +48,7 @@ void get_temperature_humidity_pressure (int _averages);
 void get_temperature_humidity_pressure2 (int _averages);
 void init_chips(void);
 void configure_bluetooth(void);
+void reboot(void);
 
 
 struct theReadings {                                            // use to return which readings are associated with the environmental_array calls
@@ -68,7 +69,7 @@ theReadings getReadings (const char* _thisSensor);                        // get
 
 void loop() {
 
-// turning off 5V here causes USB serial to not recognize commands upon wakeup from powerdown
+  // save power
   turn_off_5V();         // save battery - turn off a few things
 
   // read until we get a character - primary idle loop
@@ -376,9 +377,13 @@ void do_command()
       }
       break;
 
-    case hash("reboot"):
+    case hash("reset"):
     case 1027:                                                                                // restart teensy (keep here!)
       _reboot_Teensyduino_();
+      break;
+
+    case hash("reboot"):
+      reboot();
       break;
 
     case hash("print_all"):
@@ -1193,11 +1198,11 @@ void do_protocol()
               AD7689_set (detector - 1);        // set ADC channel as specified
             }
 
-//            if (PULSERDEBUG) {
-//              Serial_Printf("measurement light, intensity, detector, reference:  %d, %d, %d, %d\n", _meas_light, _m_intensity, detector, _reference);
-//              Serial_Printf("pulsedistance = %d, pulsesize = %d, cycle = %d, measurement number = %d, measurement array size = %d,total pulses = %d\n", (int) _pulsedistance, (int) _pulsesize, (int) cycle, (int) meas_number, (int) meas_array_size, (int) total_pulses);
-//            } // PULSERDEBUG
-
+            if (PULSERDEBUG) {
+              Serial_Printf("measurement light, intensity, detector, reference:  %d, %d, %d, %d\n", _meas_light, _m_intensity, detector, _reference);
+              Serial_Printf("pulsedistance = %d, pulsesize = %d, cycle = %d, measurement number = %d, measurement array size = %d,total pulses = %d\n", (int) _pulsedistance, (int) _pulsesize, (int) cycle, (int) meas_number, (int) meas_array_size, (int) total_pulses);
+            } // PULSERDEBUG
+            
             if (pulse < meas_array_size) {   // if it's the first pulse of a cycle, then change act 1,2,3,4 values as per array's set at beginning of the file
 
               if (pulse == 0) {
@@ -1268,15 +1273,12 @@ void do_protocol()
               // calculate_intensity(_meas_light, tcs_to_act, cycle, _light_intensity);                   // in addition, calculate the intensity of the current measuring light
 
               //            Serial_Printf("_meas_light = %d, par_to_dac = %d, _m_intensity = %d, dac_lights = %d\n",_meas_light,par_to_dac(_m_intensity, _meas_light),_m_intensity,dac_lights);
-              if (!dac_lights) {                                                                            // evaluate as an expression...
-                DAC_set(_meas_light, par_to_dac(_m_intensity, _meas_light));                                // set the DAC, make sure to convert PAR intensity to DAC value
-              }
-              else {                                                                                      // otherwise evaluate directly as a number to enter into the DAC
+
+              if (!dac_lights)                                                     // evaluate as an expression...
+                DAC_set(_meas_light, par_to_dac(_m_intensity, _meas_light));       // set the DAC, make sure to convert PAR intensity to DAC value
+              else                                                                 // otherwise evaluate directly as a number to enter into the DAC
                 DAC_set(_meas_light, _m_intensity);                                // set the DAC, make sure to convert PAR intensity to DAC value
-              }
-
-              DAC_change();
-
+              
               for (unsigned i = 0; i < NUM_LEDS; i++) {                         // set the DAC lights for actinic lights in the current pulse set
                 if (_a_lights[i] != 0) {                                        // if there's a light there, then change it, otherwise skip
                   if (!dac_lights) {                                                                            // evaluate as an expression...
@@ -1293,6 +1295,8 @@ void do_protocol()
                 }
               } // for
 
+              DAC_change();                                                        // send values to DAC
+
             }  // if (pulse < meas_array_size)
 
             if (Serial_Available() && Serial_Input_Long("+", 1) == -1) {                                      // exit protocol completely if user enters -1+
@@ -1307,7 +1311,7 @@ void do_protocol()
             uint16_t sample_adc_ref[_number_samples];
             //            uint16_t startTimer;                                                                            // to measure the actual time it takes to perform the ADC reads on the sample (for debugging)
             //            uint16_t endTimer;
-
+      
             pulse_done = 0;             // clear volatile ISR done flag
             while (!pulse_done) {       // wait for LED pulse complete (in ISR)
               //if (abort_cmd())
@@ -1394,8 +1398,8 @@ void do_protocol()
             }
 
             if (PULSERDEBUG) {        // use this to see all of the adc reads which are being averaged
-              Serial_Printf("median + first value :%d,%d", data, sample_adc[5]);
-              Serial_Printf("median + first value reference :%d,%d", data_ref, sample_adc_ref[5]);
+              //Serial_Printf("median + first value :%d,%d", data, sample_adc[5]);
+              //Serial_Printf("median + first value reference :%d,%d", data_ref, sample_adc_ref[5]);
             } // PULSERDEBUG
 
             if (first_flag == 1) {                                                                    // if this is the 0th pulse and a therefore new cycle

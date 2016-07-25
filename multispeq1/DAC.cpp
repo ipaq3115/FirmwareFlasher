@@ -43,8 +43,11 @@ int DAC_init(void)
 
   DAC_change();  // cause changes to take effect
 
+  // reset previous values
+  for (int i = 0; i < NUM_LEDS; ++i)
+    prev_value[i] = 6666;            // impossible value
   return 0;
-
+  
 }  // DAC_init()
 
 
@@ -62,7 +65,7 @@ void DAC_shutdown()
 // value is 0-4095 (12 bits)
 
 void DAC_set(unsigned int led, unsigned int value)
-{
+{ 
   if (led ==  0)                                            // if you get a zero, quietly skip it
     return;
 
@@ -92,6 +95,7 @@ void DAC_set(unsigned int led, unsigned int value)
 
 void DAC_change(void)
 {
+  
   // toggle all ldac lines for 1 usecond
   digitalWriteFast(LDAC1, LOW);
   digitalWriteFast(LDAC2, LOW);

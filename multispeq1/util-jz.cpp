@@ -361,19 +361,19 @@ void shutoff()
   unset_pins();
 }
 
-static void reboot()
+void reboot()
 {
-    // reboot to turn everything on and re-intialize peripherals
+  // reboot to turn everything on and re-intialize peripherals
 #define CPU_RESTART_ADDR ((uint32_t *)0xE000ED0C)
 #define CPU_RESTART_VAL 0x5FA0004
-    *CPU_RESTART_ADDR = CPU_RESTART_VAL;
+  *CPU_RESTART_ADDR = CPU_RESTART_VAL;
 }
 
 // if not on USB and there hasn't been any activity for x seconds, then power down most things and sleep
 
 void powerdown() {
 
-  if ((millis() - last_activity > SHUTDOWN && !Serial) || battery_low(0)) {   // if USB is active, no timeout sleep
+  if (!Serial && (((millis() - last_activity) > SHUTDOWN) || battery_low(0) )) {   // if USB is active, no timeout sleep
 
     accel_changed();     // update values with current position
     shutoff();           // save power
@@ -409,7 +409,7 @@ void powerdown() {
 
     // reboot to turn everything on and re-intialize peripherals
     reboot();
-    
+
   } // if
 }  // powerdown()
 
@@ -442,11 +442,11 @@ static SnoozeBlock config2;
 // sleep forever (until reset switch is pressed)
 void deep_sleep()
 {
- #ifdef USE_HIBERNATE
+#ifdef USE_HIBERNATE
   Snooze.hibernate( config );
 #else
   Snooze.deepSleep( config );
-#endif         
+#endif
 }
 
 // print message for every I2C device on the bus
