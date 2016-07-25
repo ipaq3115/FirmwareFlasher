@@ -94,6 +94,10 @@ AD7689_set (int chan, uint16_t config)
 {
 //  assert(chan >= 0 && chan < 9);
 
+if (chan < 0 || chan > 8) {
+	chan = 0;
+}
+
   // bit shifts needed for config register values
 #define CFG 13
 #define INCC 10

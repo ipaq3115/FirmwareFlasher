@@ -103,7 +103,7 @@ void loop() {
 
 // globals - try to avoid
 static uint8_t _meas_light;         // measuring light to be used during the interrupt
-static uint16_t _pulsesize = 0;     // pulse width in usec
+static uint16_t _pulsesize;     // pulse width in usec
 static volatile int pulse_done = 0; // set by ISR
 
 // process a numeric + command
@@ -1083,7 +1083,6 @@ void do_protocol()
           int message_flag = 0;                                                              // flags to indicate if an alert, prompt, or confirm have been called at least once (to print the object name to data JSON)
           unsigned _pulsedistance = 0;                                                  // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
           unsigned _pulsedistance_prev = 0;
-          uint16_t  _pulsesize_prev = 0;
           uint16_t _reference_flag = 0;                                                           // used to note if this is the first measurement
           float _reference_start = 0;                                                            // reference value at data point 0 - initial value for normalizing the reference (normalized based on the values from main and reference in the first point in the trace)
           float _main_start = 0;                                                               // main detector (sample) value at data point 0 - initial value for normalizing the reference (normalized based on the values from main and reference in the first point in the trace)
@@ -1152,27 +1151,20 @@ void do_protocol()
 
               if (cycle != 0) {
                 _pulsedistance_prev = _pulsedistance;
-                _pulsesize_prev = _pulsesize;
               }
               String distanceString = pulsedistance.getString(cycle);                                                    // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
-              String sizeString = pulsesize.getString(cycle);
               _pulsedistance = expr(distanceString.c_str());                                                    // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
-              _pulsesize = expr(sizeString.c_str());
               first_flag = 1;                                                                                   // flip flag indicating that it's the 0th pulse and a new cycle
               if (cycle == 0) {                                                                                 // if it's the beginning of a measurement (cycle == 0 and pulse == 0), then...
                 digitalWriteFast(act_background_light_prev, LOW);                                               // turn off actinic background light and...
                 startTimers(_pulsedistance);                                                                    // Use one ISR to turn on and off the measuring lights.
               }
-              else if (cycle != 0 && (_pulsedistance != _pulsedistance_prev || _pulsesize != _pulsesize_prev)) {    // if it's not the 0th cycle and the last pulsesize or pulsedistance was different than the current one, then stop the old timers and set new ones.   If they were the same, avoid resetting the timers by skipping this part.
-                //              stopTimers();                                                                                   // stop the old timers
+              else if (cycle != 0 && (_pulsedistance != _pulsedistance_prev)) {    // if it's not the 0th cycle and the last pulsesize or pulsedistance was different than the current one, then stop the old timers and set new ones.   If they were the same, avoid resetting the timers by skipping this part.
                 startTimers(_pulsedistance);                                    // restart the measurement light timer
               }
 
             }  // if pulse == 0
 
-            if (PULSERDEBUG) {
-              Serial_Printf("pulsedistance = %d, pulsesize = %d, cycle = %d, measurement number = %d, measurement array size = %d,total pulses = %d\n", (int) _pulsedistance, (int) _pulsesize, (int) cycle, (int) meas_number, (int) meas_array_size, (int) total_pulses);
-            } // PULSERDEBUG
 
             _number_samples = number_samples.getLong(cycle);                                               // set the _number_samples for this cycle
             //            assert(_number_samples >= 0 && _number_samples < 500);
@@ -1187,6 +1179,9 @@ void do_protocol()
 
             uint16_t _reference = reference.getArray(cycle).getLong(meas_number % meas_array_size);
 
+            String sizeString = pulsesize.getArray(cycle).getString(meas_number % meas_array_size);     // set the pulse size for the next light
+            _pulsesize = expr(sizeString.c_str());
+            
             if (_number_samples == 0) {                                                                    // if _number_samples wasn't set or == 0, set it automatically to 19 (default)
               _number_samples = 19;
             }
@@ -1198,9 +1193,10 @@ void do_protocol()
               AD7689_set (detector - 1);        // set ADC channel as specified
             }
 
-            if (PULSERDEBUG) {
-              Serial_Printf("measurement light, intensity, detector, reference:  %d, %d, %d, %d\n", _meas_light, _m_intensity, detector, _reference);
-            } // PULSERDEBUG
+//            if (PULSERDEBUG) {
+//              Serial_Printf("measurement light, intensity, detector, reference:  %d, %d, %d, %d\n", _meas_light, _m_intensity, detector, _reference);
+//              Serial_Printf("pulsedistance = %d, pulsesize = %d, cycle = %d, measurement number = %d, measurement array size = %d,total pulses = %d\n", (int) _pulsedistance, (int) _pulsesize, (int) cycle, (int) meas_number, (int) meas_array_size, (int) total_pulses);
+//            } // PULSERDEBUG
 
             if (pulse < meas_array_size) {   // if it's the first pulse of a cycle, then change act 1,2,3,4 values as per array's set at beginning of the file
 
