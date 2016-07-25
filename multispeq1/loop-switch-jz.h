@@ -1,13 +1,12 @@
 
-// If your name isn't Jon, don't touch this file
-
+// Jon only
 // more + commands
 
 {
 
 case hash("cut_through"):
   extern int cut_through;
-  cut_through = 1;
+  cut_through = 1;             // used with serial packet mode
   break;
 
 case hash("feed_watchdog"):
@@ -86,8 +85,8 @@ case hash("sleep"):
 
   deep_sleep();
 
-#if 0
-  sleep_mode(60000);    // sleep till interrupt
+#if 0                   // pick mode here
+  sleep_mode(60000);    // sleep at lowest level - deep sleep.
 #else
 
   for (;;) {                 // sleep, but poll accelerometer

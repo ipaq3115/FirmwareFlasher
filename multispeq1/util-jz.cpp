@@ -32,6 +32,7 @@ void unset_pins(void);            // change pin states to save power
 void turn_on_5V()
 {
   // enable 5V and analog power - also DAC, ADC, Hall effect sensor
+  // TODO?  - dither this on slowly
   pinMode(WAKE_DC, OUTPUT);
   digitalWriteFast(WAKE_DC, HIGH);
   delay(1000);                 // wait for power to stabilize
@@ -49,6 +50,7 @@ void turn_off_5V()
 void turn_on_3V3()
 {
   // enable 3.3 V
+  // TODO?  - dither this on slowly
   pinMode(WAKE_3V3, OUTPUT);
   digitalWriteFast(WAKE_DC, LOW);
   delay(1000);
@@ -432,11 +434,11 @@ void sleep_mode(const int n)
   // set interrupt to wakeup
   //config.pinMode(WAKE_TILT, INPUT, CHANGE);  // was INPUT_PULLUP
 
-#ifdef USE_HIBERNATE
+//#ifdef USE_HIBERNATE
   Snooze.hibernate( config );
-#else
-  Snooze.deepSleep( config );
-#endif
+//#else
+//  Snooze.deepSleep( config );
+//#endif
 
 } // sleep_mode()
 
@@ -446,11 +448,11 @@ static SnoozeBlock config2;
 // sleep forever (until reset switch is pressed)
 void deep_sleep()
 {
-#ifdef USE_HIBERNATE
+//#ifdef USE_HIBERNATE
   Snooze.hibernate( config );
-#else
-  Snooze.deepSleep( config );
-#endif
+//#else
+//  Snooze.deepSleep( config );
+//#endif
 }
 
 // print message for every I2C device on the bus

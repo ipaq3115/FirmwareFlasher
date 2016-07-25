@@ -200,16 +200,18 @@ set #define BLE_DELAY  to 0 (no delay between packets)
 #define EXTERN
 #include "eeprom.h"
 #include "serial.h"
-#include <SPI.h>                    // include the new SPI library
+#include <SPI.h>              
 #include "util.h"
 #include <TimeLib.h>
 
-void setup_pins(void);            // initialize pins
+void setup_pins(void);          // initialize pins
 
 // This routine is called first
 
 void setup() 
 {
+  delay(100);                   // let battery voltage stabilize
+
   if (eeprom->sleep == 1) {     // sleep forever if requested
      store(sleep,0);            // but don't sleep after next reboot
      deep_sleep();
@@ -233,7 +235,7 @@ void setup()
 
   // turn on power and initialize ICs
   turn_on_5V();                  // LEAVE THIS HERE!  Lots of hard to troubleshoot problems emerge if this is removed.
-  turn_on_3V3();
+  turn_on_3V3();                 // note: these routines already have delay() in them
   
 #if CORALSPEQ == 1
   // Set pinmodes for the coralspeq
