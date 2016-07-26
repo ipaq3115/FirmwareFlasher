@@ -721,7 +721,6 @@ void do_protocol()
   //static float freqtimer1;
   //static float freqtimer2;
   int measurements = 1;                                     // the number of times to repeat the entire measurement (all protocols)
-  unsigned long measurements_delay = 0;                     // number of seconds to wait between measurements
   unsigned long measurements_delay_ms = 0;                  // number of milliseconds to wait between measurements
   unsigned long meas_number = 0;                            // counter to cycle through measurement lights 1 - 4 during the run
   //unsigned long end1;
@@ -862,25 +861,22 @@ void do_protocol()
         uint16_t adc_only[150];                                                   // this and first_adc_ref are used to save the first set of ADC averages produced, so it can be optionally displayed instead of data_raw (for signal quality debugging).  USE ONLY WITH REFERENCE == 0 (ie reference is OFF!)
         JsonArray pulses =        hashTable.getArray("pulses");                                // the number of measuring pulses, as an array.  For example [50,10,50] means 50 pulses, followed by 10 pulses, follwed by 50 pulses.
         String protocol_id =      hashTable.getString("protocol_id");                          // used to determine what macro to apply
-        int analog_averageds =     hashTable.getLong("analog_averages");                          // DEPRECIATED IN NEWEST HARDWARE 10/14 # of measurements per measurement pulse to be internally averaged (min 1 measurement per 6us pulselengthon) - LEAVE THIS AT 1 for now
-        if (analog_averageds == 0) {                                                              // if averages don't exist, set it to 1 automatically.
-          analog_averageds = 1;
+        int analog_averages =     hashTable.getLong("analog_averages");                          // DEPRECIATED IN NEWEST HARDWARE 10/14 # of measurements per measurement pulse to be internally averaged (min 1 measurement per 6us pulselengthon) - LEAVE THIS AT 1 for now
+        if (analog_averages == 0) {                                                              // if averages don't exist, set it to 1 automatically.
+          analog_averages = 1;
         }
         averages =                hashTable.getLong("averages");                               // The number of times to average this protocol.  The spectroscopic and environmental data is averaged in the device and appears as a single measurement.
         if (averages == 0) {                                                                   // if averages don't exist, set it to 1 automatically.
           averages = 1;
         }
-        int averages_delay =      hashTable.getLong("averages_delay");
-        int averages_delay_ms =   hashTable.getLong("averages_delay_ms");                       // same as above but in ms
+        int averages_delay_ms =   hashTable.getLong("averages_delay");                       // same as above but in ms
         measurements =            hashTable.getLong("measurements");                            // number of times to repeat a measurement, which is a set of protocols
-        measurements_delay =      hashTable.getLong("measurements_delay");                      // delay between measurements in seconds
-        measurements_delay_ms =      hashTable.getLong("measurements_delay_ms");                      // delay between measurements in milliseconds
+        measurements_delay_ms =      hashTable.getLong("measurements_delay");                      // delay between measurements in milliseconds
         protocols =               hashTable.getLong("protocols");                               // delay between protocols within a measurement
         if (protocols == 0) {                                                                   // if averages don't exist, set it to 1 automatically.
           protocols = 1;
         }
-        int protocols_delay =     hashTable.getLong("protocols_delay");                         // delay between protocols within a measurement
-        int protocols_delay_ms =     hashTable.getLong("protocols_delay_ms");                         // delay between protocols within a measurement in milliseconds
+        int protocols_delay_ms =     hashTable.getLong("protocols_delay");                         // delay between protocols within a measurement in milliseconds
         if (hashTable.getLong("act_background_light") == 0) {                                    // The Teensy pin # to associate with the background actinic light.  This light continues to be turned on EVEN BETWEEN PROTOCOLS AND MEASUREMENTS.  It is always Teensy pin 13 by default.
           act_background_light =  0;                                                            // change to new background actinic light
         }
@@ -917,18 +913,18 @@ void do_protocol()
         //int offset_off =          hashTable.getLong("offset_off");                               // turn off detector offsets (default == 0 which is on, set == 1 to turn offsets off)
 
         ///*
-        JsonArray pulsedistance =   hashTable.getArray("pulsedistance");                            // distance between measuring pulses in us.  Minimum 1000 us.
-        JsonArray pulsesize =       hashTable.getArray("pulsesize");                            // pulse width in us.
+        JsonArray pulsedistance =   hashTable.getArray("pulse_distance");                            // distance between measuring pulses in us.  Minimum 1000 us.
+        JsonArray pulsesize =       hashTable.getArray("pulse_length");                            // pulse width in us.
 
-        JsonArray a_lights =        hashTable.getArray("a_lights");
-        JsonArray a_intensities =   hashTable.getArray("a_intensities");
-        JsonArray m_intensities =   hashTable.getArray("m_intensities");
+        JsonArray a_lights =        hashTable.getArray("nonpulsed_lights");
+        JsonArray a_intensities =   hashTable.getArray("nonpulsed_lights_brightness");
+        JsonArray m_intensities =   hashTable.getArray("pulsed_lights_brightness");
 
         //        int get_offset =          hashTable.getLong("get_offset");                               // include detector offset information in the output
         // NOTE: it takes about 50us to set a DAC channel via I2C at 2.4Mz.
 
         JsonArray detectors =     hashTable.getArray("detectors");                               // the Teensy pin # of the detectors used during those pulses, as an array of array.  For example, if pulses = [5,2] and detectors = [[34,35],[34,35]] .
-        JsonArray meas_lights =   hashTable.getArray("meas_lights");
+        JsonArray meas_lights =   hashTable.getArray("pulsed_lights");
         JsonArray message =       hashTable.getArray("message");                                // sends the user a message to which they must reply <answer>+ to continue
         //*/
         JsonArray environmental = hashTable.getArray("environmental");
@@ -1507,9 +1503,6 @@ void do_protocol()
           */
 
           if (x + 1 < averages) {                                                             //  to next average, unless it's the end of the very last run
-            if (averages_delay > 0) {
-              Serial_Input_Long("+", averages_delay * 1000);
-            }
             if (averages_delay_ms > 0) {
               Serial_Input_Long("+", averages_delay_ms);
             }
@@ -1605,9 +1598,6 @@ void do_protocol()
 
         if (q < number_of_protocols - 1 || u < protocols - 1) {                           // if it's not the last protocol in the measurement and it's not the last repeat of the current protocol, add a comma
           Serial_Print(",");
-          if (protocols_delay > 0) {                                // delay for specified time or until + is entered
-            Serial_Input_Long("+", protocols_delay * 1000);
-          }
           if (protocols_delay_ms > 0) {
             Serial_Input_Long("+", protocols_delay_ms);
           }
@@ -1617,9 +1607,8 @@ void do_protocol()
         }
 
         averages = 1;                                                 // number of times to repeat the entire run
-        averages_delay = 0;                                                           // seconds wait time between averages
         averages_delay_ms = 0;                                                    // seconds wait time between averages
-        analog_averageds = 1;                                                             // # of measurements per pulse to be averaged (min 1 measurement per 6us pulselengthon)
+        analog_averages = 1;                                                             // # of measurements per pulse to be averaged (min 1 measurement per 6us pulselengthon)
         for (unsigned i = 0; i < NUM_LEDS; i++) {
           _a_lights[i] = 0;
         }
@@ -1641,11 +1630,7 @@ void do_protocol()
     Serial_Flush_Input();
     if (y < measurements - 1) {                                 // if not last measurement
       Serial_Print(",");                                        // add commas between measurements
-
-      if (measurements_delay > 0) {                             // delay for specified time or until + is entered
-        Serial_Input_Long("+", measurements_delay * 1000);
-      }
-      else if (measurements_delay_ms > 0) {
+      if (measurements_delay_ms > 0) {
         Serial_Input_Long("+", measurements_delay_ms);
       }
     } // if
