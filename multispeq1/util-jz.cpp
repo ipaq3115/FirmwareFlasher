@@ -405,14 +405,6 @@ void powerdown() {
     // note, peripherals and pins are now in an unknown state
     // calling setup() + turn on peripherals might also work and would preserve ram contents (allowing hibernate in more places)
 
-    // avoid a surge, turn on 3V & 5V/analog now
-    pinMode(WAKE_3V3, OUTPUT);
-    digitalWriteFast(WAKE_DC, LOW);
-    delay(100);
-    pinMode(WAKE_DC, OUTPUT);
-    digitalWriteFast(WAKE_DC, HIGH);
-    delay(100);                 // wait for power to stabilize
-
     // reboot to turn everything on and re-intialize peripherals
     reboot();
 
