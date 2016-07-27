@@ -208,10 +208,19 @@ void setup_pins(void);          // initialize pins
 
 // This routine is called first
 
+
+
 void setup() 
 {
-  delay(100);                   // let battery voltage stabilize
+  // turn on power and initialize ICs
+  
+  // Set up I2C bus - CAUTION: any subsequent calls to Wire.begin() will mess this up
+  Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_800);  // using alternative wire library
 
+  turn_on_3V3();                 // note: these routines already have delay() in them
+  
+//  delay(100);                   // let battery voltage stabilize - if there are no other delays ahead of it then this can be deleted.
+  
   if (eeprom->sleep == 1) {     // sleep forever if requested
      store(sleep,0);            // but don't sleep after next reboot
      deep_sleep();
@@ -221,8 +230,10 @@ void setup()
   Serial_Set(4);                // auto switch between USB and BLE
   Serial_Begin(115200);
 
-  // Set up I2C bus - CAUTION: any subsequent calls to Wire.begin() will mess this up
-  Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_800);  // using alternative wire library
+  turn_on_5V();                  // LEAVE THIS HERE!  Lots of hard to troubleshoot problems emerge if this is removed.
+
+  // set up MCU pins
+  setup_pins();
 
   // initialize SPI bus
   SPI.begin ();
@@ -230,13 +241,6 @@ void setup()
   eeprom_initialize();      // eeprom
   assert(sizeof(eeprom_class) < 2048);      // check that we haven't exceeded eeprom space
 
-  // set up MCU pins
-  setup_pins();
-
-  // turn on power and initialize ICs
-  turn_on_5V();                  // LEAVE THIS HERE!  Lots of hard to troubleshoot problems emerge if this is removed.
-  turn_on_3V3();                 // note: these routines already have delay() in them
-  
 #if CORALSPEQ == 1
   // Set pinmodes for the coralspeq
   //pinMode(SPEC_EOS, INPUT);
@@ -288,7 +292,7 @@ void unset_pins()     // save power, set pins to high impedance
 {
   // turn off almost every pin
   for (unsigned i = 0; i < 33; ++i)
-     if (i != 18 && i != 19 && i != WAKE_DC && i != WAKE_3V3)  // leave I2C and power control on
+//     if (i != 18 && i != 19 && i != WAKE_DC && i != WAKE_3V3 && i != 0 && i != 1)  // leave I2C and power control on
         pinMode(i, INPUT);  
 }
 

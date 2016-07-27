@@ -49,6 +49,8 @@ void get_temperature_humidity_pressure2 (int _averages);
 void init_chips(void);
 void configure_bluetooth(void);
 void reboot(void);
+void turn_on_3V3(void);
+void turn_on_5(void);
 
 
 struct theReadings {                                            // use to return which readings are associated with the environmental_array calls
@@ -85,7 +87,7 @@ void loop() {
 
     powerdown();            // power down if no activity for x seconds
 
-    // sleep_cpu();         // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
+    sleep_cpu();         // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
 
   } // for
 
@@ -152,6 +154,20 @@ void do_command()
       get_set_device_info(1);                                                           //  input device info and write to eeprom
       break;
 
+    case hash("cycle5v"):
+      turn_off_5V();
+      turn_off_3V3();
+      Serial_Print("all off");
+      delay(5000);
+      turn_on_3V3();
+      Serial_Print("3.3 on");
+      delay(5000);
+      turn_on_5V();
+      Serial_Print("5v on");
+      delay(5000);
+      reboot();
+      break;
+      
     case 1002:                                                                          // continuously output until user enter -1+
       {
         int Xcomp, Ycomp, Zcomp;
