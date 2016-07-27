@@ -340,27 +340,12 @@ int accel_changed()
 }  // accel_changed()
 
 const unsigned long SHUTDOWN = (4 * 60 * 1000);   // power down after X min or seconds of inactivity (in msec)
-//const unsigned long SHUTDOWN = (20 * 1000);     // quick powerdown, used for testing
+//const unsigned long SHUTDOWN = (10 * 1000);     // quick powerdown, used for testing
 static unsigned long last_activity = millis();
 
 // record that we have seen serial port activity (used with powerdown())
 void activity() {
   last_activity = millis();
-}
-
-// shut off most things to save power
-
-void shutoff()
-{
-  //SPI.end();
-  //Serial.end();
-  //Serial1.end();
-  //DAC_shutdown();
-  //AD7689_shutdown();
-  //MMA8653FC_low_power();  //  leave accelerometer active
-  turn_off_5V();
-  turn_off_3V3();           //  note: accelerometer stays powered
-  unset_pins();
 }
 
 void reboot()
@@ -371,33 +356,60 @@ void reboot()
   *CPU_RESTART_ADDR = CPU_RESTART_VAL;
 }
 
+// shut off most things to save power
+// but leave 3V3 on to maintain a bluetooth connection
+
+void shutoff()
+{
+  SPI.end();
+  Serial.end();
+  Serial1.end();
+  MMA8653FC_low_power();  // lower power mode for accelerometer, adequate for wakeup
+  turn_off_5V();          // was almost certainly already off
+  unset_pins();
+}
+
+
 // if not on USB and there hasn't been any activity for x seconds, then power down most things and sleep
 
 void powerdown() {
 
-  if ( !Serial &&  (((millis() - last_activity) > SHUTDOWN) || battery_low(0) )) {   // if USB is active, no timeout sleep
+  if (Serial)   // if USB is connected to a host, no sleeping
+    return;
 
-    Serial_Printf("switching to low power\n");
+  if (battery_low(0)) {     // go straight to deep sleep before the battery is ruined
+    shutoff();                                      // turn off some things
+    MMA8653FC_standby();                            // sleep accelerometer
+    pinMode(18, INPUT);                             // turn off I2C pins
+    pinMode(19, INPUT);                             // or use Wire.end()?
+    turn_off_3V3();                                 // turn off bluetooth and other 3V devices
+    deep_sleep();                                   // TODO switch to set eeprom value then reboot (will get even lower power draw)
+  }
+
+  if ((millis() - last_activity) > SHUTDOWN) {  // idle?
+
+    Serial_Printf("switching to sleep state 3\n");
     delay(100);
-    
+
     accel_changed();     // update values with current position
-    shutoff();           // save power
+    shutoff();           // save power, leave 3V3 on
 
     // TODO accelerometer interrupt mode
 
-    // wake up if the device has changed orientation
-    int count = 0;                // when to switch to deeper sleep
+    // wake up if the device has changed orientation as detected by accelerometer
+    int count = 0;                // when to switch to deep sleep
 
     for (;;) {
-      if (accel_changed()  || Serial )
+      if (accel_changed()  || Serial)    // exit sleep mode
         break;
       else
-        sleep_mode(333);          // sleep for x ms
+        sleep_mode(333);          // sleep for 1/3 second, then check accel again
 
-      if (++count > (1000 / 333) * 60 * 60 * 10) {      // after ~10 hours, go into a lower power sleep
+      if (++count > (1000 / 333) * 60 * 60 * 10) {      // after ~10 hours, go into deep sleep (state 4)
         MMA8653FC_standby();                            // sleep accelerometer
         pinMode(18, INPUT);                             // turn off I2C pins
         pinMode(19, INPUT);                             // or use Wire.end()?
+        turn_off_3V3();                                 // turn off bluetooth and other 3V devices
         deep_sleep();                                   // TODO switch to set eeprom value then reboot (will get even lower power draw)
       } // if
     } // for
@@ -409,6 +421,7 @@ void powerdown() {
     reboot();
 
   } // if
+
 }  // powerdown()
 
 
@@ -426,11 +439,11 @@ void sleep_mode(const int n)
   // set interrupt to wakeup
   //config.pinMode(WAKE_TILT, INPUT, CHANGE);  // was INPUT_PULLUP
 
-//#ifdef USE_HIBERNATE
+  //#ifdef USE_HIBERNATE
   Snooze.hibernate( config );
-//#else
-//  Snooze.deepSleep( config );
-//#endif
+  //#else
+  //  Snooze.deepSleep( config );
+  //#endif
 
 } // sleep_mode()
 
@@ -440,11 +453,11 @@ static SnoozeBlock config2;
 // sleep forever (until reset switch is pressed)
 void deep_sleep()
 {
-//#ifdef USE_HIBERNATE
+  //#ifdef USE_HIBERNATE
   Snooze.hibernate( config );
-//#else
-//  Snooze.deepSleep( config );
-//#endif
+  //#else
+  //  Snooze.deepSleep( config );
+  //#endif
 }
 
 // print message for every I2C device on the bus
