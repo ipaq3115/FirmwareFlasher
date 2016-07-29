@@ -1,3 +1,23 @@
+/*
+ * These are the strings which can be interpreted by the expr() function
+ * They are accessible through the following API calls:
+ * 
+ * save
+ * recall
+ * pulse_length
+ * pulse_distance
+ * pulsed_lights_brightness
+ * nonpulsed_lights_brightness
+ * 
+ * Example use:
+ * 
+ * 
+ * See the PhotosynQ firmware wiki for details
+ * 
+ * NOTE! If this file is updated, the wiki should also be updated!
+ * 
+ */
+
 
 #include <stdio.h>
 #include <string.h>

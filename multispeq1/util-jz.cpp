@@ -273,7 +273,7 @@ int battery_level(int load)
     digitalWriteFast(PULSE9, 1);
     digitalWriteFast(PULSE10, 1);
 
-    delay(20);          // there a slow filter on the circuit
+    delayMicroseconds(500);          // there a slow filter on the circuit
 
     // value after load
     value = 0;
@@ -345,8 +345,8 @@ int accel_changed()
   return changed;
 }  // accel_changed()
 
-//const unsigned long SHUTDOWN = (3 * 60 * 1000);   // power down after X min or seconds of inactivity (in msec)
-const unsigned long SHUTDOWN = (30 * 1000);     // quick powerdown, used for testing
+const unsigned long SHUTDOWN = (3 * 60 * 60 * 1000);   // power down after X min or seconds of inactivity (in msec)
+//const unsigned long SHUTDOWN = (30 * 1000);     // quick powerdown, used for testing
 static unsigned long last_activity = millis();
 
 // record that we have seen serial port activity (used with powerdown())

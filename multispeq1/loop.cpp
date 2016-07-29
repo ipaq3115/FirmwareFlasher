@@ -161,7 +161,7 @@ void do_command()
       delay(5000);
       turn_on_3V3();
       Serial_Print("3.3 on");
-      delay(5000);
+      delay(20000);
       turn_on_5V();
       Serial_Print("5v on");
       delay(5000);
@@ -1530,7 +1530,7 @@ void do_protocol()
            Recall and save values to the eeprom
         */
 
-        recall_save(recall_eeprom, save_eeprom);                                                    // Recall and save values to the eeprom.  If you save values to eeprom, you get those saved values returned to you to confirm that they have been saved successfully (so save automatically calls recall once complete)
+        recall_save(recall_eeprom, save_eeprom);                                                    // Recall and save values to the eeprom.
 
         if (spec_on == 1) {                                                                    // if the spec is being used, then read it and print data_raw as spec values.  Otherwise, print data_raw as multispeq detector values as per normal
           Serial_Print("\"data_raw\":[");
@@ -1711,15 +1711,18 @@ inline static void stopTimers() {
 // read userdef and other values from eeprom
 // example json for read: [{"recall":["light_slope_all","userdef[1]"]}]
 
+***
+
 static void recall_save(JsonArray _recall_eeprom, JsonArray _save_eeprom) {
   int number_saves = _save_eeprom.getLength();                                // define these explicitly to make it easier to understand the logic
   int number_recalls = _recall_eeprom.getLength();                            // define these explicitly to make it easier to understand the logic
 
   for (int i = 0; i < number_saves; i++) {                             // do any saves
     long location = _save_eeprom.getArray(i).getLong(0);
-    double value_to_save = _save_eeprom.getArray(i).getDouble(1);
+//    double value_to_save = _save_eeprom.getArray(i).getDouble(1);
+    String value_to_save = _save_eeprom.getArray(i).getString(1);
     if (location >= 0 && location <= (long)NUM_USERDEFS)
-      store(userdef[location], value_to_save);                         // save new value in the defined eeprom location
+      store(userdef[location], expr(value_to_save));                         // save new value in the defined eeprom location
   }
 
   if (number_recalls > 0) {                  // if the user is recalling any saved eeprom values then...
@@ -2386,6 +2389,15 @@ void get_set_device_info(const int _set) {
   // print
 
   int v = battery_percent(0);   // measured without load
+
+/*
+  turn_off_5V();
+  Serial_Printf("no 5 v");
+  Serial_Printf("\n battery percent: %d; battery level: %d \n",battery_percent(0), battery_level(0));
+  turn_on_5V();
+  Serial_Printf("5v on");
+  Serial_Printf("\n battery percent: %d; battery level: %d \n",battery_percent(0), battery_level(0));
+*/
 
   //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
   Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\"}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
