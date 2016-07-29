@@ -1711,8 +1711,6 @@ inline static void stopTimers() {
 // read userdef and other values from eeprom
 // example json for read: [{"recall":["light_slope_all","userdef[1]"]}]
 
-***
-
 static void recall_save(JsonArray _recall_eeprom, JsonArray _save_eeprom) {
   int number_saves = _save_eeprom.getLength();                                // define these explicitly to make it easier to understand the logic
   int number_recalls = _recall_eeprom.getLength();                            // define these explicitly to make it easier to understand the logic
@@ -1722,7 +1720,7 @@ static void recall_save(JsonArray _recall_eeprom, JsonArray _save_eeprom) {
 //    double value_to_save = _save_eeprom.getArray(i).getDouble(1);
     String value_to_save = _save_eeprom.getArray(i).getString(1);
     if (location >= 0 && location <= (long)NUM_USERDEFS)
-      store(userdef[location], expr(value_to_save));                         // save new value in the defined eeprom location
+      store(userdef[location], expr(value_to_save.c_str()));                         // save new value in the defined eeprom location
   }
 
   if (number_recalls > 0) {                  // if the user is recalling any saved eeprom values then...
