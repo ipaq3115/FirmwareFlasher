@@ -35,15 +35,17 @@ void turn_on_5V()
   // dither this on slowly to prevent a brownout - input to MK20 cannot fall below 2.7V
   pinMode(WAKE_DC, OUTPUT);
   for (int i = 0; i < 20; i++) {
-    digitalWriteFast(WAKE_DC, HIGH);
-    delayMicroseconds(1);
-    digitalWriteFast(WAKE_DC, LOW);    
-    delayMicroseconds(20);
+    digitalWriteFast(WAKE_DC, HIGH);  // on
+    for (int j = 0; j < 20; ++j) {
+        __asm__ volatile("nop");      // about .01 microseconds each plus loop overhead of ??
+    }
+    digitalWriteFast(WAKE_DC, LOW);   // off 
+    delayMicroseconds(20);            // allow supply to recover
   }
-  digitalWriteFast(WAKE_DC, HIGH);
-  delay(1000);                 // wait for power to stabilize
+  digitalWriteFast(WAKE_DC, HIGH);    // final state is on
+  delay(1000);                        // wait for power to stabilize
   // (re)initialize 5V chips
-  DAC_init();               // initialize DACs (5V)
+  DAC_init();                         // initialize DACs (5V)
   // note: ADC is initialized at use time
 }
 
