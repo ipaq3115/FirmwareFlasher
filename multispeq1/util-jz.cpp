@@ -32,13 +32,13 @@ void unset_pins(void);            // change pin states to save power
 void turn_on_5V()
 {
   // enable 5V and analog power - also DAC, ADC, Hall effect sensor
-  // TODO?  - dither this on slowly
+  // dither this on slowly to prevent a brownout - input to MK20 cannot fall below 2.7V
   pinMode(WAKE_DC, OUTPUT);
   for (int i = 0; i < 20; i++) {
     digitalWriteFast(WAKE_DC, HIGH);
     delayMicroseconds(1);
     digitalWriteFast(WAKE_DC, LOW);    
-    delayMicroseconds(10);
+    delayMicroseconds(20);
   }
   digitalWriteFast(WAKE_DC, HIGH);
   delay(1000);                 // wait for power to stabilize

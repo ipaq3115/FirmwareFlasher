@@ -99,7 +99,7 @@ const uint8_t LED_to_pin[NUM_LEDS + 1] = {0, PULSE1, PULSE2, PULSE3, PULSE4, PUL
 #define BAT_TEST  A10          // input to measure battery voltage
 #define USB_MEAS  A12          // input to measure USB voltage
 
-#define REF_VOLTAGE 1.2
+#define REF_VOLTAGE 1.195
 #define BAT_MIN_LOADED 3.4    // in volts, below this is too low
 #define BAT_MIN 3.5
 #define BAT_MAX 4.2
