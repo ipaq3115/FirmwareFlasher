@@ -29,19 +29,22 @@ void MLX90615_init(void);         // initialize contactless temperature sensor
 void PAR_init(void);              // initialize PAR and RGB sensor
 void unset_pins(void);            // change pin states to save power
 
-void turn_on_5V()
+void  __attribute__ (( noinline, noclone, optimize("Os") )) turn_on_5V()
 {
   // enable 5V and analog power - also DAC, ADC, Hall effect sensor
   // dither this on slowly to prevent a brownout - input to MK20 cannot fall below 2.7V
   pinMode(WAKE_DC, OUTPUT);
+
   for (int i = 0; i < 20; i++) {
     digitalWriteFast(WAKE_DC, HIGH);  // on
-    for (int j = 0; j < 20; ++j) {
-        __asm__ volatile("nop");      // about .01 microseconds each plus loop overhead of ??
+
+    for (int j = 0; j < i * 2; ++j) {
+      __asm__ volatile("nop");      // about .01 microseconds each plus loop overhead of ??
     }
-    digitalWriteFast(WAKE_DC, LOW);   // off 
-    delayMicroseconds(20);            // allow supply to recover
+    digitalWriteFast(WAKE_DC, LOW);   // off
+    delayMicroseconds(10);            // allow supply to recover
   }
+
   digitalWriteFast(WAKE_DC, HIGH);    // final state is on
   delay(1000);                        // wait for power to stabilize
   // (re)initialize 5V chips
@@ -375,8 +378,8 @@ void shutoff()
   MMA8653FC_low_power();  // lower power mode for accelerometer, adequate for wakeup
   turn_off_5V();          // was almost certainly already off
   turn_off_3V3();                                 // turn off bluetooth and other 3V devices
-//  Serial_Print("entering hibernate in 10 seconds");
-//  delay(10000);
+  //  Serial_Print("entering hibernate in 10 seconds");
+  //  delay(10000);
   unset_pins();
 }
 

@@ -4,6 +4,13 @@
 
 {
 
+case hash("5v"):
+    Serial_Print_Line("turn on 5V for 30 seconds");
+    turn_on_5V();
+    delay(30000);
+    turn_off_5V();
+    break;
+
 case hash("cut_through"):
   extern int cut_through;
   cut_through = 1;             // used with serial packet mode
