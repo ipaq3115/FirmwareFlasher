@@ -4,12 +4,13 @@
 
 {
 
-case hash("5v"):
-    Serial_Print_Line("turn on 5V for 30 seconds");
-    turn_on_5V();
-    delay(30000);
-    turn_off_5V();
-    break;
+case hash("on_5v"):
+  Serial_Print_Line("turn on 5V for 30 seconds");
+  turn_on_5V();
+  delay(30000);
+  turn_off_5V();
+  Serial_Print_Line("done");
+  break;
 
 case hash("cut_through"):
   extern int cut_through;
@@ -85,7 +86,7 @@ case hash("sleep"):
 
   accel_changed();   // get an initial reading
   shutoff();         // turn off most pins and power
-  
+
   MMA8653FC_standby();                            // sleep accelerometer
   pinMode(18, INPUT);                             // turn off I2C pins
   pinMode(19, INPUT);                             // or use Wire.end()?
@@ -150,10 +151,10 @@ case hash("adc_check"):                 // for testing
   turn_on_5V();                     // is normally off, but many of the below commands need it
   Serial_Print_Line("All ADC values");
   for (int i = 0; i < 8; ++i) {
-      Serial_Printf("AD %d = %d\n",i,AD7689_read(i));
+    Serial_Printf("AD %d = %d\n", i, AD7689_read(i));
   }
   break;
-  
+
 case hash("compiled"):
   Serial_Printf("Compiled on: %s %s\n", __DATE__, __TIME__);
   break;
