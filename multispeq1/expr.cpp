@@ -245,6 +245,10 @@ float variable(const char *name)
   } else if (strcmp( name, "adc_read_averaged" ) == 0 ) {
     value = adc_read_averaged;
 
+/* Values saved to EEPROM
+ * 
+ */
+
   } else  if (strncmp( name, "detector_offset_slope[", 22) == 0 ) {
     unsigned index = atoi(name + 22);
     if (index < 4)

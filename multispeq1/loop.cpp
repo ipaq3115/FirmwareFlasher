@@ -145,30 +145,37 @@ void do_command()
       Serial_Print_Line(" Ready");
       break;
 
-    case 1001:
+    case hash("set_dac"):
+      Serial_Print("on 5v, ");
       turn_on_5V();                     // is normally off, but many of the below commands need it
       // standard startup routine for new device
       DAC_set_address(LDAC1, 0, 1);                                                 // Set DAC addresses to 1,2,3 assuming addresses are unset and all are factory (0,0,0)
+      Serial_Print("dac 1, ");
       DAC_set_address(LDAC2, 0, 2);
+      Serial_Print("dac 2, ");
       DAC_set_address(LDAC3, 0, 3);
+      Serial_Print_Line("dac 3");
       get_set_device_info(1);                                                           //  input device info and write to eeprom
       break;
 
     case hash("cycle5v"):
+      Serial_Print_Line("turning off 5v in 3 seconds...");
+      delay(3000);
       turn_off_5V();
+      Serial_Print_Line("turning off 3.3v in 3 seconds...");
+      delay(3000);
       turn_off_3V3();
-      Serial_Print("all off");
-      delay(5000);
+      Serial_Print_Line("turning on 3.3v in 3 seconds...");
+      delay(3000);
       turn_on_3V3();
-      Serial_Print("3.3 on");
-      delay(20000);
+      Serial_Print_Line("turning on 5v in 3 seconds...");
+      delay(3000);
       turn_on_5V();
-      Serial_Print("5v on");
-      delay(5000);
-      reboot();
+      delay(3000);
+      Serial_Print_Line("reboot before rerunning as states may be weird now");
       break;
-      
-    case 1002:                                                                          // continuously output until user enter -1+
+
+    case hash("all_sensors"):                                                                          // continuously output until user enter -1+
       {
         int Xcomp, Ycomp, Zcomp;
         int Xval, Yval, Zval;
@@ -200,7 +207,7 @@ void do_command()
       }
       break;
 
-    case 1003:
+    case hash("any_light"):
       {
         turn_on_5V();                  // turn on 5V to turn on the lights
         Serial_Print_Line("\"message\": \"Enter led # setting followed by +: \"}");
@@ -217,7 +224,7 @@ void do_command()
       }
       break;
 
-    case 1006:
+    case hash("print_memory"):
       print_calibrations();
       break;
 
@@ -226,69 +233,63 @@ void do_command()
       get_set_device_info(0);
       break;
 
-    case hash("set_device_info"):  // set the device name and 
+    case hash("set_device_info"):  // set the device name and
     case 1008:
       get_set_device_info(1);
       break;
 
     case hash("configure_bluetooth"):  // set the bluetooth name and baud rate
-    case 1009:
       configure_bluetooth();
       break;
 
-    case hash("LED_1"):
-    case 1011:
+    case hash("light1"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE1");
       DAC_set(1, 300);
       DAC_change();
       digitalWriteFast(PULSE1, HIGH);
-      delay(5000);
+      delay(1000);
       digitalWriteFast(PULSE1, LOW);
       DAC_set(1, 0);
       DAC_change();
       break;
-    case hash("LED_2"):
-    case 1012:
+    case hash("light2"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE2");
       DAC_set(2, 300);
       DAC_change();
       digitalWriteFast(PULSE2, HIGH);
-      delay(5000);
+      delay(1000);
       digitalWriteFast(PULSE2, LOW);
       DAC_set(2, 0);
       DAC_change();
       break;
-    case hash("LED_3"):
-    case 1013:
+    case hash("light3"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE3");
       DAC_set(3, 300);
       DAC_change();
       digitalWriteFast(PULSE3, HIGH);
-      delay(5000);
+      delay(1000);
       digitalWriteFast(PULSE3, LOW);
       DAC_set(3, 0);
       DAC_change();
       break;
-    case hash("LED_4"):
-    case 1014:
+    case hash("light4"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE4");
       DAC_set(4, 300);
       DAC_change();
       digitalWriteFast(PULSE4, HIGH);
-      delay(5000);
+      delay(1000);
       digitalWriteFast(PULSE4, LOW);
       DAC_set(4, 0);
       DAC_change();
       break;
-    case hash("LED_5"):
-    case 1015:
+    case hash("light5"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE5");
-      DAC_set(5, 150);
+      DAC_set(5, 300);
       DAC_change();
       digitalWriteFast(PULSE5, HIGH);
       delay(1000);
@@ -296,11 +297,10 @@ void do_command()
       DAC_set(5, 0);
       DAC_change();
       break;
-    case hash("LED_6"):
-    case 1016:
+    case hash("light6"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE6");
-      DAC_set(6, 100);
+      DAC_set(6, 300);
       DAC_change();
       digitalWriteFast(PULSE6, HIGH);
       delay(1000);
@@ -308,8 +308,7 @@ void do_command()
       DAC_set(6, 0);
       DAC_change();
       break;
-    case hash("LED_7"):
-    case 1017:
+    case hash("light7"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE7");
       DAC_set(7, 300);
@@ -320,11 +319,10 @@ void do_command()
       DAC_set(7, 0);
       DAC_change();
       break;
-    case hash("LED_8"):
-    case 1018:
+    case hash("light8"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE8");
-      DAC_set(8, 100);
+      DAC_set(8, 300);
       DAC_change();
       digitalWriteFast(PULSE8, HIGH);
       delay(1000);
@@ -332,11 +330,10 @@ void do_command()
       DAC_set(8, 0);
       DAC_change();
       break;
-    case hash("LED_9"):
-    case 1019:
+    case hash("light9"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE9");
-      DAC_set(9, 100);
+      DAC_set(9, 300);
       DAC_change();
       digitalWriteFast(PULSE9, HIGH);
       delay(1000);
@@ -344,11 +341,10 @@ void do_command()
       DAC_set(9, 0);
       DAC_change();
       break;
-    case hash("LED_10"):
-    case 1020:
+    case hash("light10"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE10");
-      DAC_set(10, 100);
+      DAC_set(10, 300);
       DAC_change();
       digitalWriteFast(PULSE10, HIGH);
       delay(1000);
@@ -358,7 +354,6 @@ void do_command()
       break;
 
     case hash("set_serial"):
-    case 1021:                                                                            // variety of test commands used during development
       {
 
         Serial_Print("Enter 1/2/3/4+\n");
@@ -905,26 +900,26 @@ void do_protocol()
         //resolution1 - 2 - 16
         //conversion_speed - 0 - 5
         //sampling_speed - 0 - 5
-/*
-        int averaging0 =          hashTable.getLong("averaging");                               // # of ADC internal averages
-        if (averaging0 == 0) {                                                                   // if averaging0 don't exist, set it to 10 automatically.
-          averaging0 = 10;
-        }
-        //int averaging1 = averaging0;
-        int resolution0 =         hashTable.getLong("resolution");                               // adc resolution (# of bits)
-        if (resolution0 == 0) {                                                                   // if resolution0 don't exist, set it to 16 automatically.
-          resolution0 = 16;
-        }
-        //int resolution1 = resolution0;
-        int conversion_speed =    hashTable.getLong("conversion_speed");                               // ADC speed to convert analog to digital signal (5 fast, 0 slow)
-        if (conversion_speed == 0) {                                                                   // if conversion_speed don't exist, set it to 3 automatically.
-          conversion_speed = 3;
-        }
-        int sampling_speed =      hashTable.getLong("sampling_speed");                               // ADC speed of sampling (5 fast, 0 slow)
-        if (sampling_speed == 0) {                                                                   // if sampling_speed don't exist, set it to 3 automatically.
-          sampling_speed = 3;
-        }
-*/
+        /*
+                int averaging0 =          hashTable.getLong("averaging");                               // # of ADC internal averages
+                if (averaging0 == 0) {                                                                   // if averaging0 don't exist, set it to 10 automatically.
+                  averaging0 = 10;
+                }
+                //int averaging1 = averaging0;
+                int resolution0 =         hashTable.getLong("resolution");                               // adc resolution (# of bits)
+                if (resolution0 == 0) {                                                                   // if resolution0 don't exist, set it to 16 automatically.
+                  resolution0 = 16;
+                }
+                //int resolution1 = resolution0;
+                int conversion_speed =    hashTable.getLong("conversion_speed");                               // ADC speed to convert analog to digital signal (5 fast, 0 slow)
+                if (conversion_speed == 0) {                                                                   // if conversion_speed don't exist, set it to 3 automatically.
+                  conversion_speed = 3;
+                }
+                int sampling_speed =      hashTable.getLong("sampling_speed");                               // ADC speed of sampling (5 fast, 0 slow)
+                if (sampling_speed == 0) {                                                                   // if sampling_speed don't exist, set it to 3 automatically.
+                  sampling_speed = 3;
+                }
+        */
         //        int tcs_to_act =            hashTable.getLong("tcs_to_act");                               // sets the % of response from the tcs light sensor to act as actinic during the run (values 1 - 100).  If tcs_to_act is not defined (ie == 0), then the act_background_light intensity is set to actintensity1.
         //int offset_off =          hashTable.getLong("offset_off");                               // turn off detector offsets (default == 0 which is on, set == 1 to turn offsets off)
 
@@ -1082,8 +1077,9 @@ void do_protocol()
         analog_read = digital_read = adc_read = 0;
         analog_read_averaged = digital_read_averaged = adc_read_averaged = 0;
 
-        //!!! when offset gets recalculated I need to reposition this later, since pulsesize is now an array
-        //        calculate_offset(pulsesize);                                                                    // calculate the offset, based on the pulsesize and the calibration values (ax+b)
+        if (hashTable.getLong("open_close_start") == 1) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
+          start_on_open_close();
+        }
 
         // perform the protocol averages times
         for (int x = 0; x < averages; x++) {                                                 // Repeat the protocol this many times
@@ -1104,10 +1100,6 @@ void do_protocol()
           float _reference_start = 0;                                                            // reference value at data point 0 - initial value for normalizing the reference (normalized based on the values from main and reference in the first point in the trace)
           float _main_start = 0;                                                               // main detector (sample) value at data point 0 - initial value for normalizing the reference (normalized based on the values from main and reference in the first point in the trace)
           uint16_t _number_samples = 0;                                                               // create the adc sampling rate number
-
-          if (hashTable.getLong("open_close_start") == 1) {                                     // wait for device to open (read hall sensor), then close before proceeding with measurement
-            start_on_open_close();
-          }
 
           environmentals(environmental, averages, x, 0);
 
@@ -1198,7 +1190,7 @@ void do_protocol()
 
             String sizeString = pulsesize.getArray(cycle).getString(meas_number % meas_array_size);     // set the pulse size for the next light
             _pulsesize = expr(sizeString.c_str());
-            
+
             if (_number_samples == 0) {                                                                    // if _number_samples wasn't set or == 0, set it automatically to 19 (default)
               _number_samples = 19;
             }
@@ -1214,7 +1206,7 @@ void do_protocol()
               Serial_Printf("measurement light, intensity, detector, reference:  %d, %d, %d, %d\n", _meas_light, _m_intensity, detector, _reference);
               Serial_Printf("pulsedistance = %d, pulsesize = %d, cycle = %d, measurement number = %d, measurement array size = %d,total pulses = %d\n", (int) _pulsedistance, (int) _pulsesize, (int) cycle, (int) meas_number, (int) meas_array_size, (int) total_pulses);
             } // PULSERDEBUG
-            
+
             if (pulse < meas_array_size) {   // if it's the first pulse of a cycle, then change act 1,2,3,4 values as per array's set at beginning of the file
 
               if (pulse == 0) {
@@ -1290,7 +1282,7 @@ void do_protocol()
                 DAC_set(_meas_light, par_to_dac(_m_intensity, _meas_light));       // set the DAC, make sure to convert PAR intensity to DAC value
               else                                                                 // otherwise evaluate directly as a number to enter into the DAC
                 DAC_set(_meas_light, _m_intensity);                                // set the DAC, make sure to convert PAR intensity to DAC value
-              
+
               for (unsigned i = 0; i < NUM_LEDS; i++) {                         // set the DAC lights for actinic lights in the current pulse set
                 if (_a_lights[i] != 0) {                                        // if there's a light there, then change it, otherwise skip
                   if (!dac_lights) {                                                                            // evaluate as an expression...
@@ -1323,7 +1315,7 @@ void do_protocol()
             uint16_t sample_adc_ref[_number_samples];
             //            uint16_t startTimer;                                                                            // to measure the actual time it takes to perform the ADC reads on the sample (for debugging)
             //            uint16_t endTimer;
-      
+
             pulse_done = 0;             // clear volatile ISR done flag
             while (!pulse_done) {       // wait for LED pulse complete (in ISR)
               //if (abort_cmd())
@@ -1717,7 +1709,7 @@ static void recall_save(JsonArray _recall_eeprom, JsonArray _save_eeprom) {
 
   for (int i = 0; i < number_saves; i++) {                             // do any saves
     long location = _save_eeprom.getArray(i).getLong(0);
-//    double value_to_save = _save_eeprom.getArray(i).getDouble(1);
+    //    double value_to_save = _save_eeprom.getArray(i).getDouble(1);
     String value_to_save = _save_eeprom.getArray(i).getString(1);
     if (location >= 0 && location <= (long)NUM_USERDEFS)
       store(userdef[location], expr(value_to_save.c_str()));                         // save new value in the defined eeprom location
@@ -1807,21 +1799,21 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
     digitalWriteFast(LED_to_pin[this_light], LOW);            // turn off measuring light
     if (i >= 1 && i <= 4) {               // skip the first and last because I'm paranoid to make 48 total samples :)
       AD7689_read_array(this_sample_adc, 19);                                              // read detector, 19 values and save them in this_sample_adc
-      thisData[i-1] = median16(this_sample_adc, 19);
-/*
-      for (int i = 0; i < 19; i++) {
-        Serial.print(this_sample_adc[i]);
-        Serial.print(",");
-      }
-*/
+      thisData[i - 1] = median16(this_sample_adc, 19);
+      /*
+            for (int i = 0; i < 19; i++) {
+              Serial.print(this_sample_adc[i]);
+              Serial.print(",");
+            }
+      */
     }
-//    Serial_Print_Line("");
+    //    Serial_Print_Line("");
     interrupts();                                             // re-enable interrupts (left off after LED ISR)
     digitalWriteFast(HOLDM, HIGH);                            // discharge integrators
     digitalWriteFast(HOLDADD, HIGH);
   }
   if (detector_read1or2or3 == 1) {                                                                 // save in detector_read1 or 2 depending on which is called
-    detector_read1 = median16(thisData,4);                                             // using median - 25% improvements over using mean to determine this value
+    detector_read1 = median16(thisData, 4);                                            // using median - 25% improvements over using mean to determine this value
     detector_read1_averaged += detector_read1 / _averages;
     //    Serial_Printf("read1: %f\n",detector_read1);
   }
@@ -2388,14 +2380,14 @@ void get_set_device_info(const int _set) {
 
   int v = battery_percent(0);   // measured without load
 
-/*
-  turn_off_5V();
-  Serial_Printf("no 5 v");
-  Serial_Printf("\n battery percent: %d; battery level: %d \n",battery_percent(0), battery_level(0));
-  turn_on_5V();
-  Serial_Printf("5v on");
-  Serial_Printf("\n battery percent: %d; battery level: %d \n",battery_percent(0), battery_level(0));
-*/
+  /*
+    turn_off_5V();
+    Serial_Printf("no 5 v");
+    Serial_Printf("\n battery percent: %d; battery level: %d \n",battery_percent(0), battery_level(0));
+    turn_on_5V();
+    Serial_Printf("5v on");
+    Serial_Printf("\n battery percent: %d; battery level: %d \n",battery_percent(0), battery_level(0));
+  */
 
   //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
   Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\"}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
