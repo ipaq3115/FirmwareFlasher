@@ -12,8 +12,12 @@ const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 //#define NO_ADDON        // uncomment if add-on board isn't present (one missing DAC, etc)
 #define CORAL_SPEQ 0
 
+// new in 1.08 -->
+// removed the 30 second auto-progress relating to open-close-start (now waits forever)
+//
+
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
-#define DEVICE_FIRMWARE "1.06"
+#define DEVICE_FIRMWARE "1.10"
 #define DEVICE_NAME "MultispeQ"
 #define DEVICE_VERSION "1"
      
@@ -173,11 +177,13 @@ EXTERN float temperature_averaged, humidity_averaged, pressure_averaged;
 EXTERN float temperature2, humidity2, pressure2;
 EXTERN float temperature2_averaged, humidity2_averaged, pressure2_averaged;
 
+EXTERN float co2, co2_averaged;
+
 EXTERN float detector_read1, detector_read2, detector_read3;
 EXTERN float detector_read1_averaged, detector_read2_averaged,detector_read3_averaged;
 
-EXTERN float analog_read, digital_read, adc_read;
-EXTERN float analog_read_averaged, digital_read_averaged, adc_read_averaged;
+EXTERN float analog_read, digital_read, adc_read, adc_read2, adc_read3;
+EXTERN float analog_read_averaged, digital_read_averaged, adc_read_averaged, adc_read2_averaged, adc_read3_averaged;
 
 // pressure/temp/humidity sensors
 EXTERN Adafruit_BME280 bme1;        // I2C sensor

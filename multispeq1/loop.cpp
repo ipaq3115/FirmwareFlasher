@@ -34,12 +34,14 @@ void MMA8653FC_standby(void);
 float MLX90615_Read(int TaTo);
 uint16_t par_to_dac (float _par, uint16_t _pin);
 float light_intensity_raw_to_par (float _light_intensity_raw, float _r, float _g, float _b);
+unsigned long requestCo2(int timeout);
 static void print_all (void);
 float expr(const char str[]);
 void do_protocol(void);
 void do_command(void);
 void print_calibrations(void);
 void start_on_open_close(void);
+void start_on_pin_high(int pin);
 void get_compass_and_angle (int notRaw, int _averages);
 float get_thickness (int notRaw, int _averages);
 float get_contactless_temp (int _averages);
@@ -361,30 +363,6 @@ void do_command()
         Serial_Printf("set serial to %d\n", (int)setserial);
         Serial_Set((int) setserial);
         Serial_Print_Line("test print");
-
-        /*
-                  char S[10];
-                  Serial_Print_Line(eeprom->userdef[0], 4);                                                                   // test the Serial_Input_Chars() command and saving values in userdef
-                  Serial_Input_Chars(S, "+", 20000, sizeof(S));
-                  Serial_Printf("output is %s \n", S);
-                  eeprom->userdef[0] = atof(S);
-          Serial_Print_Line(eeprom->userdef[1], 4);
-          store(userdef[1], Serial_Input_Double("+", 20000));                                                      // test Serial_Input_Double, save as userdef and recall
-
-          Serial_Printf("output is %f \n", (float) eeprom->userdef[1]);
-          // so measure the size of the string and if it's > 5000 then tell the user that the protocol is too long
-        */
-        /*
-                  Serial_Print("enter BLE baud rate (9600, 19200, 38400,57600) followed by +");                         //  Change the baud rate of the BLE
-                  long baudrate = Serial_Input_Long();
-                  Serial_Begin((int) baudrate);
-
-                  Serial_Print("Enter 1/2/3/4+\n");
-                  long setserial = Serial_Input_Long();
-                  Serial_Printf("set serial to %d\n", (int)setserial);
-                  Serial_Set((int) setserial);
-                  Serial_Print_Line("test print");
-        */
       }
       break;
 
@@ -433,7 +411,6 @@ void do_command()
       }
       break;
     case hash("set_par"):
-    case 1034: // PAR calibration values
       store(light_slope_all, Serial_Input_Double("+", 0));
       store(light_slope_r, Serial_Input_Double("+", 0));
       store(light_slope_g, Serial_Input_Double("+", 0));
@@ -441,35 +418,33 @@ void do_command()
       store(light_yint, Serial_Input_Double("+", 0));
       break;
     case hash("set_thickness"):
-    case 1039: // thickness values (poly regression + min + max)
       store(thickness_a, Serial_Input_Double("+", 0));
       store(thickness_b, Serial_Input_Double("+", 0));
       store(thickness_c, Serial_Input_Double("+", 0));
       store(thickness_min, Serial_Input_Double("+", 0));
       store(thickness_max, Serial_Input_Double("+", 0));
       break;
+    case hash("set_thickness_quick"):
+      store(thickness_min, Serial_Input_Double("+", 0));
+      store(thickness_max, Serial_Input_Double("+", 0));
+      break;
     case hash("set_detector1_offset"):
-    case 1040: // detector 1 offset
       store(detector_offset_slope[0], Serial_Input_Double("+", 0));
       store(detector_offset_yint[0], Serial_Input_Double("+", 0));
       break;
     case hash("set_detector2_offset"):
-    case 1041: // detector 2 offset
       store(detector_offset_slope[1], Serial_Input_Double("+", 0));
       store(detector_offset_yint[1], Serial_Input_Double("+", 0));
       break;
     case hash("set_detector3_offset"):
-    case 1042: // detector 3 offset
       store(detector_offset_slope[2], Serial_Input_Double("+", 0));
       store(detector_offset_yint[2], Serial_Input_Double("+", 0));
       break;
     case hash("set_detector4_offset"):
-    case 1043: // detector 4 offset
       store(detector_offset_slope[3], Serial_Input_Double("+", 0));
       store(detector_offset_yint[3], Serial_Input_Double("+", 0));
       break;
     case hash("set_led_par"):
-    case 1044: // LED PAR calibration (poly fit)
       {
         for (;;) {
           int led = Serial_Input_Double("+", 0);
@@ -487,8 +462,7 @@ void do_command()
         }
       }
       break;
-    case hash("set_ir_correction"):
-    case 1045: // IR baseline correction slope and yint
+    case hash("ir_baseline"):
       {
         for (;;) {
           int led = Serial_Input_Double("+", 0);
@@ -505,8 +479,7 @@ void do_command()
         }
       }
       break;
-    case hash("set_absorbance_1"):
-    case 1046: // calibration of absorbance (for example, SPAD), intensity level 1
+    case hash("set_colorcal1"):
       {
         for (;;) {
           int led = Serial_Input_Double("+", 0);
@@ -523,8 +496,7 @@ void do_command()
         }
       }
       break;
-    case hash("set_absorbance_2"):
-    case 1047: // calibration of absorbance (for example, SPAD), intensity level 2
+    case hash("set_colorcal2"):
       {
         for (;;) {
           int led = Serial_Input_Double("+", 0);
@@ -541,8 +513,7 @@ void do_command()
         }
       }
       break;
-    case hash("set_absorbance_3"):
-    case 1048: // calibration of absorbance (for example, SPAD), intensity level 2
+    case hash("set_colorcal3"):
       {
         for (;;) {
           int led = Serial_Input_Double("+", 0);
@@ -559,8 +530,7 @@ void do_command()
         }
       }
       break;
-    case hash("set_absorbance_blanks"):
-    case 1049: // absorbance blanks (true blank, single paper, 3 paper folded)
+    case hash("set_colorcal_blanks"):
       {
         for (;;) {
           int led = Serial_Input_Double("+", 0);
@@ -579,7 +549,6 @@ void do_command()
       }
       break;
     case hash("set_user_defined"):
-    case 1050: // userdefined saved values
       {
         for (;;) {
           int userdefID = Serial_Input_Double("+", 0);
@@ -595,6 +564,79 @@ void do_command()
         }
       }
       break;
+
+    case hash("read_pin"): {
+        int thisPin = Serial_Input_Double("+", 0);
+        pinMode(thisPin, INPUT);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+        Serial_Print_Line(analogRead(thisPin));
+        delay(200);
+      }
+      break;
+
+    case hash("digital_read_pin"): {
+        int thisPin = Serial_Input_Double("+", 0);
+        pinMode(thisPin, INPUT);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+        Serial_Print_Line(digitalRead(thisPin));
+        delay(200);
+      }
+      break;
+
 
     case hash("print_magnetometer_bias"):
     case 1051:
@@ -702,6 +744,18 @@ void do_command()
     case 1100:
       break;
 
+    case hash("tcs_length"):
+      {
+        int before = micros();
+        float theValue = get_light_intensity(1);                                                                            // print everything in the eeprom (all values defined in eeprom.h)
+        int after = micros();
+        Serial_Print_Line("");
+        Serial_Print_Line(after - before);
+        Serial_Print("tcs_output ");
+        Serial_Print_Line(theValue);
+      }
+      break;
+
 #include "loop-switch-jz.h"
 
     default:
@@ -719,9 +773,9 @@ void do_command()
 void do_protocol()
 {
 
-  const int serial_buffer_size = 6000;                                        // max size of the incoming jsons
+  const int serial_buffer_size = 7000;                                        // max size of the incoming jsons
   const int max_jsons = 15;                                                   // max number of protocols per measurement
-  const int MAX_JSON_ELEMENTS = 700;      //
+  const int MAX_JSON_ELEMENTS = 800;      //
 
   int averages = 1;                        // ??
   uint8_t spec_on = 0;                    // flag to indicate that spec is being used during this measurement
@@ -750,6 +804,14 @@ void do_protocol()
 
   int number_of_protocols = 0;
 
+  // make sure that DEBUG_DC and SS2 are set as an input pin and pulled low.  These are used for factory calibration.
+
+  /*
+    pinMode(DEBUG_DC, INPUT);
+    digitalWrite(DEBUG_DC, LOW);
+    pinMode(SS2, INPUT);
+    digitalWrite(SS2, LOW);
+  */
   String json2 [max_jsons];     // TODO - don't use String   // will contain each json
   for (int i = 0; i < max_jsons; i++) {
     json2[i] = "";                                                              // reset all json2 char's to zero (ie reset all protocols)
@@ -1070,15 +1132,21 @@ void do_protocol()
         temperature2 = humidity2 = pressure2 = 0;
         temperature2_averaged = humidity2_averaged = pressure2_averaged = 0;
 
+        co2 = co2_averaged = 0;
+
         detector_read1 = detector_read1_averaged = 0;
         detector_read2 = detector_read2_averaged = 0;
         detector_read3 = detector_read3_averaged = 0;
 
-        analog_read = digital_read = adc_read = 0;
-        analog_read_averaged = digital_read_averaged = adc_read_averaged = 0;
+        analog_read = digital_read = adc_read = adc_read2 = adc_read3 = 0;
+        analog_read_averaged = digital_read_averaged = adc_read_averaged = adc_read2_averaged = adc_read3_averaged = 0;
 
         if (hashTable.getLong("open_close_start") == 1) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
           start_on_open_close();
+        }
+
+        if (hashTable.getLong("pin_high_start") != 0) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
+          start_on_pin_high(hashTable.getLong("pin_high_start"));
         }
 
         // perform the protocol averages times
@@ -1258,7 +1326,7 @@ void do_protocol()
                   }
                   else if (_message_type == "prompt") {                                                    // wait for user to input information, followed by +
                     stopTimers();                                                                         // pause the timers (so the measuring light doesn't stay on
-                    char response[100];
+                    char response[700];
                     Serial_Input_Chars(response, "+", 0, sizeof(response));
                     Serial_Print("\"");
                     Serial_Print(response);
@@ -1272,6 +1340,7 @@ void do_protocol()
                     Serial_Print("],");
                   }
                 }
+                delayMicroseconds(200);
               }
 
               // calculate_intensity(_meas_light, tcs_to_act, cycle, _light_intensity);                   // in addition, calculate the intensity of the current measuring light
@@ -1912,6 +1981,21 @@ float get_analog_read (int pin, int _averages) {
   return analog_read;
 }
 
+
+
+float get_co2(int _averages) {
+  co2 = requestCo2(2000);
+//  co2 = getCo2(response);
+  delay(100);
+  co2_averaged += (float) co2 / _averages;
+#ifdef DEBUGSIMPLE
+  Serial_Print("\"co2_content\":");
+  Serial_Print(co2_value);
+  Serial_Print(",");
+#endif
+  return co2;
+}
+
 float get_digital_read (int pin, int _averages) {
   digital_read = digitalRead(pin);
   digital_read_averaged += (float) digital_read / _averages;
@@ -1922,6 +2006,16 @@ float get_adc_read (int adc_channel, int _averages) {       // adc channels 1 - 
   adc_read = AD7689_read(adc_channel + 3);
   adc_read_averaged += (float) adc_read / _averages;
   return adc_read;
+}
+float get_adc_read2 (int adc_channel, int _averages) {       // adc channels 1 - 4 available through USB 3.0 port.  Actual channels are 4 - 7, so take user value and add 3
+  adc_read2 = AD7689_read(adc_channel + 3);
+  adc_read2_averaged += (float) adc_read2 / _averages;
+  return adc_read2;
+}
+float get_adc_read3 (int adc_channel, int _averages) {       // adc channels 1 - 4 available through USB 3.0 port.  Actual channels are 4 - 7, so take user value and add 3
+  adc_read3 = AD7689_read(adc_channel + 3);
+  adc_read3_averaged += (float) adc_read3 / _averages;
+  return adc_read3;
 }
 
 // check for commands to read various envirmental sensors
@@ -2041,6 +2135,13 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       }
     }
 
+    else if (thisSensor == "co2") {                            // perform digital reads
+      get_co2(_averages);
+      if (count == _averages - 1 && oneOrArray == 0) {
+        Serial_Printf("\"co2\":%f,", co2_averaged);
+      }
+    }
+
     else if (thisSensor == "adc_read") {                      // perform digital reads
       int adc_channel = environmental.getArray(i).getLong(1);
       get_adc_read(adc_channel, _averages);
@@ -2049,10 +2150,28 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       }
     }
 
+    else if (thisSensor == "adc_read2") {                      // perform digital reads
+      int adc_channel = environmental.getArray(i).getLong(1);
+      get_adc_read2(adc_channel, _averages);
+      if (count == _averages - 1 && oneOrArray == 0) {
+        Serial_Printf("\"adc_read2\":%f,", adc_read2_averaged);
+      }
+    }
+
+    else if (thisSensor == "adc_read3") {                      // perform digital reads
+      int adc_channel = environmental.getArray(i).getLong(1);
+      get_adc_read3(adc_channel, _averages);
+      if (count == _averages - 1 && oneOrArray == 0) {
+        Serial_Printf("\"adc_read3\":%f,", adc_read3_averaged);
+      }
+    }
+
     else if (thisSensor == "digital_write") {                      // perform digital write
       int pin = environmental.getArray(i).getLong(1);
       int setting = environmental.getArray(i).getLong(2);
+      Serial_Flush_Input();
       pinMode(pin, OUTPUT);
+      //      delayMicroseconds(300);
       digitalWriteFast(pin, setting);
     }
 
@@ -2308,6 +2427,18 @@ theReadings getReadings (const char* _thisSensor) {                       // get
   }
   else if (!strcmp(_thisSensor, "adc_read")) {
     _theReadings.reading1 = "adc_read";
+    _theReadings.numberReadings = 1;
+  }
+  else if (!strcmp(_thisSensor, "adc_read2")) {
+    _theReadings.reading1 = "adc_read2";
+    _theReadings.numberReadings = 1;
+  }
+  else if (!strcmp(_thisSensor, "adc_read3")) {
+    _theReadings.reading1 = "adc_read3";
+    _theReadings.numberReadings = 1;
+  }
+  else if (!strcmp(_thisSensor, "co2")) {
+    _theReadings.reading1 = "co2";
     _theReadings.numberReadings = 1;
   }
   else if (!strcmp(_thisSensor, "temperature_humidity_pressure2")) {

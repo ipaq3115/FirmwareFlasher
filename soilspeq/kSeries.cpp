@@ -26,7 +26,7 @@ kSeries :: kSeries(uint8_t Rx, uint8_t Tx)
 {
 
 #ifdef JZ
-  this->_Serial = &Serial1;
+  this->_Serial = &Serial2;
 #else
   this->_Serial = new SoftwareSerial(Rx, Tx);
 #endif
