@@ -547,12 +547,12 @@ void timefromcompiler(void) {
 
 // change Bluetooth Classic module from defaults - only needed once
 
-static const char* bt_response = "OKOKlinvorV1.8OKsetPINOKsetnameOK115200"; // Expected response from bt module after programming is done.
+static const char* bt_response = "OKhc01.comV2.0OKsetPINOKsetnameOK11520"; // Expected response from bt module after programming is done.
 
 int verifyresults() {                      // This function grabs the response from the bt Module and compares it for validity.
   int makeSerialStringPosition;
   int inByte;
-  char serialReadString[50];
+  char serialReadString[51];
   inByte = Serial1.read();
   makeSerialStringPosition = 0;
   if (inByte > 0) {                                                // If we see data (inByte > 0)

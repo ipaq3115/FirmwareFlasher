@@ -199,6 +199,16 @@ float measure_hall() {
   return hall_value;
 }
 
+void start_on_pin_high(int pin) {
+  pinMode(pin, INPUT);
+  uint16_t go = 0;
+  while (go == 0) {
+    go = digitalRead(pin);
+    delayMicroseconds(100);
+//    Serial_Print_Line(go);
+    }   
+}
+
 
 void start_on_open_close() {
   // take an initial measurement as a baseline (closed position)
@@ -281,9 +291,6 @@ void start_on_open_close() {
       Serial.printf("2st isflipped = 1 75% to exit, %f > %f\n", current_position - start_position, .75 * (clamp_open - clamp_closed));
       Serial.printf("2st isflipped = 1 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
           */
-      if (millis() - start_time > 30000) { // if it's been more than 7 seconds,then bail
-        goto end;
-      }
       delay(150);                                                               // measure every 150ms
     }
 end:
@@ -292,6 +299,56 @@ end:
   }
 }
 
+// Sensair S8 CO2 requests.  Only works if you have connected the sensair on Serial Port 3
 
-
-
+unsigned long requestCo2(int timeout) {
+  byte readCO2[] = {
+    0xFE, 0X44, 0X00, 0X08, 0X02, 0X9F, 0X25};                             //Command packet to read CO2 (see app note)
+  byte response[] = {
+    0,0,0,0,0,0,0};                                                        //create an array to store CO2 response
+  float valMultiplier = 1;
+  int CO2calibration = 17;                                                 // manual CO2 calibration pin (CO2 sensor has auto-calibration, so manual calibration is only necessary when you don't want to wait for autocalibration to occur - see datasheet for details 
+  int error = 0;
+  long start1 = millis();
+  long end1 = millis();
+  while(!Serial2.available()) { //keep sending request until we start to get a response
+    Serial2.write(readCO2,7);
+    delay(50);
+    end1 = millis();
+    if (end1 - start1 > timeout) {
+      Serial_Print("\"error\":\"no co2 sensor found\"");
+      Serial_Print(",");
+      int error = 1;
+      break;
+    }
+  }
+  switch (error) {
+  case 0:
+    while(Serial2.available() < 7 ) //Wait to get a 7 byte response
+    {
+      timeout++;  
+      if(timeout > 10) {   //if it takes to long there was probably an error
+#ifdef DEBUGSIMPLE
+        Serial_Print_Line("I timed out!");
+#endif
+        while(Serial2.available())  //flush whatever we have
+            Serial2.read();
+        break;                        //exit and try again
+      }
+      delay(50);
+    }
+    for (int i=0; i < 7; i++) {
+      response[i] = Serial2.read();    
+#ifdef DEBUGSIMPLE
+      Serial_Print_Line("I got it!");
+#endif
+    }  
+    break;
+  case 1:
+    break;
+  }
+  int high = response[3];                        //high byte for value is 4th byte in packet in the packet
+  int low = response[4];                         //low byte for value is 5th byte in the packet
+  unsigned long val = high*256 + low;                //Combine high byte and low byte with this formula to get value
+  return val* valMultiplier;
+}

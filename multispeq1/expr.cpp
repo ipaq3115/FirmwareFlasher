@@ -203,6 +203,12 @@ float variable(const char *name)
   } else if (strcmp( name, "pressure2_averaged" ) == 0 ) {
     value = pressure2_averaged;
 
+  } else if (strcmp( name, "co2" ) == 0 ) {
+    value = co2;
+
+  } else if (strcmp( name, "co2_averaged" ) == 0 ) {
+    value = co2_averaged;
+
   } else if (strcmp( name, "light_yint" ) == 0 ) {
     value = eeprom->light_yint;
 
@@ -244,6 +250,18 @@ float variable(const char *name)
 
   } else if (strcmp( name, "adc_read_averaged" ) == 0 ) {
     value = adc_read_averaged;
+
+  } else if (strcmp( name, "adc_read2" ) == 0 ) {
+    value = adc_read2;
+
+  } else if (strcmp( name, "adc_read2_averaged" ) == 0 ) {
+    value = adc_read2_averaged;
+
+  } else if (strcmp( name, "adc_read3" ) == 0 ) {
+    value = adc_read3;
+
+  } else if (strcmp( name, "adc_read3_averaged" ) == 0 ) {
+    value = adc_read3_averaged;
 
 /* Values saved to EEPROM
  * 
