@@ -388,10 +388,6 @@ void shutoff()
 
 void powerdown() {
 
-  // don't sleep if USB power is on
-  if (analogRead(USB_MEAS) > 30000)
-     return;
-     
   if ((millis() - last_activity) > SHUTDOWN || battery_low(0)) {  // idle?
     MMA8653FC_standby();                            // sleep accelerometer
     shutoff();                                      // save power, leave 3V3 on

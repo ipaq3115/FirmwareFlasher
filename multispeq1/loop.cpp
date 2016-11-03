@@ -985,9 +985,9 @@ void do_protocol()
   // loop through the all measurements to create a measurement group
   for (int y = 0; y < measurements; y++) {                   // measurements is initially 1, but gets updated after the json is parsed
 
-    Serial_Print("[");                                       // print brackets to define single measurement
+    Serial_Print("[");                                                                        // print brackets to define single measurement
 
-    for (int q = 0; q < number_of_protocols; q++) {          // loop through all of the protocols to create a measurement
+    for (int q = 0; q < number_of_protocols; q++) {                                           // loop through all of the protocols to create a measurement
 
       JsonHashTable hashTable;
       JsonParser<MAX_JSON_ELEMENTS> root;
@@ -1003,7 +1003,7 @@ void do_protocol()
         goto abort;
       }
 
-      int protocols = 1;                                                                       // times to repeat - starts as 1 but gets updated when the json is parsed
+      int protocols = 1;                                                                       // starts as 1 but gets updated when the json is parsed
       int quit = 0;
 
       for (int u = 0; u < protocols; u++) {                                                    // the number of times to repeat the current protocol
@@ -1037,9 +1037,8 @@ void do_protocol()
           act_background_light =  0;                                                            // change to new background actinic light
         }
         else {
-          act_background_light =  hashTable.getLong("act_background_light");                    // DEPRECATED as of 6/29/2016
+          act_background_light =  hashTable.getLong("act_background_light");                    // DEPRECIATED as of 6/29/216
         }
-
         //averaging0 - 1 - 30
         //averaging1 - 1 - 30
         //resolution0 - 2 - 16
@@ -1070,14 +1069,14 @@ void do_protocol()
         //int offset_off =          hashTable.getLong("offset_off");                               // turn off detector offsets (default == 0 which is on, set == 1 to turn offsets off)
 
         ///*
-        JsonArray pulsedistance =   hashTable.getArray("pulse_distance");                          // distance between measuring pulses in us.  Minimum 1000 us.
+        JsonArray pulsedistance =   hashTable.getArray("pulse_distance");                            // distance between measuring pulses in us.  Minimum 1000 us.
         JsonArray pulsesize =       hashTable.getArray("pulse_length");                            // pulse width in us.
 
         JsonArray a_lights =        hashTable.getArray("nonpulsed_lights");
         JsonArray a_intensities =   hashTable.getArray("nonpulsed_lights_brightness");
         JsonArray m_intensities =   hashTable.getArray("pulsed_lights_brightness");
 
-        //        int get_offset =          hashTable.getLong("get_offset");                     // include detector offset information in the output
+        //        int get_offset =          hashTable.getLong("get_offset");                               // include detector offset information in the output
         // NOTE: it takes about 50us to set a DAC channel via I2C at 2.4Mz.
 
         JsonArray detectors =     hashTable.getArray("detectors");                               // the Teensy pin # of the detectors used during those pulses, as an array of array.  For example, if pulses = [5,2] and detectors = [[34,35],[34,35]] .
@@ -1094,28 +1093,6 @@ void do_protocol()
         JsonArray intTime =       hashTable.getArray("intTime");                             // delay per half clock (in microseconds).  This ultimately conrols the integration time.
         JsonArray accumulateMode = hashTable.getArray("accumulateMode");
         //        JsonArray env = hashTable.getArray("env");                    // used to define any environmental sensor readings to be performed once per pulse set "_environmental_array_averages":["light_intensity","temperature"]
-
-
-        // LED heating check.  The idea is to step through time and predict how hot the LED will be at each point.  Including cool down periods.
-        // If at any point it exceeds the max value, refuse to run the protocol.
-        
-        unsigned heat[NUM_LEDS + 1];
-
-        // zero heat totals for each LED
-        for (int led = 0; led < NUM_LEDS + 1; ++led)
-          heat[led] = 0;
-
-        // sum power x time for each pulse
-        for (int i = 0; i < pulses.getLength(); i++) {
-          // TODO
-          for (int j = 0; j < meas_lights.getArray(i).getLength(); j++) {                   // for each measurement 
-            if (meas_lights.getArray(i).getLong(j) > 0) {                                   // for each light used in this measurement
-              // if (heat[led] > MAX_HEAT[led]) ...  // TODO
-            }
-          }
-          //heat[led] += ;
-        }  // for each pulse
-
 
         long size_of_data_raw = 0;
         long total_pulses = 0;
@@ -1498,8 +1475,6 @@ void do_protocol()
               //sleep_cpu();     // save power - removed, causes race condition
             }
 
-            // Note: could use the faster AD7699 to get .5 bits better SNR
-
             if (_reference != 0) {
               AD7689_read_arrays((detector - 1), sample_adc, (_reference - 1), sample_adc_ref, _number_samples); // also reads reference detector - note this function takes detectors 0 - 3, so must subtract detector value by 1
             }
@@ -1868,8 +1843,6 @@ static void pulse3() {                      // ISR to turn on/off LED pulse - al
 static IntervalTimer timer0;
 
 inline static void startTimers(unsigned _pulsedistance) {
-  if (_pulsedistance > MAX_PULSE_DISTANCE)          // safety check
-    return;
   timer0.begin(pulse3, _pulsedistance);             // schedule pulses
 }
 

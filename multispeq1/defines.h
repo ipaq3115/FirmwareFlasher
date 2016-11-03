@@ -83,10 +83,6 @@ const uint8_t LED_to_pin[NUM_LEDS + 1] = {0, PULSE1, PULSE2, PULSE3, PULSE4, PUL
 #define DEBUG_DC 14   // could allow reflashing of BLE module
 #define DEBUG_DD 32
 
-// LED power limits
-#define MAX_PULSE_DISTANCE 150    // max measurement pulse length in usec
-const unsigned MAX_HEAT[NUM_LEDS+1] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};    // max intensity (in micro einsteins) x microseconds that the LED can survive
-
 
 // sample and hold (hold + release detector cap)
 #define HOLDM    6        // output
