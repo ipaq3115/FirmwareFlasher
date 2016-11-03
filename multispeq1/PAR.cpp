@@ -43,14 +43,32 @@ void PAR_init()
 }  // PAR_init()
 
 uint16_t par_to_dac (float _par, uint16_t _pin) {                                             // convert dac value to par, in form y = mx2+ rx + b where y is the dac value  
-  int dac_value = _par * _par * eeprom->par_to_dac_slope1[_pin] + _par * eeprom->par_to_dac_slope2[_pin] + eeprom->par_to_dac_yint[_pin];
-//  int dac_value = _par * eeprom->par_to_dac_slope1[_pin] * eeprom->par_to_dac_slope1[_pin] + _par * eeprom->par_to_dac_slope2[_pin] + eeprom->par_to_dac_yint[_pin];
-//  Serial_Print("I am here:  ");
-  
+//  int dac_value = _par * _par * eeprom->par_to_dac_slope1[_pin] + _par * eeprom->par_to_dac_slope2[_pin] + eeprom->par_to_dac_yint[_pin];     
+  double a = _par * _par * _par * _par * eeprom->par_to_dac_slope1[_pin]/1000000000; 
+  double b = _par * _par * _par * eeprom->par_to_dac_slope2[_pin]/1000000000; 
+  double c = _par * _par * eeprom->par_to_dac_slope3[_pin]/1000000000; 
+  double d = _par * eeprom->par_to_dac_slope4[_pin]; 
+  double e = eeprom->par_to_dac_yint[_pin]; 
+  int dac_value = a + b + c + d + e;   
   if (_par == 0) {                                                                           // regardless of the calibration, force a PAR of zero to lights off
     dac_value = 0;
   } 
   dac_value = constrain(dac_value,0,4095);
+/*
+  Serial_Print_Line("");
+  Serial_Print_Line(eeprom->par_to_dac_slope1[_pin]/1000000000,15);
+  Serial_Print_Line(eeprom->par_to_dac_slope2[_pin]/1000000000,11);
+  Serial_Print_Line(eeprom->par_to_dac_slope3[_pin]/1000000000,9);
+  Serial_Print_Line(eeprom->par_to_dac_slope4[_pin],7);
+  Serial_Print_Line(eeprom->par_to_dac_yint[_pin],4);
+
+  Serial_Print_Line("");
+  Serial_Print_Line(a,15);
+  Serial_Print_Line(b,11);
+  Serial_Print_Line(c,9);
+  Serial_Print_Line(d,7);
+  Serial_Print_Line(e,4);
+*/
   return dac_value;
 }
 

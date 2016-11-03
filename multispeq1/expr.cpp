@@ -295,7 +295,17 @@ float variable(const char *name)
   } else  if (strncmp( name, "par_to_dac_slope2[", 18) == 0 ) {
     unsigned index = atoi(name + 17);
     if (index < NUM_LEDS + 1)
-      value = eeprom->par_to_dac_slope1[index];
+      value = eeprom->par_to_dac_slope2[index];
+
+  } else  if (strncmp( name, "par_to_dac_slope3[", 18) == 0 ) {
+    unsigned index = atoi(name + 17);
+    if (index < NUM_LEDS + 1)
+      value = eeprom->par_to_dac_slope3[index];
+
+  } else  if (strncmp( name, "par_to_dac_slope4[", 18) == 0 ) {
+    unsigned index = atoi(name + 17);
+    if (index < NUM_LEDS + 1)
+      value = eeprom->par_to_dac_slope4[index];
 
   } else  if (strncmp( name, "par_to_dac_yint[", 16) == 0 ) {
     unsigned index = atoi(name + 16);

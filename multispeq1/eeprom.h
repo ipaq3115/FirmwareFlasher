@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 
-const int NUM_USERDEFS = 75;
+const int NUM_USERDEFS = 115;
 
 class eeprom_class
 {
@@ -50,6 +50,8 @@ class eeprom_class
     */
     volatile float par_to_dac_slope1[NUM_LEDS + 1];
     volatile float par_to_dac_slope2[NUM_LEDS + 1];
+    volatile float par_to_dac_slope3[NUM_LEDS + 1];
+    volatile float par_to_dac_slope4[NUM_LEDS + 1];
     volatile float par_to_dac_yint[NUM_LEDS + 1];
     /*
        IR baseline estimation based on the reflectivity of the object.  This helps address any residual IR in the measuring light itself (used in chlorophyll fluorescence).
