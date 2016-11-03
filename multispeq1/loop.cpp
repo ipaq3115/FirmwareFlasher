@@ -380,7 +380,88 @@ void do_command()
       print_all();                                                                            // print everything in the eeprom (all values defined in eeprom.h)
       break;
 
-    //CLEANME- can we consolidate these print statements at all?  Especially the debugs "error" statements below?
+    case hash("calibrate_leds"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        // create arrays for the lights we're calibrating so we can loop through them effectively
+        int lights_number [5] = {1, 2, 3, 4, 7};
+        int lights [5] = {PULSE1, PULSE2, PULSE3, PULSE4, PULSE7};
+        while (1) {
+          start_on_pin_high(14);          // assumes you're starting when pin 14 goes high (DEBUG_DC)
+//          delay(1200);
+          for (int i = 0; i < sizeof(lights_number) / sizeof(lights_number[0]); i++) {  //  do every 10 dac values from 20 - 200.
+            for (int j = 20; j < 201; j = j + 10) {
+              DAC_set(lights_number[i], j);
+              DAC_change();
+              digitalWriteFast(lights[i], HIGH);
+              delay(300);
+              digitalWriteFast(lights[i], LOW);
+            }
+            DAC_set(lights_number[i], 250);   // now do dac values 250, 500, and 800 to get the high range
+            DAC_change();
+            digitalWriteFast(lights[i], HIGH);
+            delay(300);
+            digitalWriteFast(lights[i], LOW);
+            DAC_set(lights_number[i], 500);
+            DAC_change();
+            digitalWriteFast(lights[i], HIGH);
+            delay(300);
+            digitalWriteFast(lights[i], LOW);
+            DAC_set(lights_number[i], 800);
+            DAC_change();
+            digitalWriteFast(lights[i], HIGH);
+            delay(300);
+            digitalWriteFast(lights[i], LOW);
+            DAC_set(lights_number[i], 0);    // now make sure it's shut off.
+            DAC_change();
+          }
+        }
+      }
+      break;
+
+    case hash("calibrate_leds_manual"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        // create arrays for the lights we're calibrating so we can loop through them effectively
+        int lights_number [5] = {1, 2, 3, 4, 7};
+        int lights [5] = {PULSE1, PULSE2, PULSE3, PULSE4, PULSE7};
+        char responseTemp[20];
+        String response;
+        delay(1300);
+        for (int i = 0; i < sizeof(lights_number) / sizeof(lights_number[0]); i++) {  //  do every 10 dac values from 20 - 200.
+          for (int j = 20; j < 201; j = j + 10) {
+            DAC_set(lights_number[i], j);
+            DAC_change();
+            digitalWriteFast(lights[i], HIGH);
+            response.append(Serial_Input_Chars(responseTemp,",", 0, 500));       // input the protocol
+            response.append(",");       // input the protocol
+            digitalWriteFast(lights[i], LOW);
+          }
+          DAC_set(lights_number[i], 250);   // now do dac values 250, 500, and 800 to get the high range
+          DAC_change();
+          digitalWriteFast(lights[i], HIGH);
+          response.append(Serial_Input_Chars(responseTemp, ",", 0, 500));       // input the protocol
+          response.append(",");       // input the protocol
+          digitalWriteFast(lights[i], LOW);
+          DAC_set(lights_number[i], 500);
+          DAC_change();
+          digitalWriteFast(lights[i], HIGH);
+          response.append(Serial_Input_Chars(responseTemp, ",", 0, 500));       // input the protocol
+          response.append(",");       // input the protocol
+          digitalWriteFast(lights[i], LOW);
+          DAC_set(lights_number[i], 800);
+          DAC_change();
+          digitalWriteFast(lights[i], HIGH);
+          response.append(Serial_Input_Chars(responseTemp, ",", 0, 500));       // input the protocol
+          response.append(",");       // input the protocol
+          digitalWriteFast(lights[i], LOW);
+          DAC_set(lights_number[i], 0);    // now make sure it's shut off.
+          DAC_change();
+          response.append("\r\n");       // input the protocol
+        }
+        Serial_Print(response);
+      }
+      break;
 
     case hash("set_magnetometer_bias"):
     case 1030: // 3 magnetometer bias values
@@ -454,6 +535,8 @@ void do_command()
           else if (led > 0 || led < NUM_LEDS + 1) {
             store(par_to_dac_slope1[led], Serial_Input_Double("+", 0));
             store(par_to_dac_slope2[led], Serial_Input_Double("+", 0));
+            store(par_to_dac_slope3[led], Serial_Input_Double("+", 0));
+            store(par_to_dac_slope4[led], Serial_Input_Double("+", 0));
             store(par_to_dac_yint[led], Serial_Input_Double("+", 0));
           }
           else {
@@ -1326,7 +1409,7 @@ void do_protocol()
                   }
                   else if (_message_type == "prompt") {                                                    // wait for user to input information, followed by +
                     stopTimers();                                                                         // pause the timers (so the measuring light doesn't stay on
-                    char response[700];
+                    char response[150];
                     Serial_Input_Chars(response, "+", 0, sizeof(response));
                     Serial_Print("\"");
                     Serial_Print(response);
@@ -1985,7 +2068,7 @@ float get_analog_read (int pin, int _averages) {
 
 float get_co2(int _averages) {
   co2 = requestCo2(2000);
-//  co2 = getCo2(response);
+  //  co2 = getCo2(response);
   delay(100);
   co2_averaged += (float) co2 / _averages;
 #ifdef DEBUGSIMPLE
@@ -2261,150 +2344,80 @@ void print_calibrations() {
   Serial_Printf("\"thickness_max\": \"%f\",\n", eeprom->thickness_max);
 
   Serial_Print("\"par_to_dac_slope1\": [");
-#if 1          // Greg TODO improved example - note, i should probably start at 1 since the first value isn't used
   for (i = 0; i < arraysize(eeprom->par_to_dac_slope1) - 1; i++)
     Serial_Printf("\"%f\",", eeprom->par_to_dac_slope1[i]);
   Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope1[i]);
-#else
-  for (unsigned i = 0; i < sizeof(eeprom->par_to_dac_slope1) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->par_to_dac_slope1) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->par_to_dac_slope1[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope1[i]);
-    }
-  }
-#endif
 
   Serial_Print("\"par_to_dac_slope2\": [");
-#if 1          // Greg TODO improved example - note, i should probably start at 1 since the first value isn't used
   for (i = 0; i < arraysize(eeprom->par_to_dac_slope2) - 1; i++)
     Serial_Printf("\"%f\",", eeprom->par_to_dac_slope2[i]);
   Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope2[i]);
-#else
-  for (unsigned i = 0; i < sizeof(eeprom->par_to_dac_slope2) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->par_to_dac_slope2) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->par_to_dac_slope2[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope2[i]);
-    }
-  }
-#endif
+
+  Serial_Print("\"par_to_dac_slope3\": [");
+  for (i = 0; i < arraysize(eeprom->par_to_dac_slope3) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->par_to_dac_slope3[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope3[i]);
+
+  Serial_Print("\"par_to_dac_slope4\": [");
+  for (i = 0; i < arraysize(eeprom->par_to_dac_slope4) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->par_to_dac_slope4[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope4[i]);
 
   Serial_Print("\"par_to_dac_yint\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->par_to_dac_yint) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->par_to_dac_yint) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->par_to_dac_yint[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_yint[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->par_to_dac_yint) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->par_to_dac_yint[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_yint[i]);
 
   Serial_Print("\"ir_baseline_slope\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->ir_baseline_slope) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->ir_baseline_slope) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->ir_baseline_slope[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->ir_baseline_slope[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->ir_baseline_slope) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->ir_baseline_slope[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->ir_baseline_slope[i]);
 
   Serial_Print("\"ir_baseline_yint\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->ir_baseline_yint) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->ir_baseline_yint) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->ir_baseline_yint[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->ir_baseline_yint[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->ir_baseline_yint) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->ir_baseline_yint[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->ir_baseline_yint[i]);
 
   Serial_Print("\"colorcal_intensity1_slope\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity1_slope) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->colorcal_intensity1_slope) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->colorcal_intensity1_slope[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity1_slope[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity1_slope) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->colorcal_intensity1_slope[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity1_slope[i]);
+
   Serial_Print("\"colorcal_intensity1_yint\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity1_yint) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->colorcal_intensity1_yint) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->colorcal_intensity1_yint[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity1_yint[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity1_yint) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->colorcal_intensity1_yint[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity1_yint[i]);
 
   Serial_Print("\"colorcal_intensity2_slope\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity2_slope) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->colorcal_intensity2_slope) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->colorcal_intensity2_slope[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity2_slope[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity2_slope) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->colorcal_intensity2_slope[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity2_slope[i]);
   Serial_Print("\"colorcal_intensity2_yint\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity2_yint) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->colorcal_intensity2_yint) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->colorcal_intensity2_yint[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity2_yint[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity2_yint) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->colorcal_intensity2_yint[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity2_yint[i]);
+
   Serial_Print("\"colorcal_intensity3_slope\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity3_slope) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->colorcal_intensity3_slope) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->colorcal_intensity3_slope[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity3_slope[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity3_slope) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->colorcal_intensity3_slope[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity3_slope[i]);
   Serial_Print("\"colorcal_intensity3_yint\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->colorcal_intensity3_yint) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->colorcal_intensity3_yint) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->colorcal_intensity3_yint[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity3_yint[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity3_yint) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->colorcal_intensity3_yint[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity3_yint[i]);
 
   Serial_Print("\"colorcal_blank1\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->colorcal_blank1) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->colorcal_blank1) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->colorcal_blank1[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank1[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->colorcal_blank1) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->colorcal_blank1[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank1[i]);
   Serial_Print("\"colorcal_blank2\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->colorcal_blank2) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->colorcal_blank2) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->colorcal_blank2[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank2[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->colorcal_blank2) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->colorcal_blank2[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank2[i]);
   Serial_Print("\"colorcal_blank3\": [");
-  for (unsigned i = 0; i < sizeof(eeprom->colorcal_blank3) / sizeof(float); i++) {
-    if (i != sizeof(eeprom->colorcal_blank3) / sizeof(float) - 1) {
-      Serial_Printf("\"%f\",", eeprom->colorcal_blank3[i]);
-    }
-    else {
-      Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank3[i]);
-    }
-  }
+  for (i = 0; i < arraysize(eeprom->colorcal_blank3) - 1; i++)
+    Serial_Printf("\"%f\",", eeprom->colorcal_blank3[i]);
+  Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank3[i]);
 
   for (i = 0; i < NUM_USERDEFS - 1; i++)
     Serial_Printf("\"userdef%d\": \"%f\",\n", i, eeprom->userdef[i]);

@@ -17,7 +17,7 @@ const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 //
 
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
-#define DEVICE_FIRMWARE "1.10"
+#define DEVICE_FIRMWARE "1.11"
 #define DEVICE_NAME "MultispeQ"
 #define DEVICE_VERSION "1"
      
