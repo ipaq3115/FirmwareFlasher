@@ -12,12 +12,12 @@ const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 //#define NO_ADDON        // uncomment if add-on board isn't present (one missing DAC, etc)
 #define CORAL_SPEQ 0
 
-// new in 1.08 -->
-// removed the 30 second auto-progress relating to open-close-start (now waits forever)
+// new in 1.12 -->
+// 
 //
 
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
-#define DEVICE_FIRMWARE "1.11"
+#define DEVICE_FIRMWARE "1.13"
 #define DEVICE_NAME "MultispeQ"
 #define DEVICE_VERSION "1"
      

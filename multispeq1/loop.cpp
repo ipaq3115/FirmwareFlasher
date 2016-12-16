@@ -13,6 +13,7 @@
 #include "util.h"
 #include "malloc.h"
 #include <i2c_t3.h>
+#include "utility/TCS3471.h"              // color sensor
 
 // function declarations
 
@@ -53,7 +54,7 @@ void configure_bluetooth(void);
 void reboot(void);
 void turn_on_3V3(void);
 void turn_on_5(void);
-
+void constant_light (void);
 
 struct theReadings {                                            // use to return which readings are associated with the environmental_array calls
   const char* reading1;
@@ -70,6 +71,8 @@ theReadings getReadings (const char* _thisSensor);                        // get
 // process ascii serial input commands of two forms:
 // 1010+<parameter1>+<parameter2>+...  (a command)
 // [...] (a json protocol to be executed)
+
+
 
 void loop() {
 
@@ -158,6 +161,12 @@ void do_command()
       DAC_set_address(LDAC3, 0, 3);
       Serial_Print_Line("dac 3");
       get_set_device_info(1);                                                           //  input device info and write to eeprom
+      break;
+
+    case hash("constant_light"):
+      turn_on_5V();                     // is normally off, but many of the below commands need it
+      Serial_Print("Starting constant light source");
+      constant_light();
       break;
 
     case hash("cycle5v"):
@@ -380,6 +389,43 @@ void do_command()
       print_all();                                                                            // print everything in the eeprom (all values defined in eeprom.h)
       break;
 
+    case hash("get_co2"):
+      // Sensair S8 CO2 requests.  Only works if you have connected the sensair on Serial Port 3
+      Serial2.begin(9600);
+      {
+        byte readCO2[] = {0xFE, 0X44, 0X00, 0X08, 0X02, 0X9F, 0X25};  //Command packet to read CO2 (see app note)
+        byte response[] = {0, 0, 0, 0, 0, 0, 0}; //create an array to store CO2 response
+        //  float valMultiplier = 1;
+
+        while (!Serial2.available()) { //keep sending request until we start to get a response
+          Serial2.write(readCO2, 7);
+          delay(50);
+        }
+        int timeout = 0; //set a timeoute counter
+        while (Serial2.available() < 7 ) //Wait to get a 7 byte response
+        {
+          timeout++;
+          if (timeout > 10) {  //if it takes to long there was probably an error
+            while (Serial2.available()) //flush whatever we have
+              Serial2.read();
+            break;                        //exit and try again
+          }
+          delay(50);
+        }
+        for (int i = 0; i < 7; i++) {
+          response[i] = Serial2.read();
+        }
+        int high = readCO2[3];                        //high byte for value is 4th byte in packet in the packet
+        int low = readCO2[4];                         //low byte for value is 5th byte in the packet
+        unsigned long val = high * 256 + low;              //Combine high byte and low byte with this formula to get value
+        //  return val* valMultiplier;
+        delay(1000);
+        Serial_Printf("CO2 value is %d ", (int) val);
+        //      return val;
+      }
+      Serial2.end();
+      break;
+
     case hash("calibrate_leds"):
       {
         turn_on_5V();                  // turn on 5V to turn on the lights
@@ -388,20 +434,19 @@ void do_command()
         int lights [5] = {PULSE1, PULSE2, PULSE3, PULSE4, PULSE7};
         while (1) {
           start_on_pin_high(14);          // assumes you're starting when pin 14 goes high (DEBUG_DC)
-//          delay(1200);
+          //          delay(1200);
           for (int i = 0; i < sizeof(lights_number) / sizeof(lights_number[0]); i++) {  //  do every 10 dac values from 20 - 200.
-            for (int j = 20; j < 201; j = j + 10) {
+            if (i == 4) {
+              delay(600);                     // wait a bit to make sure the pin gets pulled low again
+              start_on_pin_high(14);          // this is a separate protocol, so wait here until that protocol starts before continuing on
+            }
+            for (int j = 20; j < 251; j = j + 10) {
               DAC_set(lights_number[i], j);
               DAC_change();
               digitalWriteFast(lights[i], HIGH);
               delay(300);
               digitalWriteFast(lights[i], LOW);
             }
-            DAC_set(lights_number[i], 250);   // now do dac values 250, 500, and 800 to get the high range
-            DAC_change();
-            digitalWriteFast(lights[i], HIGH);
-            delay(300);
-            digitalWriteFast(lights[i], LOW);
             DAC_set(lights_number[i], 500);
             DAC_change();
             digitalWriteFast(lights[i], HIGH);
@@ -415,6 +460,7 @@ void do_command()
             DAC_set(lights_number[i], 0);    // now make sure it's shut off.
             DAC_change();
           }
+          delay(6000);                     // wait a bit to make sure the pin gets pulled low again
         }
       }
       break;
@@ -429,20 +475,14 @@ void do_command()
         String response;
         delay(1300);
         for (int i = 0; i < sizeof(lights_number) / sizeof(lights_number[0]); i++) {  //  do every 10 dac values from 20 - 200.
-          for (int j = 20; j < 201; j = j + 10) {
+          for (int j = 20; j < 251; j = j + 10) {
             DAC_set(lights_number[i], j);
             DAC_change();
             digitalWriteFast(lights[i], HIGH);
-            response.append(Serial_Input_Chars(responseTemp,",", 0, 500));       // input the protocol
+            response.append(Serial_Input_Chars(responseTemp, ",", 0, 500));      // input the protocol
             response.append(",");       // input the protocol
             digitalWriteFast(lights[i], LOW);
           }
-          DAC_set(lights_number[i], 250);   // now do dac values 250, 500, and 800 to get the high range
-          DAC_change();
-          digitalWriteFast(lights[i], HIGH);
-          response.append(Serial_Input_Chars(responseTemp, ",", 0, 500));       // input the protocol
-          response.append(",");       // input the protocol
-          digitalWriteFast(lights[i], LOW);
           DAC_set(lights_number[i], 500);
           DAC_change();
           digitalWriteFast(lights[i], HIGH);
@@ -2039,7 +2079,8 @@ float get_thickness (int notRaw, int _averages) {
     sum += analogRead(HALL_OUT);
   }
   thickness_raw = (sum / 1000);
-  thickness = (eeprom->thickness_a * thickness_raw * thickness_raw + eeprom->thickness_b * thickness_raw + eeprom->thickness_c) / 1000; // calibration information is saved in uM, so divide by 1000 to convert back to mm.
+  // dividing thickness_a by 1,000,000,000 to bring it back to it's actual value
+  thickness = (eeprom->thickness_a * thickness_raw * thickness_raw / 1000000000 + eeprom->thickness_b * thickness_raw + eeprom->thickness_c) / 1000; // calibration information is saved in uM, so divide by 1000 to convert back to mm.
 
   if (notRaw == 0) {                                              // save the raw values average
     thickness_raw_averaged += (float)thickness_raw / _averages;

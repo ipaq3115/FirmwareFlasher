@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 
-const int NUM_USERDEFS = 115;
+const int NUM_USERDEFS = 135;
 
 class eeprom_class
 {
