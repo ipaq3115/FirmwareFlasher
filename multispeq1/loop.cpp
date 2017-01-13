@@ -2,18 +2,18 @@
 
 #define EXTERN
 #include "defines.h"            // various globals  
-#include "json/JsonParser.h"
+#include "src/JsonParser.h"
 #include "DAC.h"
-#include "utility/AD7689.h"     // external ADC
+#include "src/AD7689.h"     // external ADC
 #include "eeprom.h"
 #include "serial.h"
 #include "flasher.h"
-#include "utility/crc32.h"
+#include "src/crc32.h"
 #include <TimeLib.h>
 #include "util.h"
 #include "malloc.h"
 #include <i2c_t3.h>
-#include "utility/TCS3471.h"              // color sensor
+#include "src/TCS3471.h"              // color sensor
 
 // function declarations
 
@@ -1420,10 +1420,8 @@ void do_protocol()
                     stopTimers();                                                                         // pause the timers (so the measuring light doesn't stay on
                     while (1) {
                       long response = Serial_Input_Long("+", 0);
-                      if (response == -1) {
-                        Serial_Print("\"ok\"]");
-                        break;
-                      }
+                      Serial_Print("\"ok\"]");
+                      break;
                     }
                     startTimers(_pulsedistance);                                                // restart the measurement light timer
                   }
@@ -1440,7 +1438,7 @@ void do_protocol()
                         z = total_pulses;
                         break;
                       }
-                      if (response == -1) {
+                      else if (response == -1) {
                         Serial_Print("\"ok\"]");
                         break;
                       }

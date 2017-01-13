@@ -1,4 +1,3 @@
-
 // If your name isn't Jon, don't touch this file
 
 // reasonably generic utility functions
@@ -6,9 +5,9 @@
 
 #include "defines.h"
 #include "eeprom.h"
-#include "utility/crc32.h"
+#include "src/crc32.h"
 #include "DAC.h"
-#include "utility/AD7689.h"
+#include "src/AD7689.h"
 #include "util.h"
 #include "serial.h"
 #include <SPI.h>                    // include the new SPI library
@@ -404,7 +403,7 @@ static SnoozeBlock config;
 void sleep_mode(const int n)
 {
   // Set Low Power Timer wake up in milliseconds.
-  config.setTimer(n);      // milliseconds
+//  config.setTimer(n);      // milliseconds
 
   // set interrupt to wakeup
   //config.pinMode(WAKE_TILT, INPUT, CHANGE);  // was INPUT_PULLUP
@@ -432,8 +431,6 @@ void deep_sleep()
 
 // print message for every I2C device on the bus
 // original author unknown
-
-#include <i2c_t3.h>
 
 void scan_i2c(void)
 {

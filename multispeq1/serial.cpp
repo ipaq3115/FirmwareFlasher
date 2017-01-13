@@ -12,7 +12,7 @@
 
 #include <Arduino.h>
 #include "serial.h"
-#include "utility/crc32.h"
+#include "src/crc32.h"
 #include "defines.h"
 
 static void Serial_Print_BLE(const char *str);

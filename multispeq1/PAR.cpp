@@ -2,7 +2,7 @@
 // code related to the PAR/color sensor
 
 #include <Arduino.h>
-#include "utility/TCS3471.h"              // color sensor
+#include "src/TCS3471.h"              // color sensor
 #include "serial.h"
 #include "defines.h"
 #include "eeprom.h"

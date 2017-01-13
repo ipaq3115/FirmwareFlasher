@@ -4,7 +4,7 @@
 
 #include "defines.h"
 #include "eeprom.h"
-#include "utility/crc32.h"
+#include "src/crc32.h"
 #include "DAC.h"
 #include "util.h"
 #include "serial.h"
