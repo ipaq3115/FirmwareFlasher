@@ -2300,25 +2300,23 @@ static void environmentals(JsonArray environmental, const int _averages, const i
     else if (thisSensor == "analog_write") {                      // perform analog write with length of time to apply the pwm
       int pin = environmental.getArray(i).getLong(1);
       int setting = environmental.getArray(i).getLong(2);
-      int freq = environmental.getArray(i).getLong(3);
+      int resolution = environmental.getArray(i).getLong(3);
       int wait = environmental.getArray(i).getLong(4);
 
+      // create lookup table for resolution and frequency settings (values start at position 2 for a resolution of 2):
+      float freq_table [] = {0,0,15000000,7500000, 3750000, 1875000, 937500, 468750, 234375, 117187.5, 58593.75,29296.875,14648.437, 7324.219, 3662.109, 1831.055, 915.527};
+
+//      Serial_Printf("pin = %d, setting = %d, resolution = %d, wait = %d",pin, setting, resolution, wait);
+
       // TODO sanity checks
-
-#ifdef DEBUGSIMPLE
-      Serial_Print_Line(pin);
-      Serial_Print_Line(pin);
-      Serial_Print_Line(wait);
-      Serial_Print_Line(setting);
-      Serial_Print_Line(freq);
-#endif
-
+      
       pinMode(pin, OUTPUT);
-      analogWriteFrequency(pin, freq);                                                           // set analog frequency
+      analogWriteFrequency(pin, freq_table[resolution]);                                                           // set analog frequency
+      analogWriteResolution(resolution);                                                           // set analog frequency
       analogWrite(pin, setting);
       delay(wait);
       analogWrite(pin, 0);
-      //reset_freq();                                                                              // reset analog frequencies
+      analogWriteResolution(12);                                                                  // reset analog resolution
     } // if
   } // for
 }  //environmentals()
