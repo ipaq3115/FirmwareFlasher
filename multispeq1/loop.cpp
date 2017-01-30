@@ -72,8 +72,6 @@ theReadings getReadings (const char* _thisSensor);                        // get
 // 1010+<parameter1>+<parameter2>+...  (a command)
 // [...] (a json protocol to be executed)
 
-
-
 void loop() {
 
   // save power
@@ -1006,15 +1004,15 @@ void do_protocol()
 
   v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
 
-  Serial_Printf("{\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\",\"firmware_version\":\"%s\"", DEVICE_VERSION,    // I did this so it would work with chrome app
+  Serial_Printf("{\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":%s", DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
                 (unsigned)eeprom->device_id & 0xff, v,
-                DEVICE_FIRMWARE, DEVICE_FIRMWARE);
+                DEVICE_FIRMWARE);
 
-  if (year() >= 2016)
-    Serial_Printf(",\"device_time\":%u", now());
+  //  if (year() >= 2016)
+  //    Serial_Printf(",\"device_time\":%u", now());
   Serial_Print(",\"sample\":[");
 
   // discharge sample and hold in case the cap is currently charged (on add on and main board)
@@ -1025,7 +1023,7 @@ void do_protocol()
   // loop through the all measurements to create a measurement group
   for (int y = 0; y < measurements; y++) {                   // measurements is initially 1, but gets updated after the json is parsed
 
-    Serial_Print("[");                                                                        // print brackets to define single measurement
+    //    Serial_Print("[");                                                                        // print brackets to define single measurement
 
     for (int q = 0; q < number_of_protocols; q++) {                                           // loop through all of the protocols to create a measurement
 
@@ -1837,7 +1835,8 @@ void do_protocol()
 
 abort:
 
-  Serial_Print("]}");                // terminate output json
+  //  Serial_Print("]}");                // terminate output json
+  Serial_Print("}");                // terminate output json
   Serial_Print_CRC();             // TODO put this back in one android app is fixed
   Serial_Flush_Output();
 
@@ -2304,12 +2303,12 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int wait = environmental.getArray(i).getLong(4);
 
       // create lookup table for resolution and frequency settings (values start at position 2 for a resolution of 2):
-      float freq_table [] = {0,0,15000000,7500000, 3750000, 1875000, 937500, 468750, 234375, 117187.5, 58593.75,29296.875,14648.437, 7324.219, 3662.109, 1831.055, 915.527};
+      float freq_table [] = {0, 0, 15000000, 7500000, 3750000, 1875000, 937500, 468750, 234375, 117187.5, 58593.75, 29296.875, 14648.437, 7324.219, 3662.109, 1831.055, 915.527};
 
-//      Serial_Printf("pin = %d, setting = %d, resolution = %d, wait = %d",pin, setting, resolution, wait);
+      //      Serial_Printf("pin = %d, setting = %d, resolution = %d, wait = %d",pin, setting, resolution, wait);
 
       // TODO sanity checks
-      
+
       pinMode(pin, OUTPUT);
       analogWriteFrequency(pin, freq_table[resolution]);                                                           // set analog frequency
       analogWriteResolution(resolution);                                                           // set analog frequency
@@ -2570,13 +2569,15 @@ void get_set_device_info(const int _set) {
     Serial_Printf("\n battery percent: %d; battery level: %d \n",battery_percent(0), battery_level(0));
   */
 
-  //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
-  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\"}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
+  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\"", DEVICE_NAME, DEVICE_VERSION,
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
                 (unsigned)eeprom->device_id & 0xff, v,
                 DEVICE_FIRMWARE);
+  Serial_Print(DEVICE_CONFIGURATION);
+  Serial_Print("}");
+
   Serial_Print_CRC();
 
   return;

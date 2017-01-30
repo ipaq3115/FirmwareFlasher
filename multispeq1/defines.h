@@ -12,15 +12,33 @@ const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 //#define NO_ADDON        // uncomment if add-on board isn't present (one missing DAC, etc)
 #define CORAL_SPEQ 0
 
-// new in 1.12 -->
-// 
-//
-
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
 #define DEVICE_FIRMWARE "1.14"
 #define DEVICE_NAME "MultispeQ"
 #define DEVICE_VERSION "1"
-     
+#define DEVICE_CONFIGURATION ",\"configuration\": \
+    {\"light 1\":\"530nm LED (green), Lumileds LXZ1-PM01\"\
+    ,\"light 2\":\"655nm LED (red), Lumileds LXZ1-PA01\"\
+    ,\"light 3\":\"590nm LED (amber), Lumileds LXZ1-PL01\"\
+    ,\"light 4\":\"448nm LED (blue), Lumileds LXZ1-PR01\"\
+    ,\"light 5\":\"950nm LED (NIR), OSRAM SFH 4441\"\
+    ,\"light 6\":\"950nm LED (NIR), OSRAM SFH 4441\"\
+    ,\"light 7\":\"655nm LED (red), Lumileds LXZ1-PA01\"\
+    ,\"light 8\":\"850nm LED (NIR), OSRAM SFH 4451\"\
+    ,\"light 9\":\"730nm LED (far red), Everlight ELSH-Q61F1-0LPNM-JF3F8\"\
+    ,\"light 10\":\"880nm LED (NIR), Kingbright APTD3216SF4C\"\
+    ,\"Detector 1\":\"700nm - 1150nm, Hamamatsu S6775-01. Detector on main body\"\
+    ,\"Detector 3\":\"400nm - 700nm, Hamamatsu S6775. Detector on clamp\"\
+    ,\"Ambient Temperature, Humidity, Pressure\":\"BOSCH BME280, temperature_humidity_pressure\"\
+    ,\"Ambient Temperature, Humidity, Pressure 2\":\"BOSCH BME280, temperature_humidity_pressure2\"\
+    ,\"Contactless Temperature\":\"Melexis MLX90615SSG-DAG-000-TU, contactless_temp\"\
+    ,\"Accelerometer\":\"Freescale MMA8653FCR1, compass_and_angle\"\
+    ,\"Magnetometer\":\"Freescale MAG3110FCR1, compass_and_angle\"\
+    ,\"Hall Effect Sensor\":\"TT Electronics OHS3150U, thickness\"\
+    ,\"PAR light sensor\":\"AMS-TAOS USA TCS34715FN + 700nm low pass filter, light_intensity\"\
+    }"
+
+
 //////////////////////PIN DEFINITIONS AND TEENSY SETTINGS////////////////////////
 //Serial, I2C, SPI...
 #define RX       0        // serial port pins
