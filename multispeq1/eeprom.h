@@ -19,7 +19,7 @@ class eeprom_class
 {
   public:
     // each of these needs a comment
-    volatile long device_id;          // lower 4 bytes of bluetooth mac address
+    volatile long device_id;          // the 4 upper bytes of bluetooth mac address
     volatile long device_manufacture; // month and year, eg 12016
 
     volatile float mag_bias[3];       // magnetometer/compass calibration

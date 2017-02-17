@@ -500,18 +500,22 @@ void do_command()
         Serial_Print(response);
       }
       break;
-
+    
     case hash("set_magnetometer_bias"):
     case 1030: // 3 magnetometer bias values
       store(mag_bias[0], Serial_Input_Double("+", 0));
       store(mag_bias[1], Serial_Input_Double("+", 0));
       store(mag_bias[2], Serial_Input_Double("+", 0));
+//      Serial.print(eeprom->mag_bias[0], 20);
+//      Serial.print(eeprom->mag_bias[1], 20);
+//      Serial.print(eeprom->mag_bias[2], 20);
       break;
     case hash("set_magnetometer"):
     case 1031: // 9 magnetometer calibration values
       for (uint16_t i = 0; i < 3; i++) {
         for (uint16_t j = 0; j < 3; j++) {
           store(mag_cal[j][i], Serial_Input_Double("+", 0));
+//          Serial.print(eeprom->mag_cal[j][i], 20);
         }
       }
       break;
@@ -520,12 +524,16 @@ void do_command()
       store(accel_bias[0], Serial_Input_Double("+", 0));
       store(accel_bias[1], Serial_Input_Double("+", 0));
       store(accel_bias[2], Serial_Input_Double("+", 0));
+//      Serial.print(eeprom->accel_bias[0], 20);
+//      Serial.print(eeprom->accel_bias[1], 20);
+//      Serial.print(eeprom->accel_bias[2], 20);
       break;
     case hash("set_accelerometer"):
     case 1033: // 9 accelerometer calibration values
       for (uint16_t i = 0; i < 3; i++) {
         for (uint16_t j = 0; j < 3; j++) {
           store(accel_cal[j][i], Serial_Input_Double("+", 0));
+//          Serial.print(eeprom->accel_cal[j][i], 20);
         }
       }
       break;
@@ -1004,7 +1012,7 @@ void do_protocol()
 
   v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
 
-  Serial_Printf("{\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":%s", DEVICE_VERSION,    // I did this so it would work with chrome app
+  Serial_Printf("{\"device_version\":\"%s\",\"device_id\":\"%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":%s", DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
@@ -2356,7 +2364,7 @@ void reset_freq() {
 void print_calibrations() {
   unsigned i;
 
-  Serial_Printf("{\n\"device_id\":\"d4:f5:%x:%x:%x:%x\",\n",
+  Serial_Printf("{\n\"device_id\":\"%2.2x:%2.2x:%2.2x:%2.2x\",\n",
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
@@ -2553,7 +2561,6 @@ void get_set_device_info(const int _set) {
     //    Serial_Print_Line("{\"message\": \"Please enter device mac address (long int) followed by +: \"}\n");
     val =  Serial_Input_Long("+", 0);              // save to eeprom
     store(device_id, val);              // save to eeprom
-
   } // if
 
   // print
@@ -2569,7 +2576,7 @@ void get_set_device_info(const int _set) {
     Serial_Printf("\n battery percent: %d; battery level: %d \n",battery_percent(0), battery_level(0));
   */
 
-  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\"", DEVICE_NAME, DEVICE_VERSION,
+  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\"", DEVICE_NAME, DEVICE_VERSION,
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
