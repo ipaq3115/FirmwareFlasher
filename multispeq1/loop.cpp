@@ -1012,7 +1012,7 @@ void do_protocol()
 
   v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
 
-  Serial_Printf("{\"device_version\":\"%s\",\"device_id\":\"%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":%s", DEVICE_VERSION,    // I did this so it would work with chrome app
+  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":%s", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
