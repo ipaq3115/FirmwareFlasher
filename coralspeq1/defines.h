@@ -10,11 +10,17 @@ const int DEBUGSIMPLE= 0;   // uncomment to add partial debug features
 //#define DAC 1           // uncomment for boards which do not use DAC for light intensity control
 const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 //#define NO_ADDON        // uncomment if add-on board isn't present (one missing DAC, etc)
-#define CORAL_SPEQ 0
+#define CORAL_SPEQ 1
 
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
 #define DEVICE_FIRMWARE "1.17"
+#if CORAL_SPEQ
+#define DEVICE_NAME "CoralspeQ"
+#else
 #define DEVICE_NAME "MultispeQ"
+#endif
+
+
 #define DEVICE_VERSION "1"
 #define DEVICE_CONFIGURATION ",\"configuration\": \
     {\"light 1\":\"530nm LED (green), Lumileds LXZ1-PM01\"\
@@ -39,7 +45,6 @@ const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
     }"
 
 
-//////////////////////PIN DEFINITIONS AND TEENSY SETTINGS////////////////////////
 //Serial, I2C, SPI...
 #define RX       0        // serial port pins
 #define TX       1
@@ -75,7 +80,11 @@ const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 #define PULSE7   27
 #define PULSE8   26
 #define PULSE9   25
-#define PULSE10  23
+//#if CORAL_SPEQ 
+#define PULSE10  14
+//#else
+//#define PULSE10 23
+//#endif
 
 // use this to store values to eeprom 
 #define store(location, value)   { typeof(value) f = value;  if (eeprom->location != f) eeprom->location = f;  while (!(FTFL_FCNFG & FTFL_FCNFG_EEERDY)) {} }
@@ -104,7 +113,11 @@ const uint8_t LED_to_pin[NUM_LEDS + 1] = {0, PULSE1, PULSE2, PULSE3, PULSE4, PUL
 
 // sample and hold (hold + release detector cap)
 #define HOLDM    6        // output
-#define HOLDADD 21
+//#if CORAL_SPEQ 
+#define HOLDADD 14
+//#else
+//#define HOLDADD 21
+//#endif
 
 // peripheral USB 3.0 connector pins
 #define DACT     40
@@ -209,11 +222,11 @@ EXTERN Adafruit_BME280 bme2;
 
 // Coral SpeQ
 //////////////////////PIN DEFINITIONS FOR CORALSPEQ////////////////////////
-#define SPEC_GAIN      28
+#define SPEC_GAIN      21
 //#define SPEC_EOS       NA
-#define SPEC_ST        26
+#define SPEC_ST        23
 #define SPEC_CLK       25
-#define SPEC_VIDEO     A10
+//#define SPEC_VIDEO     A10
 //#define LED530         15
 //#define LED2200k       16
 //#define LED470         20

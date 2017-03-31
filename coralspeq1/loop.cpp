@@ -15,7 +15,7 @@
 #include <i2c_t3.h>
 #include "src/TCS3471.h"              // color sensor
 
-// function declarations
+#define CORAL_SPEQ 1
 
 inline static void startTimers(unsigned _pulsedistance);
 inline static void stopTimers(void);
@@ -1021,12 +1021,15 @@ void do_protocol()
 
   //  if (year() >= 2016)
   //    Serial_Printf(",\"device_time\":%u", now());
+  
   Serial_Print(",\"sample\":[");
 
   // discharge sample and hold in case the cap is currently charged (on add on and main board)
   digitalWriteFast(HOLDM, HIGH);
   digitalWriteFast(HOLDADD, HIGH);
   delay(10);
+  
+Serial_Print("debug10");
 
   // loop through the all measurements to create a measurement group
   for (int y = 0; y < measurements; y++) {                   // measurements is initially 1, but gets updated after the json is parsed
@@ -1142,6 +1145,8 @@ void do_protocol()
 
         long size_of_data_raw = 0;
         long total_pulses = 0;
+        
+Serial_Print("debug11");
 
         for (int i = 0; i < pulses.getLength(); i++) {                                      // count the number of non zero lights and total pulses
           total_pulses += pulses.getLong(i) * meas_lights.getArray(i).getLength();          // count the total number of pulses
@@ -1186,7 +1191,7 @@ void do_protocol()
             }
           }
         }
-
+Serial_Print("debug12");
 #ifdef DEBUGSIMPLE
         Serial_Print_Line("");
         Serial_Print("size of data raw:  ");
@@ -1332,6 +1337,8 @@ void do_protocol()
                   Serial_Printf("\n all a_lights, intensities: %d,%d,|%s|,%f,%f,%f\n", _a_lights[i], _a_intensities[i], intensity_string.c_str(), expr(intensity_string.c_str()), light_intensity, light_intensity_averaged);
                 } // PULSERDEBUG
               }
+              
+Serial_Print("debug13");
 
               if (CORAL_SPEQ) {
                 _spec = spec.getLong(cycle);                                                      // pull whether the spec will get called in this cycle or not for coralspeq and set parameters.  If they are empty (not defined by the user) set them to the default value
