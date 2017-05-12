@@ -6,14 +6,14 @@
 #include "src/Adafruit_BME280.h"      // temp/humidity/pressure sensor
 
 //#define DEBUG 1         // uncomment to add full debug features
-const int DEBUGSIMPLE= 0;   // uncomment to add partial debug features
+//const int DEBUGSIMPLE= 0;   // uncomment to add partial debug features
 //#define DAC 1           // uncomment for boards which do not use DAC for light intensity control
 const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 //#define NO_ADDON        // uncomment if add-on board isn't present (one missing DAC, etc)
 #define CORAL_SPEQ 0
 
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
-#define DEVICE_FIRMWARE "1.17"
+#define DEVICE_FIRMWARE "1.18"
 #define DEVICE_NAME "MultispeQ"
 #define DEVICE_VERSION "1"
 #define DEVICE_CONFIGURATION ",\"configuration\": \
@@ -141,13 +141,20 @@ struct Tilt {
 // Functions
 #include <stdint.h>
 void activity(void);
+void energySave(void);
 void powerdown(void);
 uint16_t median16(uint16_t array[], const int n, const float percentile = .50);
+
 float stdev16(uint16_t array[], const int n);
-int check_protocol(char *str);
+char * check_protocol(char *str);
+char * trim_protocol_set(char *str);
+
 void deep_sleep(void);
 
 
+
+//unsigned long last_activity;
+//long unsigned int recent_activity;
 /*
  * Sensor-related variables which are accessed in loop
  * These values are accessible through the expr() function
@@ -157,6 +164,13 @@ void deep_sleep(void);
 #define EXTERN extern
 #endif
 
+//EXTERN int PULSERDEBUG;   // uncomment to debug the pulser and detector
+
+
+EXTERN int save_trace_time_scale; //this holds the flag to determine whether to save the time values
+EXTERN int reshape_pattern;
+EXTERN int power_save;
+EXTERN int use_previous_light_intensity;
 EXTERN float light_intensity;
 EXTERN float light_intensity_averaged;
 EXTERN float light_intensity_raw;
@@ -167,6 +181,18 @@ EXTERN float g;
 EXTERN float g_averaged;
 EXTERN float b;
 EXTERN float b_averaged;
+
+EXTERN int status_of_5; //global for setting and determining the status of the 5 V power supply
+EXTERN int energy_save_timeout;
+
+EXTERN float previous_light_intensity;
+EXTERN float previous_light_intensity_averaged;
+EXTERN float previous_light_intensity_raw;
+EXTERN float previous_light_intensity_raw_averaged;
+EXTERN float previous_r_averaged;
+EXTERN float previous_g_averaged;
+EXTERN float previous_b_averaged;
+
 
 EXTERN float thickness;
 EXTERN float thickness_averaged;
@@ -200,8 +226,14 @@ EXTERN float co2, co2_averaged;
 EXTERN float detector_read1, detector_read2, detector_read3;
 EXTERN float detector_read1_averaged, detector_read2_averaged,detector_read3_averaged;
 
-EXTERN float analog_read, digital_read, adc_read, adc_read2, adc_read3;
-EXTERN float analog_read_averaged, digital_read_averaged, adc_read_averaged, adc_read2_averaged, adc_read3_averaged;
+
+EXTERN int auto_bright[10];
+EXTERN int auto_duration[10];
+
+
+
+
+EXTERN float analog_read, analog_read_averaged, adc_read, digital_read, adc_read2, digital_read_averaged, adc_read_averaged, adc_read2_averaged, adc_read3, adc_read3_averaged;
 
 // pressure/temp/humidity sensors
 EXTERN Adafruit_BME280 bme1;        // I2C sensor

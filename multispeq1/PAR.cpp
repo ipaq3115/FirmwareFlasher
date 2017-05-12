@@ -12,6 +12,13 @@ void i2cWrite(byte address, byte count, byte* buffer);
 void i2cRead(byte address, byte count, byte* buffer);
 
 // global variables 
+//extern float previous_light_intensity;
+//extern float previous_light_intensity_averaged;
+//extern float previous_r_averaged;
+//extern float previous_g_averaged;
+//extern float previous_b_averaged;
+//extern float previous_light_intensity_raw_averaged;
+
 extern float light_intensity;
 extern float light_intensity_averaged;
 extern float light_intensity_raw;
@@ -99,6 +106,16 @@ uint16_t par_to_dac (float _par, uint16_t _pin) {                               
   Serial_Print_Line(d,7);
   Serial_Print_Line(e,4);
 */
+
+/*
+  Serial_Print_Line("par");
+
+  Serial_Print_Line(_par);
+
+  Serial_Print_Line("dac");
+
+  Serial_Print_Line(dac_value);
+  */
   return dac_value;
 }
 

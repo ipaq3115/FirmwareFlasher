@@ -27,8 +27,7 @@ int32_to_hex (uint32_t i)
 static uint32_t crc = 0 ^ ~0U;
 
 // must be called before using below routines
-void
-crc32_init ()
+void crc32_init ()
 {
   crc = 0 ^ ~0U;		// aka 0xffffffff
 }

@@ -30,7 +30,8 @@ void setup ()
 {
   // put your setup code here, to run once:
   boot_check();             // check if we need to upgrade firmware before running loop()
-
+  power_save=1; //when zero, disable the switching off of the 5V after a protocol has run
+ 
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH);    // set the LED on
   delay(1000);

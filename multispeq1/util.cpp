@@ -9,6 +9,9 @@
 #include "util.h"
 #include "serial.h"
 
+int get_light_intensity(int x);
+uint16_t par_to_dac (float _par, uint16_t _pin);
+
 //apply the calibration values for magnetometer from EEPROM
 void applyMagCal(float * arr) {
 
@@ -209,94 +212,333 @@ void start_on_pin_high(int pin) {
   }
 }
 
+//The following is the original start_on_open_close. DMK modified to make separate functions for start_on_open
+//and start_on_close
 
-void start_on_open_close() {
-  // take an initial measurement as a baseline (closed position)
-  for (uint16_t i = 0; i < 10; i++) {                            // throw away values to make sure the first value is correct
-    measure_hall();
-  }
-  float start_position = measure_hall();
-  float current_position = start_position;
-  float clamp_closed = eeprom->thickness_min;
-  float clamp_open = eeprom->thickness_max;
-  int isFlipped = 1;                                    // account for the direction of the magnet installed in the device
-  if (eeprom->thickness_min > eeprom->thickness_max) {
-    //    Serial.print("white device: thickness_min > thickness_max so clamp_closed = thickness_max, and clamp_open = thickness_min");
-    clamp_closed = eeprom->thickness_max;
-    clamp_open = eeprom->thickness_min;
-    isFlipped = 0;
-  }
-  else {
-    //    Serial.print("black device: thickness_min < thickness_max so clamp_closed = thickness_min, and clamp_open = thickness_max");
-  }
-  int start_time = millis();
+//void start_on_open_close() {
+//  // take an initial measurement as a baseline (closed position)
+//  for (uint16_t i = 0; i < 10; i++) {                            // throw away values to make sure the first value is correct
+//    measure_hall();
+//  }
+//  float start_position = measure_hall();
+//  float current_position = start_position;
+//  float clamp_closed = eeprom->thickness_min;
+//  float clamp_open = eeprom->thickness_max;
+//  int isFlipped = 1;                                    // account for the direction of the magnet installed in the device
+//  if (eeprom->thickness_min > eeprom->thickness_max) {
+//    //    Serial.print("white device: thickness_min > thickness_max so clamp_closed = thickness_max, and clamp_open = thickness_min");
+//    clamp_closed = eeprom->thickness_max;
+//    clamp_open = eeprom->thickness_min;
+//    isFlipped = 0;
+//  }
+//  else {
+//    //    Serial.print("black device: thickness_min < thickness_max so clamp_closed = thickness_min, and clamp_open = thickness_max");
+//  }
+//  int start_time = millis();
+//
+//
+//
+//
+//  if (isFlipped == 0) { // this is the white device
+//    // now measure every 150ms until you see the value change to 65% of the full range from closed to fully open
+//    while (start_position - current_position < .75 * (clamp_open - clamp_closed)) {
+//      current_position = measure_hall();
+//      /*
+//        Serial.printf("1st isflipped = 0 75% to exit, %f < %f\n", start_position - current_position, .75 * (clamp_open - clamp_closed));
+//        Serial.printf("1st isflipped = 0 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
+//      */
+//      delay(150);                                                               // measure every 100ms
+//      if (start_position - current_position < -.20 * (clamp_open - clamp_closed) || current_position == 0 || current_position == 65535 || millis() - start_time > 30000) {       // if the person opened it first (ie they did it wrong and started it with clamp open) - detect and skip to end.  Also if the output is maxed or minned then proceed.
+//        /*
+//          Serial.printf("if statement to exit, %f < %f\n", start_position - current_position, -.20 * (clamp_open - clamp_closed));
+//          Serial.print("exit 1\n");
+//        */
+//        goto end;
+//      }
+//    }
+//
+//    // now measure again every 150ms until you see the value change to < 65% of the full range from closed to fully open
+//    while (start_position - current_position > .75 * (clamp_open - clamp_closed)) {
+//      current_position = measure_hall();
+//      /*
+//        Serial.printf("2st isflipped = 0 75% to exit, %f > %f\n", start_position - current_position, .75 * (clamp_open - clamp_closed));
+//        Serial.printf("2st isflipped = 0 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
+//      */
+//      if (millis() - start_time > 30000) { // if it's been more than 30 seconds,then bail
+//        goto end;
+//      }
+//      delay(150);                                                               // measure every 150ms
+//    }
+//  }
+//
+//  else if (isFlipped == 1) { // this is the black device.  Same as white device but subtract current_position from start_position instead of other way around
+//    // now measure every 150ms until you see the value change to 75% of the full range from closed to fully open
+//    while (current_position - start_position < .75 * (clamp_open - clamp_closed)) {
+//      current_position = measure_hall();
+//      /*
+//        Serial.printf("1st isflipped = 1 75% to exit, %f < %f\n", current_position - start_position, .75 * (clamp_open - clamp_closed));
+//        Serial.printf("1st isflipped = 1 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
+//      */
+//      delay(150);                                                               // measure every 100ms
+//      if (current_position - start_position < -.20 * (clamp_open - clamp_closed) || current_position == 0 || current_position == 65535 || millis() - start_time > 30000) {       // if the person opened it first (ie they did it wrong and started it with clamp open) - detect and skip to end.  Also if the output is maxed or minned then proceed.
+//        /*
+//          Serial.printf("if statement to exit, %f < %f\n", current_position - start_position, -.20 * (clamp_open - clamp_closed));
+//          Serial.print("exit 1\n");
+//        */
+//        goto end;
+//      }
+//    }
+//
+//    // now measure again every 150ms until you see the value change to < 75% of the full range from closed to fully open
+//    while (current_position - start_position > .75 * (clamp_open - clamp_closed)) {
+//      current_position = measure_hall();
+//      /*
+//        Serial.printf("2st isflipped = 1 75% to exit, %f > %f\n", current_position - start_position, .75 * (clamp_open - clamp_closed));
+//        Serial.printf("2st isflipped = 1 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
+//      */
+//      delay(150);                                                               // measure every 150ms
+//    }
+//end:
+//    delay(300);                                                               // make sure the clamp has time to settle onto the leaf.
+//    //  Serial.print("exit 2\n");
+//  }
+//}
+//
+
+
+float check_thickness(void) { //DMK added this version of thickness guage for the following seris of 
+                              //functions for controlling the start of protocol segments par_led_start_on_open, par_led_start_on_close, start_on_open, start_on_open
+    int sum = 0;
+    for (int i = 0; i < 1000; ++i) {
+      sum += analogRead(HALL_OUT);
+     }
+    thickness_raw = (sum / 1000);
+    // dividing thickness_a by 1,000,000,000 to bring it back to it's actual value
+    thickness = (eeprom->thickness_a * thickness_raw * thickness_raw / 1000000000 + eeprom->thickness_b * thickness_raw + eeprom->thickness_c) / 1000; // calibration information is saved in uM, so divide by 1000 to convert back to mm.
+    return thickness;
+}
+
+
+//DMK added the following function to start on close. 
+
+
+        //float par = get_light_intensity(1);
+        //Serial_Print_Line("\"message\": \"Enter led # setting followed by +: \"}");
+        //int led =  Serial_Input_Double("+", 0);
+        //Serial_Print_Line("\"message\": \"Enter dac setting followed by +:  \"}");
+        //int setting =  Serial_Input_Double("+", 0);
+        //int setting=par_to_dac(par, led);
+        //Serial_Print_Line(setting);
+        //DAC_set(led, setting);
+        //DAC_change();
+        //digitalWriteFast(LED_to_pin[led], HIGH);
+        //delay(5000);
 
 
 
+//The following are new versions of the start on open/close functions
+//All of these functions are now passed max_hold_time, the time in milliseconds
+//the time out time when the wait loop will exit automatically if nothing happens.
 
-  if (isFlipped == 0) { // this is the white device
-    // now measure every 150ms until you see the value change to 65% of the full range from closed to fully open
-    while (start_position - current_position < .75 * (clamp_open - clamp_closed)) {
-      current_position = measure_hall();
-      /*
-        Serial.printf("1st isflipped = 0 75% to exit, %f < %f\n", start_position - current_position, .75 * (clamp_open - clamp_closed));
-        Serial.printf("1st isflipped = 0 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
-      */
-      delay(150);                                                               // measure every 100ms
-      if (start_position - current_position < -.20 * (clamp_open - clamp_closed) || current_position == 0 || current_position == 65535 || millis() - start_time > 30000) {       // if the person opened it first (ie they did it wrong and started it with clamp open) - detect and skip to end.  Also if the output is maxed or minned then proceed.
-        /*
-          Serial.printf("if statement to exit, %f < %f\n", start_position - current_position, -.20 * (clamp_open - clamp_closed));
-          Serial.print("exit 1\n");
-        */
-        goto end;
-      }
+//The par_led_start_on_open and par_led_start_on_close functions also adjust the 
+//actinic led light to match the incoming PAR. These functions are also 
+//passed the led number to set the actinic light
+
+void par_led_start_on_open(int led, int max_hold_time){  
+    //led=2;
+    turn_on_5V();     
+    float par=0;
+    int setting=0;
+    float thickness=0;
+    int max_numer_of_loops=0;
+    //In DMK's version of these functions, the maximum time allowed is set by 
+    //the delay_time * the max_numer_of_loops
+    
+    int delay_time = 20; 
+    max_numer_of_loops = max_hold_time/delay_time;
+    
+    for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
+        if (use_previous_light_intensity ==1) {
+          par=previous_light_intensity;
+          //Serial_Printf(" using previous light intensity of: %.2f", par);
+        }
+        else {
+          
+        int temp_light_intensity=light_intensity; //store these values to reassert after function, so not to interfere with the "light_intensity" environmental paramter, if measured separately
+        int temp_light_intensity_averaged=light_intensity_averaged;
+        int temp_r_averaged=r_averaged;
+        int temp_g_averaged=g_averaged;
+        int temp_b_averaged=b_averaged;
+        int temp_light_intensity_raw_averaged=light_intensity_raw_averaged;
+
+        light_intensity=0; //reset these values so not to interfere with the "light_intensity" environmental paramter, if measured separately
+        light_intensity_averaged=0;
+        r_averaged=0;
+        g_averaged=0;
+        b_averaged=0;
+        light_intensity_raw_averaged=0;
+          
+        par = get_light_intensity(1);
+        
+        previous_light_intensity_averaged=light_intensity_averaged;
+        previous_light_intensity=light_intensity;
+        previous_r_averaged=r_averaged;
+        previous_g_averaged=g_averaged;
+        previous_b_averaged=b_averaged;
+        previous_light_intensity_raw_averaged=light_intensity_raw_averaged;
+        
+        light_intensity=temp_light_intensity; //reset these values so not to interfere with the "light_intensity" environmental paramter, if measured separately
+        light_intensity_averaged=temp_light_intensity_averaged;
+        r_averaged=temp_r_averaged;
+        g_averaged=temp_g_averaged;
+        b_averaged=temp_b_averaged;
+        light_intensity_raw_averaged=temp_light_intensity_raw_averaged;
+        
+        }
+        
+        setting=par_to_dac(par, led);
+        //Serial_Printf("led=%d light=%f set=%d", led, par, setting);
+        DAC_set(led, setting);
+        DAC_change();
+        digitalWriteFast(LED_to_pin[led], HIGH);
+        delay(delay_time);
+        thickness=check_thickness();
+        //Serial_Printf("\"t\":%.2f,", thickness);
+        if (thickness > 2.0){
+           //Serial_Printf("\"reached threshold\":%.2f,", thickness);
+           break;
+     }
+
+    }
+}
+
+
+void par_led_start_on_close(int led, int max_hold_time) {
+    turn_on_5V();     
+    float par=0;
+    int setting=0;
+    float thickness=0;
+    int delay_time = 10; 
+    int max_numer_of_loops = 0;
+    max_numer_of_loops=max_hold_time/delay_time;
+
+    for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
+      if (use_previous_light_intensity ==1) {
+          par=previous_light_intensity;
+          //Serial_Printf(" using previous light intensity of: %.2f", par);
+        }
+        else {
+        int temp_light_intensity=light_intensity; //store these values to reassert after function, so not to interfere with the "light_intensity" environmental paramter, if measured separately
+        int temp_light_intensity_averaged=light_intensity_averaged;
+        int temp_r_averaged=r_averaged;
+        int temp_g_averaged=g_averaged;
+        int temp_b_averaged=b_averaged;
+        int temp_light_intensity_raw_averaged=light_intensity_raw_averaged;
+
+        light_intensity=0; //reset these values so not to interfere with the "light_intensity" environmental paramter, if measured separately
+        light_intensity_averaged=0;
+        r_averaged=0;
+        g_averaged=0;
+        b_averaged=0;
+        light_intensity_raw_averaged=0;
+          
+        par = get_light_intensity(1);
+        
+        previous_light_intensity_averaged=light_intensity_averaged;
+        previous_light_intensity=light_intensity;
+        previous_r_averaged=r_averaged;
+        previous_g_averaged=g_averaged;
+        previous_b_averaged=b_averaged;
+        previous_light_intensity_raw_averaged=light_intensity_raw_averaged;
+        
+        light_intensity=temp_light_intensity; //reset these values so not to interfere with the "light_intensity" environmental paramter, if measured separately
+        light_intensity_averaged=temp_light_intensity_averaged;
+        r_averaged=temp_r_averaged;
+        g_averaged=temp_g_averaged;
+        b_averaged=temp_b_averaged;
+        light_intensity_raw_averaged=temp_light_intensity_raw_averaged;
+                
+        }
+        setting=par_to_dac(par, led);
+        //Serial_Printf("light=%f set=%d", par, setting);
+        DAC_set(led, setting);
+        DAC_change();
+        digitalWriteFast(LED_to_pin[led], HIGH);
+        delay(delay_time);
+        thickness=check_thickness();
+        //Serial_Printf("\"t\":%.2f,", thickness);
+        if (thickness < 1.0){
+           //Serial_Printf("\"reached threshold\":%.2f,", thickness);
+           break;
+        }
+     }
+}
+
+
+void start_on_close(int max_hold_time) {
+  //Serial_Printf("start on close mhd=%d",max_hold_time );
+    turn_on_5V();     
+    delay(100);
+    float thickness=0;
+    int delay_time = 10; 
+    int max_numer_of_loops = 0;
+    max_numer_of_loops=max_hold_time/delay_time;
+    for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
+        thickness=check_thickness();
+        if (thickness < 1.0){
+           break;
+        }
+
+        delay(delay_time);
+    }
+}
+
+
+void start_on_open(int max_hold_time) {
+    //Serial_Printf("start on open mhd=%d",max_hold_time );
+
+    turn_on_5V();    
+    delay(100); 
+    float thickness=0;
+    int delay_time = 10; 
+    int max_numer_of_loops = 0;
+    max_numer_of_loops=max_hold_time/delay_time;
+
+    for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
+        thickness=check_thickness();
+        if (thickness > 2.0){
+           break;
+        }
+
+        delay(delay_time);
+    }
+}
+
+
+void start_on_open_close(int max_hold_time) {
+    
+    turn_on_5V();     
+    float thickness=0;
+    int delay_time = 10; 
+    int max_numer_of_loops = 0;
+    max_numer_of_loops=max_hold_time/delay_time;
+    //max_numer_of_loops=max_numer_of_loops/delay_time;
+
+    for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
+        thickness=check_thickness();
+        if (thickness > 2.0){
+           break;
+        }
+        delay(delay_time);
     }
 
-    // now measure again every 150ms until you see the value change to < 65% of the full range from closed to fully open
-    while (start_position - current_position > .75 * (clamp_open - clamp_closed)) {
-      current_position = measure_hall();
-      /*
-        Serial.printf("2st isflipped = 0 75% to exit, %f > %f\n", start_position - current_position, .75 * (clamp_open - clamp_closed));
-        Serial.printf("2st isflipped = 0 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
-      */
-      if (millis() - start_time > 30000) { // if it's been more than 30 seconds,then bail
-        goto end;
-      }
-      delay(150);                                                               // measure every 150ms
+    for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
+        thickness=check_thickness();
+        if (thickness < 1.0){
+           break;
+        }
+        delay(delay_time);
     }
-  }
-
-  else if (isFlipped == 1) { // this is the black device.  Same as white device but subtract current_position from start_position instead of other way around
-    // now measure every 150ms until you see the value change to 75% of the full range from closed to fully open
-    while (current_position - start_position < .75 * (clamp_open - clamp_closed)) {
-      current_position = measure_hall();
-      /*
-        Serial.printf("1st isflipped = 1 75% to exit, %f < %f\n", current_position - start_position, .75 * (clamp_open - clamp_closed));
-        Serial.printf("1st isflipped = 1 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
-      */
-      delay(150);                                                               // measure every 100ms
-      if (current_position - start_position < -.20 * (clamp_open - clamp_closed) || current_position == 0 || current_position == 65535 || millis() - start_time > 30000) {       // if the person opened it first (ie they did it wrong and started it with clamp open) - detect and skip to end.  Also if the output is maxed or minned then proceed.
-        /*
-          Serial.printf("if statement to exit, %f < %f\n", current_position - start_position, -.20 * (clamp_open - clamp_closed));
-          Serial.print("exit 1\n");
-        */
-        goto end;
-      }
-    }
-
-    // now measure again every 150ms until you see the value change to < 75% of the full range from closed to fully open
-    while (current_position - start_position > .75 * (clamp_open - clamp_closed)) {
-      current_position = measure_hall();
-      /*
-        Serial.printf("2st isflipped = 1 75% to exit, %f > %f\n", current_position - start_position, .75 * (clamp_open - clamp_closed));
-        Serial.printf("2st isflipped = 1 75% to exit, current: %f, start: %f, closed: %f, open: %f, thickness_min: %f, thickness_max: %f\n", current_position, start_position, clamp_closed, clamp_open, eeprom->thickness_min, eeprom->thickness_max);
-      */
-      delay(150);                                                               // measure every 150ms
-    }
-end:
-    delay(300);                                                               // make sure the clamp has time to settle onto the leaf.
-    //  Serial.print("exit 2\n");
-  }
 }
 
 unsigned long requestCo2(int timeout) {
@@ -318,7 +560,7 @@ unsigned long requestCo2(int timeout) {
     if (end1 - start1 > timeout) {
       Serial_Print("\"error\":\"no co2 sensor found\"");
       Serial_Print(",");
-      int error = 1;
+      error = 1;
       break;
     }
   }

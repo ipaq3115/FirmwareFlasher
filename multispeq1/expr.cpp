@@ -43,6 +43,11 @@ float variable(const char *name)
 
   } else if (strcmp( name, "light_intensity" ) == 0 ) {
     value = light_intensity;
+    //Serial_Printf("XXX light_intensity: %f,", light_intensity);
+
+  } else if (strcmp( name, "previous_light_intensity" ) == 0 ) {
+    value = previous_light_intensity;
+    //Serial_Printf("XXX previous_light_intensity: %f,", value);
 
   } else if (strcmp( name, "light_intensity_averaged" ) == 0 ) {
     value = light_intensity_averaged;
@@ -263,6 +268,28 @@ float variable(const char *name)
   } else if (strcmp( name, "adc_read3_averaged" ) == 0 ) {
     value = adc_read3_averaged;
 
+  } else if (strncmp( name, "auto_duration", 13) == 0 ) {  //DMK added this to insert autogain output into protocols
+    unsigned index = atoi(name + 13);
+    
+    value=float(auto_duration[index]);
+
+
+  } else if (strncmp( name, "auto_bright", 11) == 0 ) {  //DMK added this to insert autogain output into protocols
+    unsigned index = atoi(name + 11);
+    
+    value=float(auto_bright[index]);
+
+    //Serial_Printf("XXX auto_bright: %d,", auto_bright[2]);
+    
+    //Serial_Printf("DMK index, variable =  %d, %f \n\r", index, value);
+
+//    if (index < 10)
+//      value = auto_bright[index];
+//      Serial_Printf("DMK: variable %s=%g \n\r",name,value);
+//      Serial_Printf("DMK: variable %s=%g \n\r",name,value);
+//      Serial_Printf("DMK: variable %s=%g \n\r",name,value);
+//      delay(10000);
+
 /* Values saved to EEPROM
  * 
  */
@@ -454,5 +481,7 @@ static float expression() {
 // given a string, evaluate it.   Example "2*(userdef[49]+2)"
 float expr(const char *s) { 
   ptr = s;
-  return expression();
+  float test=expression();
+  //Serial_Printf("DMK: value--> %f \n\r",test);
+  return test;
 }

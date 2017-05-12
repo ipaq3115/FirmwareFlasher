@@ -12,6 +12,7 @@
 #include "serial.h"
 #include <SPI.h>                    // include the new SPI library
 #include <i2c_t3.h>
+unsigned long last_activity;
 
 unsigned int read_once(unsigned char address);
 void program_once(unsigned char address, unsigned int value);
@@ -30,31 +31,53 @@ void unset_pins(void);            // change pin states to save power
 
 void  __attribute__ (( noinline, noclone, optimize("Os") )) turn_on_5V()
 {
+ if (status_of_5==0){
   // enable 5V and analog power - also DAC, ADC, Hall effect sensor
   // dither this on slowly to prevent a brownout - input to MK20 cannot fall below 2.7V
   pinMode(WAKE_DC, OUTPUT);
+  digitalWriteFast(WAKE_DC, LOW);  //start on low
+  delay(100);
+  //for (int ii=0; ii<5; ii++) {
+    int dither=20;
 
-  for (int i = 0; i < 20; i++) {
-    digitalWriteFast(WAKE_DC, HIGH);  // on
+    //int oo=analogRead(0);
+    // Serial_Print_Line(oo);
+  for (int i = 0; i < dither; i++) {  //turn WAKE_DC for a short, going on long, time 
+    digitalWriteFast(WAKE_DC, HIGH);  // 
 
-    for (int j = 0; j < i * 2; ++j) {
+    for (int j = 0; j < i * 2; ++j) {  //the number of loops here defines the on time 
       __asm__ volatile("nop");      // about .01 microseconds each plus loop overhead of ??
     }
+
     digitalWriteFast(WAKE_DC, LOW);   // off
-    delayMicroseconds(10);            // allow supply to recover
+    delayMicroseconds(dither-i);            // allow supply to recover, make this time smaller and smaller
   }
+  //}
 
   digitalWriteFast(WAKE_DC, HIGH);    // final state is on
+  //oo=analogRead(0);
+  //Serial_Print_Line(oo);
   delay(1000);                        // wait for power to stabilize
   // (re)initialize 5V chips
   DAC_init();                         // initialize DACs (5V)
   // note: ADC is initialized at use time
+  //Serial_Print("n:");
+  //oo=analogRead(0);
+  //Serial_Print_Line(oo);
+  status_of_5=1;
+ }
 }
 
 void turn_off_5V()
 {
-  // disable 5V and analog power
-  pinMode(WAKE_DC, INPUT);    // change to input/high impedance state and allow pull up/downs to work
+    //if (power_save == 1) {
+      // disable 5V and analog power
+    digitalWriteFast(WAKE_DC, LOW);  //start on low
+    pinMode(WAKE_DC, INPUT);    // change to input/high impedance state and allow pull up/downs to work
+    //Serial.print("5v off");
+    status_of_5=0;
+    delay(5000); //wait about 5 seconds to allow the voltages to relax
+    //}
 }
 
 void turn_on_3V3()
@@ -160,7 +183,7 @@ float stdev16(uint16_t val[], const int count)
 // return 1 if OK, otherwise 0
 // also check CRC value if present
 
-int check_protocol(char *str)
+char * check_protocol(char *str)
 {
   int bracket = 0, curly = 0;
   char *ptr = str;
@@ -182,19 +205,19 @@ int check_protocol(char *str)
     } // switch
     ++ptr;
   } // while
-
+  
   if (bracket != 0 || curly != 0)  // unbalanced - can't be correct
-    return 0;
+    return NULL;
 
   // check CRC - 8 hex digits immediately after the closing ]
   ptr = strrchr(str, ']'); // find last ]
   if (!ptr)                        // no ] found - how can that be?
-    return 0;
+    return NULL;
 
   ++ptr;                      // char after last ]
 
   if (!isxdigit(*(ptr)))      // hex digit follows last ] ?
-    return 1;                    // no CRC so report OK
+    return ptr;                    // no CRC so report OK
 
   // CRC is there - check it
 
@@ -203,14 +226,41 @@ int check_protocol(char *str)
 
   // note: must be exactly 8 upper case hex digits
   if (strncmp(int32_to_hex (crc32_value()), ptr, 8) != 0) {
-    return 0;                 // bad CRC
+    return NULL;                 // bad CRC
   }
 
-  *ptr = 0;                   // remove the CRC
+  //*ptr = 0;                   // remove the CRC
 
-  return 1;                   // CRC is OK
+  return ptr;                   // CRC is OK
 } // check_protocol()
 
+
+char * trim_protocol_set(char *str)
+{
+  int bracket = 1, curly = 0;
+  char *ptr = str;
+
+  while ((*ptr != 0) &&  (bracket != 0)) {
+    switch (*ptr) {
+      case '[':
+        ++bracket;
+        break;
+      case ']':
+        --bracket;
+        break;
+      case '{':
+        ++curly;
+        break;
+      case '}':
+        --curly;
+        break;
+    } // switch
+    ++ptr;
+  } // while
+    //Serial.printf(" %d ", bracket);
+  
+  return ptr;
+}
 
 
 // Battery check:
@@ -234,6 +284,8 @@ int battery_low(int load)         // 0 for no load, 1 to flash LEDs to create lo
   return 0;
 
 } // battery_low()
+
+
 
 #define R1 680                // resistor divider for power measurement
 #define R2 2000
@@ -351,9 +403,11 @@ int accel_changed()
 
 const unsigned long SHUTDOWN = (3 * 60 * 60 * 1000);   // power down after X min or seconds of inactivity (in msec)
 //const unsigned long SHUTDOWN = (30 * 1000);     // quick powerdown, used for testing
-static unsigned long last_activity = millis();
+
+
 
 // record that we have seen serial port activity (used with powerdown())
+
 void activity() {
   last_activity = millis();
 }
@@ -383,6 +437,20 @@ void shutoff()
 }
 
 
+void energySave() {
+  // int mtemp;=millis();
+  // Serial.print(mtemp);
+  // Serial.print("");
+  // Serial.print(last_activity);
+  // Serial.print(" ");
+  
+  if ((millis() - last_activity) > energy_save_timeout) {  // 
+   //Serial.print("short energy save");
+    turn_off_5V();                   
+    activity(); //reset activity to stop continuous triggering               
+  }
+}  // 
+
 // if not on USB and there hasn't been any activity for x seconds, then power down most things and sleep
 
 void powerdown() {
@@ -391,6 +459,7 @@ void powerdown() {
     MMA8653FC_standby();                            // sleep accelerometer
     shutoff();                                      // save power, leave 3V3 on
     deep_sleep();                                   // TODO switch to set eeprom value then reboot (will get even lower power draw)
+    
   }
 }  // powerdown()
 

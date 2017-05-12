@@ -41,8 +41,18 @@ float expr(const char str[]);
 void do_protocol(void);
 void do_command(void);
 void print_calibrations(void);
-void start_on_open_close(void);
+void start_on_open_close(int max_hold_time);
+void start_on_open(int max_hold_time);
+void start_on_close(int max_hold_time);
+//void PAR_LED_open_hold(int led);
+void par_led_start_on_open(int led, int max_hold_time);
+void par_led_start_on_close(int led, int max_hold_time);
+
+int protocol_set_mode=0;
+
+
 void start_on_pin_high(int pin);
+
 void get_compass_and_angle (int notRaw, int _averages);
 float get_thickness (int notRaw, int _averages);
 float get_contactless_temp (int _averages);
@@ -72,36 +82,51 @@ theReadings getReadings (const char* _thisSensor);                        // get
 // 1010+<parameter1>+<parameter2>+...  (a command)
 // [...] (a json protocol to be executed)
 
+   
+
 void loop() {
 
   // save power
-  turn_off_5V();         // save battery - turn off a few things
+  //if (power_save =! 0) {
+  //  turn_off_5V();         // save battery - turn off a few things
+ // }
+
+  
 
   // read until we get a character - primary idle loop
   int c;
 
-  activity();               // record fact that we have seen activity (used with powerdown()), make sure it's recorded after the latest protocol or command is completed.
-
+  //activity();               // record fact that we have seen activity (used with powerdown()), make sure it's recorded after the latest protocol or command is completed.
+  ///**********************************************************
   for (;;) {
     c = Serial_Peek();
+    powerdown();            // if no activity for x second do major shutdown
+    energySave();             //if no activity for 15 s power down 5V
 
-    if (c != -1)            // received something
-      break;
+    if (c != -1){            // received something
 
-    powerdown();            // power down if no activity for x seconds
+      break;  
 
-    sleep_cpu();         // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
-
+    }
   } // for
+
+    //sleep_cpu();         // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
+    
+//*************************************************************
 
   crc32_init();
 
-  if (c == '[')
+  if (c == '['){
+    activity();   //activity occured happened
+
     do_protocol();          // start of json
-  else
+  }
+  else {
+    activity(); //activity occured happened
     do_command();           // received a non '[' char - processs command
 
-  Serial_Flush_Output();
+    Serial_Flush_Output();
+  }
 
 } // loop()
 
@@ -111,6 +136,12 @@ void loop() {
 static uint8_t _meas_light;         // measuring light to be used during the interrupt
 static uint16_t _pulsesize;     // pulse width in usec
 static volatile int pulse_done = 0; // set by ISR
+
+
+
+//globals added by DMK
+
+int max_hold_time = 15000;  //number of miliseconds after which the hold loops bail
 
 // process a numeric + command
 
@@ -167,40 +198,48 @@ void do_command()
       constant_light();
       break;
 
-    case hash("cycle5v"):
-      Serial_Print_Line("turning off 5v in 3 seconds...");
-      delay(3000);
-      turn_off_5V();
-      Serial_Print_Line("turning off 3.3v in 3 seconds...");
-      delay(3000);
-      turn_off_3V3();
-      Serial_Print_Line("turning on 3.3v in 3 seconds...");
-      delay(3000);
-      turn_on_3V3();
-      Serial_Print_Line("turning on 5v in 3 seconds...");
-      delay(3000);
-      turn_on_5V();
-      delay(3000);
-      Serial_Print_Line("reboot before rerunning as states may be weird now");
-      break;
+    // case hash("cycle5v"):
+    //   Serial_Print_Line("turning off 5v in 3 seconds...");
+    //   delay(3000);
+    //   turn_off_5V();
+    //   Serial_Print_Line("turning off 3.3v in 3 seconds...");
+    //   delay(3000);
+    //   turn_off_3V3();
+    //   Serial_Print_Line("turning on 3.3v in 3 seconds...");
+    //   delay(3000);
+    //   turn_on_3V3();
+    //   Serial_Print_Line("turning on 5v in 3 seconds...");
+    //   delay(3000);
+    //   turn_on_5V();
+    //   delay(3000);
+    //   Serial_Print_Line("reboot before rerunning as states may be weird now");
+    //   break;
+
+    case hash("adc1"): //analogRead(BAT_TEST);     
+      {int oo=analogRead(BAT_TEST);
+      Serial_Print_Line(oo);
+      break;}
+      
+
 
     case hash("all_sensors"):                                                                          // continuously output until user enter -1+
-      {
+      { //start all sensors
         int Xcomp, Ycomp, Zcomp;
         int Xval, Yval, Zval;
         int leave = 0;
         const int samples = 1000;
-        while (leave != -1) {
+        while (leave != -1) { //start loop conditional on leave
           long sum = 0;
           leave = Serial_Input_Long("+", 1000);
-          float par = get_light_intensity(1);
+          int par = get_light_intensity(1);
           float contactless_temp = (MLX90615_Read(0) + MLX90615_Read(0) + MLX90615_Read(0)) / 3.0;
           MMA8653FC_read(&Xval, &Yval, &Zval);
           MAG3110_read(&Xcomp, &Ycomp, &Zcomp);
           delay(200);
-          for (int i = 0; i < samples; ++i) {
+          for (int i = 0; i < samples; ++i) { //begin average loop
             sum += analogRead(HALL_OUT);
-          }
+          } //end loop average loop
+          
           int hall = (sum / samples);
           delay(1);
           float temperature1 = bme1.readTemperature();
@@ -212,10 +251,48 @@ void do_command()
           Serial_Printf("{\"par\":%f,\"temperature\":%f,\"relative_humidity\":%f,\"pressure\":%f,\"temperature2\":%f,\"relative_humidity2\":%f,\"pressure2\":%f,\"contactless_temp\":%f,\"hall\":%d,\"accelerometer\":[%d,%d,%d],\"magnetometer\":[%d,%d,%d]}", par, temperature1, relative_humidity1, pressure1, temperature2, relative_humidity2, pressure2, contactless_temp, hall, Xval, Yval, Zval, Xcomp, Ycomp, Zcomp);
           //          Serial_Printf("{\"par_raw\":%d,\"contactless_temp\":%f,\"hall\":%d,\"accelerometer\":[%d,%d,%d],\"magnetometer\":[%d,%d,%d]}", par_raw, contactless_temp, hall, Xval, Yval, Zval, Xcomp, Ycomp, Zcomp);
           Serial_Print_CRC();
+        } // end loop conditional on leave
+      } //end all_sensors
+      break;
+
+    case hash("hall"):                                                                          // continuously output until user enter -1+
+      {
+        int Xcomp, Ycomp, Zcomp;
+        int Xval, Yval, Zval;
+        int leave = 0;
+        turn_on_5V();   
+        const int samples = 1000;
+        while (leave != -1) {
+          long sum = 0;
+          leave = Serial_Input_Long("+", 1000);
+          int par = get_light_intensity(1);
+          float contactless_temp = (MLX90615_Read(0) + MLX90615_Read(0) + MLX90615_Read(0)) / 3.0;
+          MMA8653FC_read(&Xval, &Yval, &Zval);
+          MAG3110_read(&Xcomp, &Ycomp, &Zcomp);
+          delay(200);
+          for (int i = 0; i < samples; ++i) {
+            sum += analogRead(HALL_OUT);
+          }
+          //int hall = (sum / samples);
+          float hall_value = (analogRead(HALL_OUT) + analogRead(HALL_OUT) + analogRead(HALL_OUT)) / 3;
+          //float hall = measure_hall()
+          //Serial_Print_Line(hall_value);
+          Serial_Printf("Hall: %f ", hall_value);
+          delay(1);
+          float temperature1 = bme1.readTemperature();
+          float temperature2 = bme2.readTemperature();
+          float relative_humidity1 = bme1.readHumidity();
+          float relative_humidity2 = bme2.readHumidity();
+          float pressure1 = bme1.readPressure() / 100;
+          float pressure2 = bme2.readPressure() / 100;
+          
+          //Serial_Printf(char hall) //"{\"par\":%f,\"temperature\":%f,\"relative_humidity\":%f,\"pressure\":%f,\"temperature2\":%f,\"relative_humidity2\":%f,\"pressure2\":%f,\"contactless_temp\":%f,\"hall\":%d,\"accelerometer\":[%d,%d,%d],\"magnetometer\":[%d,%d,%d]}", par, temperature1, relative_humidity1, pressure1, temperature2, relative_humidity2, pressure2, contactless_temp, hall, Xval, Yval, Zval, Xcomp, Ycomp, Zcomp);
+          //          Serial_Printf("{\"par_raw\":%d,\"contactless_temp\":%f,\"hall\":%d,\"accelerometer\":[%d,%d,%d],\"magnetometer\":[%d,%d,%d]}", par_raw, contactless_temp, hall, Xval, Yval, Zval, Xcomp, Ycomp, Zcomp);
+          Serial_Print_CRC();
         }
       }
       break;
-
+      
     case hash("any_light"):
       {
         turn_on_5V();                  // turn on 5V to turn on the lights
@@ -233,6 +310,27 @@ void do_command()
       }
       break;
 
+
+    case hash("PAR_LED"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        float par = get_light_intensity(1);
+        Serial_Print_Line("\"message\": \"Enter led # setting followed by +: \"}");
+        int led =  Serial_Input_Double("+", 0);
+        //Serial_Print_Line("\"message\": \"Enter dac setting followed by +:  \"}");
+        //int setting =  Serial_Input_Double("+", 0);
+        int setting=par_to_dac(par, led);
+        Serial_Print_Line(setting);
+        DAC_set(led, setting);
+        DAC_change();
+        digitalWriteFast(LED_to_pin[led], HIGH);
+        delay(5000);
+        //digitalWriteFast(LED_to_pin[led], LOW);
+        //DAC_set(led, 0);
+        //DAC_change();
+      }
+      break;
+      
     case hash("print_memory"):
       print_calibrations();
       break;
@@ -342,7 +440,7 @@ void do_command()
     case hash("light9"):
       turn_on_5V();                  // turn on 5V to turn on the lights
       Serial_Print_Line("PULSE9");
-      DAC_set(9, 300);
+      DAC_set(9, 3000);
       DAC_change();
       digitalWriteFast(PULSE9, HIGH);
       delay(1000);
@@ -571,6 +669,10 @@ void do_command()
       store(detector_offset_slope[3], Serial_Input_Double("+", 0));
       store(detector_offset_yint[3], Serial_Input_Double("+", 0));
       break;
+    //case hash("set_energy_save_timeout"):
+      //store(detector_offset_slope[3], Serial_Input_Double("+", 0));
+      //store(detector_offset_yint[3], Serial_Input_Double("+", 0));
+      //break;
     case hash("set_led_par"):
       {
         for (;;) {
@@ -694,77 +796,77 @@ void do_command()
       }
       break;
 
-    case hash("read_pin"): {
-        int thisPin = Serial_Input_Double("+", 0);
-        pinMode(thisPin, INPUT);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-        Serial_Print_Line(analogRead(thisPin));
-        delay(200);
-      }
-      break;
+    // case hash("read_pin"): {
+    //     int thisPin = Serial_Input_Double("+", 0);
+    //     pinMode(thisPin, INPUT);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(analogRead(thisPin));
+    //     delay(200);
+    //   }
+    //   break;
 
-    case hash("digital_read_pin"): {
-        int thisPin = Serial_Input_Double("+", 0);
-        pinMode(thisPin, INPUT);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-        Serial_Print_Line(digitalRead(thisPin));
-        delay(200);
-      }
-      break;
+    // case hash("digital_read_pin"): {
+    //     int thisPin = Serial_Input_Double("+", 0);
+    //     pinMode(thisPin, INPUT);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //     Serial_Print_Line(digitalRead(thisPin));
+    //     delay(200);
+    //   }
+    //   break;
 
 
     case hash("print_magnetometer_bias"):
@@ -901,8 +1003,10 @@ void do_command()
 
 void do_protocol()
 {
-
-  const int serial_buffer_size = 7000;                                        // max size of the incoming jsons
+  //Serial_Flush_Output(); ***
+  reshape_pattern = 0;  //start with rechape off
+  save_trace_time_scale = 0;
+  const int serial_buffer_size = 10000;                                        // max size of the incoming jsons
   const int max_jsons = 15;                                                   // max number of protocols per measurement
   const int MAX_JSON_ELEMENTS = 800;      //
 
@@ -943,48 +1047,99 @@ void do_protocol()
   */
   String json2 [max_jsons];     // TODO - don't use String   // will contain each json
   for (int i = 0; i < max_jsons; i++) {
-    json2[i] = "";                                                              // reset all json2 char's to zero (ie reset all protocols)
-  }
+    json2[i] = "";  // reset all json2 char's to zero (ie reset all protocols)
+   }
 
-  { // create limited scope for serial_buffer
+  //{ // create limited scope for serial_buffer
     char serial_buffer[serial_buffer_size + 1];     // large buffer for reading in a json protocol from serial port
 
     Serial_Input_Chars(serial_buffer, "\r\n", 500, serial_buffer_size);       // input the protocol
+    char * end_pointer = check_protocol(serial_buffer); //check_protocol returns the end_pointer if serial_dbuffer is a valid JSON,
+                                                        // and NULL if there is a problem
+    
+    if (end_pointer == NULL) {         // This just checks of the number of {'s = number of }'s, and that 
 
-    if (!check_protocol(serial_buffer)) {         // sanity check
-
-      // as `received` is not valid json, this trows out the json parser on the other end
-      // would be nice if the json payload was escaped
-
-      //Serial_Print("{\"error\":\"bad json protocol (braces or CRC), received\"");
-      //Serial_Print(serial_buffer);
-      //Serial_Print("\"}");
-
+                                      // as `received` is not valid json, this throws out the json parser on the other end
+                    
       //      Serial_Print("{\"error\":\"bad json protocol (braces or CRC)\"}");
       Serial_Print("{\"error\":\"bad json protocol (braces or CRC)\"              ");
-      Serial_Print(serial_buffer);
-      Serial_Print("      \"}");
-      Serial_Print_CRC();
-      Serial_Flush_Output();
+      // Serial_Print(serial_buffer);
+      // Serial_Print("      \"}");
+      // Serial_Print_CRC();
+      // Serial_Flush_Output();
       return;
     }
 
-    // break up the protocol into individual jsons
+    
+int length_of_serial_buffer=0; 
+int start_offset=1; //where to start the decoding. 
 
-    // TODO improve this - use in place, stretch it in place or copy to new C strings?
-    // make json2 an array of char pointers to each protocol
-    for (unsigned i = 1; i < strlen(serial_buffer); i++) {         // increments through each char in incoming transmission - if it's open curly, it saves all chars until closed curly.  Any other char is ignored.
-      if (serial_buffer[i] == '{') {                               // wait until you see a open curly bracket
-        while (serial_buffer[i] != '}') {                          // once you see it, save incoming data to json2 until you see closed curly bracket
-          json2[number_of_protocols] += serial_buffer[i];          // add single char to json
-          i++;
+char * start_of_protocol_set = strstr (serial_buffer, "_protocol_set_" ); //if _protocol_set_ exists, find the position of the  _protocol_set_ parameter
+
+//Serial_Printf("start_of_protocol_set = %d ", start_of_protocol_set );
+
+if ((start_of_protocol_set == 0) || (start_of_protocol_set == NULL)) {  //if this is true, then swe are using the old style sets of protocols and we pass 
+  length_of_serial_buffer=strlen(serial_buffer); //find the total length of the serial_buffer
+  protocol_set_mode=0;
+
+  // break up the protocol into individual jsons
+  number_of_protocols = 0;
+    for (char *ptr = serial_buffer; ptr<  end_pointer ; ptr++) {         // increments through each char in incoming transmission - if it's open curly, it saves all chars until closed curly.  Any other char is ignored.
+    //for (unsigned i = 1; i < length_of_serial_buffer; i++) {
+      if (*ptr == '{') {                               // wait until you see a open curly bracket
+        while (*ptr != '}') {                          // once you see it, save incoming data to json2 until you see closed curly bracket
+          json2[number_of_protocols] += *ptr;          // add single char to json
+          ptr++;
         }
-        json2[number_of_protocols] += serial_buffer[i];           // catch the last closed curly
+
+        json2[number_of_protocols] += *ptr;           // catch the last closed curly
         number_of_protocols++;
       }
     }  // for
+    //Serial_Printf("number of protocols= %d ", number_of_protocols);
 
-  } // no more need for the serial input buffer
+}
+else {  // If we get here true, this is a "_protocol_set_", and the data will be be saved in one object, not the older protocols   
+                              // for which the data for each is saved as separate object. This is an important distinction because the macro
+                              // functions can only work on one data object at a time
+// Next, strip off the leading and trailing bits so that the _protocol_set_ looks like a normal set of protocols
+      
+      
+      protocol_set_mode=1; //set the protocol_set_mode flag to 1. This will be used during the saving of data
+
+      char * new_begin_ptr = start_of_protocol_set;       // set up an adjustable pointer to the beginning of the set of protocols
+      
+      while ((new_begin_ptr<end_pointer) && (* new_begin_ptr != '[')){ //increment the new_begin_ptr until we reach the first '['
+                                                                      //where the normal style set of protocols begins
+        new_begin_ptr+=1;
+        start_offset +=1;  //increment the place we will star the decoding to avoid the opening "[{" charaters
+      }
+    
+    char * new_end_ptr = trim_protocol_set(new_begin_ptr + 1); //this function finds the end of the protocol_set and returns the new end pointer
+
+    Serial_Print("");
+
+    //Serial_Printf("\"new_begin_ptr  new_end_ptr\" :[ %d , %d ]", new_begin_ptr , new_end_ptr);
+      
+  // break up the protocol int%d  %do individual jsons
+  number_of_protocols = 0;
+    for (char *ptr = new_begin_ptr; ptr<new_end_ptr ; ptr++) {         // increments through each char in incoming transmission - if it's open curly, it saves all chars until closed curly.  Any other char is ignored.
+      if (*ptr == '{') {                               // wait until you see a open curly bracket
+        while (*ptr != '}') {                          // once you see it, save incoming data to json2 until you see closed curly bracket
+          json2[number_of_protocols] += *ptr;          // add single char to json
+          ptr++;
+        }
+        json2[number_of_protocols] += *ptr;           // catch the last closed curly
+        number_of_protocols++;
+      }
+    }  
+    //Serial.printf("number of protocols= %d ", number_of_protocols);
+}
+
+//**********************************************************************************************
+//finished with making sub-json objects, now starting to power up to perform experiments
+
+  //} // no more need for the serial input buffer
 
   turn_on_5V();                             // turn on the +5V and analog circuits
 
@@ -1012,21 +1167,35 @@ void do_protocol()
 
   v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
 
+//Serial_Flush_Output();
+//Serial_Flush_Input();
+
+//this is the beginning the actual trace
+//starts by printing out device information etc.
   Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":%s", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
                 (unsigned)eeprom->device_id & 0xff, v,
                 DEVICE_FIRMWARE);
-
   //  if (year() >= 2016)
   //    Serial_Printf(",\"device_time\":%u", now());
-  Serial_Print(",\"sample\":[");
+
+  
+Serial_Print(",\"sample\":[");
+
+if (protocol_set_mode==1) {
+
+  Serial_Print("{\"light_intensity_raw\":0,\"data_raw\":[],"); //This is a hack to get around the insertion of the time zone information
+  Serial_Print("\"set\": [{\"blank:\":\"blank\"},"); //if we are using protocol_set_mode then wrap the output data as a dictionary, called 
+}
 
   // discharge sample and hold in case the cap is currently charged (on add on and main board)
   digitalWriteFast(HOLDM, HIGH);
   digitalWriteFast(HOLDADD, HIGH);
-  delay(10);
+  delay(10); //deltay is in ms
+
+
 
   // loop through the all measurements to create a measurement group
   for (int y = 0; y < measurements; y++) {                   // measurements is initially 1, but gets updated after the json is parsed
@@ -1064,20 +1233,30 @@ void do_protocol()
         JsonArray pulses =        hashTable.getArray("pulses");                                // the number of measuring pulses, as an array.  For example [50,10,50] means 50 pulses, followed by 10 pulses, follwed by 50 pulses.
         String protocol_id =      hashTable.getString("protocol_id");                          // used to determine what macro to apply
         int analog_averages =     hashTable.getLong("analog_averages");                          // DEPRECIATED IN NEWEST HARDWARE 10/14 # of measurements per measurement pulse to be internally averaged (min 1 measurement per 6us pulselengthon) - LEAVE THIS AT 1 for now
+        
+        
         if (analog_averages == 0) {                                                              // if averages don't exist, set it to 1 automatically.
           analog_averages = 1;
         }
+        
+        
         averages =                hashTable.getLong("averages");                               // The number of times to average this protocol.  The spectroscopic and environmental data is averaged in the device and appears as a single measurement.
+        
+        
         if (averages == 0) {                                                                   // if averages don't exist, set it to 1 automatically.
           averages = 1;
         }
+        
         int averages_delay_ms =   hashTable.getLong("averages_delay");                       // same as above but in ms
         measurements =            hashTable.getLong("measurements");                            // number of times to repeat a measurement, which is a set of protocols
         measurements_delay_ms =      hashTable.getLong("measurements_delay");                      // delay between measurements in milliseconds
         protocols =               hashTable.getLong("protocols");                               // delay between protocols within a measurement
+        
         if (protocols == 0) {                                                                   // if averages don't exist, set it to 1 automatically.
           protocols = 1;
         }
+
+
         int protocols_delay_ms =     hashTable.getLong("protocols_delay");                         // delay between protocols within a measurement in milliseconds
         if (hashTable.getLong("act_background_light") == 0) {                                    // The Teensy pin # to associate with the background actinic light.  This light continues to be turned on EVEN BETWEEN PROTOCOLS AND MEASUREMENTS.  It is always Teensy pin 13 by default.
           act_background_light =  0;                                                            // change to new background actinic light
@@ -1085,6 +1264,12 @@ void do_protocol()
         else {
           act_background_light =  hashTable.getLong("act_background_light");                    // DEPRECIATED as of 6/29/216
         }
+
+
+
+
+
+
         //averaging0 - 1 - 30
         //averaging1 - 1 - 30
         //resolution0 - 2 - 16
@@ -1131,6 +1316,78 @@ void do_protocol()
         //*/
         JsonArray environmental = hashTable.getArray("environmental");
         JsonArray environmental_array = hashTable.getArray("environmental_array");
+    
+        JsonArray autogain = hashTable.getArray("autogain");
+
+
+
+
+    // for (uint16_t i = 0; i < autogain.getLength(); i++) {                                                  // identify how many arrays to save for each requested environmental variable, based on the number of outputs per call... so compass yields two arrays ("compass" and "angle")... etc.
+
+    //         //int this_gain_index = environmental.getArray(i).getLong(5);  //what index to store gain settings
+    //   int this_gain_index = autogain.getArray(i).getLong(0); // what detector to use
+      
+    //   int this_light = autogain.getArray(i).getLong(1); //what LED to test
+      
+    //   //environmental.getArray(i).getLong(1);  //what LED to test
+    //   //int this_detector = environmental.getArray(i).getLong(2);  // what detector to use
+
+    //   int this_detector = autogain.getArray(i).getLong(2); // what detector to use
+
+    //   //int this_pulsesize = environmental.getArray(i).getLong(3);  //what duration to use
+    //   int this_pulsesize = autogain.getArray(i).getLong(3); // what detector to use
+
+    //   //float this_target = environmental.getArray(i).getLong(4);  //what target value to use
+    //   float this_target = autogain.getArray(i).getLong(4); // what detector to use
+
+    //   Serial_Print("i:");
+
+    //   Serial_Print(this_gain_index);
+
+    //   Serial_Print("l:");
+
+    //   Serial_Print(this_light);
+
+    //   Serial_Print("d:");
+      
+    //   Serial_Print(this_detector);
+
+    //   Serial_Print("p:");
+
+    //   Serial_Print(this_pulsesize);
+
+    //   Serial_Print("t:");
+
+    //   Serial_Print(this_target);
+
+    //   Serial_Print("\r\n");
+
+    // }
+      
+      
+      // Serial_Print("tp:");      
+
+
+
+
+
+      // String tttt = autogain.getArray(i).getString(0);
+      // Serial_Print(tttt);
+      // String ttttt = autogain.getArray(i).getLong(1);
+      // Serial_Print(ttttt);
+
+      // ttttt = autogain.getArray(i).getLength();
+      // Serial_Print(ttttt);
+      
+    //}
+
+
+    // for (uint16_t i = 0; i < autogain_array.getLength(); i++) {                                                  // identify how many arrays to save for each requested environmental variable, based on the number of outputs per call... so compass yields two arrays ("compass" and "angle")... etc.
+    //   Serial_Print("ag:");      
+    //   Serial_Print(i);
+    // }
+
+
 
         // ********************INPUT DATA FOR CORALSPEQ*******************
         JsonArray spec =          hashTable.getArray("spec");                                // defines whether the spec will be called during each array.  note for each single plus, the spec will call and add 256 values to data_raw!
@@ -1143,14 +1400,17 @@ void do_protocol()
         long size_of_data_raw = 0;
         long total_pulses = 0;
 
-        for (int i = 0; i < pulses.getLength(); i++) {                                      // count the number of non zero lights and total pulses
+        for (int i = 0; i < pulses.getLength(); i++) {                                      // count the number of non zero lights and total pulses 
+
           total_pulses += pulses.getLong(i) * meas_lights.getArray(i).getLength();          // count the total number of pulses
           int non_zero_lights = 0;
+
           for (int j = 0; j < meas_lights.getArray(i).getLength(); j++) {                   // count the total number of non zero pulses
             if (meas_lights.getArray(i).getLong(j) > 0) {
               non_zero_lights++;
             }
           }
+          //Serial_Printf("\n\r on_zero_lights= %d \n\r", non_zero_lights);
 
           // redefine the size of data raw to account for the 256 spec measurements per 1 pulse if spec is used (for coralspeq)
           if (spec.getLong(i) == 1) {
@@ -1161,6 +1421,9 @@ void do_protocol()
           }
 
         } // for each pulse
+
+        //Serial_Printf("\n\r size_of_data_raw= %d \n\r", size_of_data_raw);
+
 
         Serial_Print("{");
 
@@ -1178,6 +1441,8 @@ void do_protocol()
           env_counter = env_counter + thisSensor.numberReadings;                                                     // sum the total number of readings, so we create the right number of arrays.
         }
         //        Serial_Printf("env_counter: %d, size_of_data_raw: %d", env_counter, size_of_data_raw);
+        
+        
         float environmental_array_averages[env_counter][size_of_data_raw];                                         // buffer for each of the environmentals as arrays in environmental_array_averages
         if (env_counter > 0) {                                                                                // if there are environmentals during pulse sets, then generate an array to store the outputs in
           for (uint16_t i = 0; i < env_counter; i++) {
@@ -1270,9 +1535,156 @@ void do_protocol()
         analog_read = digital_read = adc_read = adc_read2 = adc_read3 = 0;
         analog_read_averaged = digital_read_averaged = adc_read_averaged = adc_read2_averaged = adc_read3_averaged = 0;
 
-        if (hashTable.getLong("open_close_start") == 1) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
-          start_on_open_close();
+        if (hashTable.getLong("open_close_start") != 0) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
+            start_on_open(max_hold_time);
+            start_on_close(max_hold_time); 
+          }
+        
+
+//        //added by DMK
+//        if (hashTable.getLong("open_close_start") == 2) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
+//          start_on_open(max_hold_time);
+//        }
+//        //added by DMK
+//
+//        if (hashTable.getLong("open_close_start") == 3) {                                     // wait for device to CLOSE (read hall sensor) before proceeding with protocol
+//          start_on_close(max_hold_time);
+//        }
+        if (hashTable.getLong("energy_save_timeout") != 0) {
+          
+          energy_save_timeout=hashTable.getLong("energy_save_timeout"); 
         }
+
+        if (hashTable.getLong("max_hold_time") != 0) {
+          if ((hashTable.getLong("max_hold_time")>0) &&  (hashTable.getLong("max_hold_time")<1000000)){ //between zero and 10^6 seconds
+          max_hold_time=hashTable.getLong("max_hold_time"); 
+          }
+        }
+
+        if (hashTable.getLong("start_on_open") != 0) {
+          start_on_open(max_hold_time);
+        }
+        
+        if (hashTable.getLong("start_on_close") != 0) {
+          start_on_close(max_hold_time);          
+        }
+        if (hashTable.getLong("start_on_open_close") != 0) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
+          start_on_open_close(max_hold_time);
+        }
+
+        if (hashTable.getLong("par_led_start_on_open") != 0) {
+          int led=hashTable.getLong("par_led_start_on_open");  // wait for device to open (read hall sensor), then close before proceeding with protocol
+
+          //int led=hashTable.getArray("par_led_start_on_open").getLong(0); 
+          //int max_wait=hashTable.getArray("par_led_start_on_open").getLong(1); 
+          
+          //Serial_Printf("\n par_led_start_on_open: %d\n",led, max_hold_time );
+          par_led_start_on_open(led, max_hold_time); 
+        }
+
+        if (hashTable.getLong("par_led_start_on_close") != 0) {
+          int led=hashTable.getLong("par_led_start_on_close");  // wait for device to open (read hall sensor), then close before proceeding with protocol
+           
+          //int led=hashTable.getArray("par_led_start_on_close").getLong(0); 
+          //int max_wait=hashTable.getArray("par_led_start_on_close").getLong(1); 
+
+          //Serial_Printf("\n par_led_start_on_close: %d and max wait: f% \n",led, max_wait );
+     
+          //Serial_Printf("\n par_led_start_on_close: %d and max wait: f% \n",led, max_wait );
+
+          //Serial_Printf("\n par_led_start_on_close: %d\n",led, max_hold_time );
+
+          //Serial_Printf("\n par_led_start_on_close: %d \n",led );
+          par_led_start_on_close(led, max_hold_time);
+          
+        }
+
+
+//**********************************************************************
+      // Serial.print("autogain \n\r");
+      // JsonArray autogain = hashTable.getArray("autogain"); 
+      // int t autogain.getLength()
+      // Serial.print(t);
+      // Serial.print(t);
+      // String tttt = autogain.getArray(0).getString(0);          // evaluate input intensity to see if it was an expression
+      // Serial.print(tttt);
+
+      //       uint16_t _m_intensity = expr(intensity_string.c_str());
+ 
+      // 
+      // int tt=autogain.getLength(); 
+      // Serial.print("autogain \n\r");
+      // Serial.print(tt);
+      // int ttt=autogain.getArray(0).getLong(1); 
+      // Serial.print(ttt);
+      // ttt=autogain.getArray(1).getLong(1); 
+      // Serial.print(ttt);
+      //Serial.print("autogain \n\r");
+
+      //Serial.print(hashTable.getArray("autogain").getLong(1));
+      //Serial.print("autogain");
+
+    if (autogain.getLength()>0){
+        for (uint16_t i = 0; i < autogain.getLength(); i++) {                                                 
+
+                 
+          int this_gain_index = autogain.getArray(i).getLong(0); ///hat index to store gain settings
+          int this_light = autogain.getArray(i).getLong(1); //what LED to test
+          int this_detector = autogain.getArray(i).getLong(2); // what detector to use
+          int this_pulsesize = autogain.getArray(i).getLong(3); // what pulse size to use
+          float this_target = autogain.getArray(i).getLong(4); //what target value to use
+
+          // Serial_Print("i:");
+          // Serial_Print(this_gain_index);
+          // Serial_Print("l:");
+          // Serial_Print(this_light);
+          // Serial_Print("d:");
+          // Serial_Print(this_detector);
+          // Serial_Print("p:");
+          // Serial_Print(this_pulsesize);
+          // Serial_Print("t:");
+          // Serial_Print(this_target);
+          // Serial_Print("\r\n");
+          
+          float signal_amplitudes[20];
+          float output_voltages[20];
+          int gain_set=100; //set up the output variable and give it an initial value
+          int ix;
+          for (ix = 0; ix < 12; ix ++) {  //cycle through the range of voltages, using arithmetic progression 
+            int this_intensity = (1 << ix) - 1; //start at 1.0 
+            output_voltages[ix]=float(this_intensity);
+            detector_read1_averaged=0;  
+            get_detector_value (1, this_light, this_intensity, this_detector, this_pulsesize, 1);     // save as "detector_read1" from get_detector_value function
+            signal_amplitudes[ix]=detector_read1_averaged;                
+            //Serial_Printf("intensity: %d, detector_read: %f \r\n,", this_intensity, detector_read1_averaged);
+            if (detector_read1_averaged > this_target) {  //if the value exceeds the target stop the loop
+              break;
+            } // end break conditional on the value exceeds the target stop the loop              
+            } //end cycle through the range of voltages, using arithmetic progression 
+            unsigned int exceeded_target=ix;  //record the index when the target amplitude was exceeded
+
+            //Serial_Printf("target, exceeded value =  %f  %f \r\n", this_target, output_voltages[i]);
+            //assume that the two signal_amplitudes before exceeding the target are linear with voltage
+            if (exceeded_target > 2){ //to do a linear approximation we need to have at least two points. 
+                float slope_denom = output_voltages[exceeded_target-1] - output_voltages[exceeded_target-2];
+                float slope_num=(signal_amplitudes[exceeded_target-1] - signal_amplitudes[exceeded_target-2]);
+                
+                float gain_slope=slope_num/slope_denom;
+                
+                //Serial_Printf("slope:%f \r\n", gain_slope);
+                gain_set = int(output_voltages[exceeded_target-2] + (this_target-signal_amplitudes[exceeded_target-2])/gain_slope);
+                //Serial_Printf("gain set:%d, target: %f \n\r", gain_set, this_target);
+                } // end conditional on exceed-target
+          else
+            { //if there are fewer than 2 points, use the one before the exceeded_target index
+              gain_set=int(output_voltages[exceeded_target-1]);
+            }
+                  auto_bright[this_gain_index]=gain_set;
+                  auto_duration[this_gain_index]=this_pulsesize;
+        } //end code for autogain function
+    }
+//******************************************************************************************
+
 
         if (hashTable.getLong("pin_high_start") != 0) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
           start_on_pin_high(hashTable.getLong("pin_high_start"));
@@ -1319,7 +1731,7 @@ void do_protocol()
               for (unsigned i = 0; i < NUM_LEDS; i++) {                                  // save the list of act lights in the previous pulse set to turn off later
                 _a_lights_prev[i] = _a_lights[i];
                 if (PULSERDEBUG) {
-                  Serial_Printf("\n all a_lights_prev: %d\n", _a_lights_prev[i]);
+                  Serial_Printf("\n i = %d, all a_lights_prev: %d\n", i, _a_lights_prev[i]);
                 } // PULSERDEBUG
               }
 
@@ -1327,9 +1739,10 @@ void do_protocol()
                 _a_lights[i] = a_lights.getArray(cycle).getLong(i);                        // save which light should be turned on/off
                 String intensity_string = a_intensities.getArray(cycle).getString(i);
                 _a_intensities[i] = expr(intensity_string.c_str());                       // evaluate as an expression
-
+                
+                
                 if (PULSERDEBUG) {
-                  Serial_Printf("\n all a_lights, intensities: %d,%d,|%s|,%f,%f,%f\n", _a_lights[i], _a_intensities[i], intensity_string.c_str(), expr(intensity_string.c_str()), light_intensity, light_intensity_averaged);
+                  Serial_Printf("\n i= %d, all a_lights, intensities: %d,%d,|%s|,%f,%f,%f\n", i, _a_lights[i], _a_intensities[i], intensity_string.c_str(), expr(intensity_string.c_str()), light_intensity, light_intensity_averaged);
                 } // PULSERDEBUG
               }
 
@@ -1358,7 +1771,7 @@ void do_protocol()
               if (cycle != 0) {
                 _pulsedistance_prev = _pulsedistance;
               }
-              String distanceString = pulsedistance.getString(cycle);                                                    // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
+              String distanceString = pulsedistance.getString(cycle);                                           // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
               _pulsedistance = expr(distanceString.c_str());                                                    // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
               first_flag = 1;                                                                                   // flip flag indicating that it's the 0th pulse and a new cycle
               if (cycle == 0) {                                                                                 // if it's the beginning of a measurement (cycle == 0 and pulse == 0), then...
@@ -1376,9 +1789,11 @@ void do_protocol()
             //            assert(_number_samples >= 0 && _number_samples < 500);
 
             _meas_light = meas_lights.getArray(cycle).getLong(meas_number % meas_array_size);             // move to next measurement light
-            String intensity_string = m_intensities.getArray(cycle).getString(meas_number % meas_array_size);          // evaluate inputted intensity to see if it was an expression
+            String intensity_string = m_intensities.getArray(cycle).getString(meas_number % meas_array_size);          // evaluate input intensity to see if it was an expression
             uint16_t _m_intensity = expr(intensity_string.c_str());
             //            assert(_m_intensity >= 0 && _m_intensity <= 4095);
+            //Serial_Printf("is: %s pli: %d\n", intensity_string, _m_intensity);
+            
 
             uint16_t detector = detectors.getArray(cycle).getLong(meas_number % meas_array_size);          // move to next detector
             //            assert(detector >= 1 && detector <= 10);
@@ -1483,6 +1898,9 @@ void do_protocol()
                 if (_a_lights[i] != 0) {                                        // if there's a light there, then change it, otherwise skip
                   if (!dac_lights) {                                                                            // evaluate as an expression...
                     DAC_set(_a_lights[i], par_to_dac(_a_intensities[i], _a_lights[i]));
+                    if (PULSERDEBUG) {
+                    Serial_Printf("par_to_dac = %d", par_to_dac(_a_intensities[i], _a_lights[i]));
+                    }
                   }
                   else {                                                                                      // otherwise evaluate directly as a number to enter into the DAC
                     DAC_set(_a_lights[i], _a_intensities[i]);
@@ -1596,34 +2014,36 @@ void do_protocol()
                 Serial_Printf(",      main = %d, ref = %d, data_normalized = %f, percent_change = %f\n", detector, _reference, data, changed);
               } // PULSERDEBUG
             }
-
-            if (PULSERDEBUG) {        // use this to see all of the adc reads which are being averaged
-              //Serial_Printf("median + first value :%d,%d", data, sample_adc[5]);
-              //Serial_Printf("median + first value reference :%d,%d", data_ref, sample_adc_ref[5]);
-            } // PULSERDEBUG
-
-            if (first_flag == 1) {                                                                    // if this is the 0th pulse and a therefore new cycle
-              for (unsigned i = 0; i < NUM_LEDS; i++) {                            // Turn off all of the previous actinic lights
-                if (_a_lights_prev[i] != 0) {                                                                 // just skip it if it's zero
-                  digitalWriteFast(LED_to_pin[_a_lights_prev[i]], LOW);
-                  if (PULSERDEBUG) {
-                    Serial_Printf("turned off actinic light: %d\n", LED_to_pin[_a_lights_prev[i]]);
-                  } // PULSERDEBUG
-                }
-              }
+            
+            //if (power_save==1){ //DMK disabled this when power_sav=0
+              if (PULSERDEBUG) {        // use this to see all of the adc reads which are being averaged
+                //Serial_Printf("median + first value :%d,%d", data, sample_adc[5]);
+                //Serial_Printf("median + first value reference :%d,%d", data_ref, sample_adc_ref[5]);
+              } // PULSERDEBUG
+        
+              if (first_flag == 1) {  
+                for (unsigned i = 0; i < NUM_LEDS; i++) {                            // Turn off all of the previous actinic lights
+                  if (_a_lights_prev[i] != 0) {                                                                 // just skip it if it's zero
+                    digitalWriteFast(LED_to_pin[_a_lights_prev[i]], LOW);
+                    if (PULSERDEBUG) {
+                      Serial_Printf("turned off actinic light: %d\n", LED_to_pin[_a_lights_prev[i]]);
+                    } // PULSERDEBUG
+                 }
+               }
               DAC_change();                                                                               // initiate actinic lights which were set above
 
               for (unsigned i = 0; i < NUM_LEDS; i++) {                            // Turn on all the new actinic lights for this pulse set
                 if (_a_lights[i] != 0) {                                                                 // just skip it if it's zero
                   digitalWriteFast(LED_to_pin[_a_lights[i]], HIGH);
-                  if (PULSERDEBUG) {
-                    Serial_Printf("turned on new actinic light: %d\n", LED_to_pin[_a_lights[i]]);
-                  } // PULSERDEBUG
+                   if (PULSERDEBUG) {
+                      Serial_Printf("turned on new actinic light: %d\n", LED_to_pin[_a_lights[i]]);
+                   } // PULSERDEBUG
+                  }
                 }
+                first_flag = 0;                                                              // reset flag
               }
-              first_flag = 0;                                                              // reset flag
-            }
-
+            //}
+            
             float _offset = 0;
             /*
                         if (offset_off == 0) {
@@ -1680,7 +2100,8 @@ void do_protocol()
           /*
                     background_on = calculate_intensity_background(act_background_light, tcs_to_act, cycle, _light_intensity, act_background_light_intensity); // figure out background light intensity and state
           */
-
+          power_save=1;
+          if (power_save==1) {
           for (unsigned i = 0; i < NUM_LEDS; i++) {
             if (_a_lights[i] != act_background_light) {                                  // turn off all lights unless they are the actinic background light
               digitalWriteFast(LED_to_pin[_a_lights[i]], LOW);
@@ -1692,9 +2113,10 @@ void do_protocol()
             digitalWriteFast(act_background_light, HIGH);                                // turn on actinic background light in case it was off previously.
           }
           else {
-            digitalWriteFast(act_background_light, LOW);                                // turn on actinic background light in case it was off previously.
+            digitalWriteFast(act_background_light, LOW);                                // otehrwise turn OFF actinic background light .
           }
-
+          }
+          
           stopTimers();
           cycle = 0;                                                                     // ...and reset counters
           pulse = 0;
@@ -1730,9 +2152,11 @@ void do_protocol()
           } // for
           Serial_Print("]}");
         }
+        //Serial_Print("line 2147");
 
         uint16_t counter1 = 0;
         for (uint16_t i = 0; i < environmental_array.getLength(); i++) {                        // print the environmental_array data
+          //Serial_Print("line 2150");
           theReadings thisSensor = getReadings(environmental_array.getArray(i).getString(0));
           for (uint16_t g = 0; g < thisSensor.numberReadings; g++) {              // print the appropriate sensor value
             switch (g) {
@@ -1764,8 +2188,230 @@ void do_protocol()
           }
         }
 
-        // print the data
+//**************************************************************************************************************
+// code for generating a time axis based on the protocol values
+// the time scale is saved in the array time_values
 
+//Serial.printf("total_pulses, cycle %d %d \n\r", total_pulses, cycle);
+  unsigned timeline=0;
+  long time_values[size_of_data_raw]={};
+  
+  int non_zero_lights=0;  //holds the number of data points that will be collected
+  String distanceString =""; // the time delay before the measuring pulse (as a string)
+  unsigned _pulsedistance;  // he time delay before the measuring pulse (as long)
+  String durationString="";  // the duration of the measuring pulse (as a string)
+  //Serial_Print("line 2194");
+  for (int i = 0; i < pulses.getLength(); i++) {   // cycle through the pulse sets
+    total_pulses += pulses.getLong(i) * meas_lights.getArray(i).getLength();          // count the total number of pulses
+    //Serial.printf("pulses, lights, time: %d, %d, %s \n\r", pulses.getLong(i), meas_lights.getArray(i).getLength(), pulsedistance.getString(i));
+    for (long k=0; k< pulses.getLong(i); k++) { //cycle through the pulse sets for each loop of pulses
+    for (int j = 0; j < meas_lights.getArray(i).getLength(); j++) { // cycle through the measuring lights for each set of pulses
+      distanceString= pulsedistance.getString(i); //get the value for the delay before pulse
+      _pulsedistance = distanceString.toInt(); // convert to integer
+      
+
+      timeline += _pulsedistance;  // add the time information for each pulse, even if there was no measuring data taken 
+      
+      if (meas_lights.getArray(i).getLong(j) > 0) { //if there was a measuring light, store the value
+        //Serial.printf("_pulse_distance %d \n\r", _pulsedistance);
+        durationString=pulsesize.getArray(i).getString(j);  //get the duration of the pulse
+        long durationValue=durationString.toInt(); //convert the duration into int
+        timeline += durationValue; //add to timeline
+        time_values[non_zero_lights]=timeline; //store timeline value in time_values array at the current position 
+        non_zero_lights++; //increment the number of pulses
+      }
+    }
+  }
+  }
+
+ //Serial.printf("non-zero lights %d \n\r", non_zero_lights);
+ //Serial.printf("size_of_data_raw, non_zero_light = %d, %d  ", size_of_data_raw, non_zero_lights);
+//  for (int i = 0; i < non_zero_lights; i++) {  
+//     Serial.printf("%d , ", time_values[i]);
+//  }
+
+ //**************************************************************************************************************
+
+//**************************************************************************************************************
+// Function to split data sets in protocols with more than one measuring pulse into sequential traces.
+
+if (reshape_pattern != 0){
+  //Serial_Print("line 2230");
+  // This section reshapes the trace data array to better visualize the results. 
+  // Often there are more than one pulse type, interdigitated with a certain pattern.
+  // for example, one may have 2 or 3 different measuring lights, say 850 nm and 940 nm
+  // that are repeated with a pattern like this:
+  // 12121212 
+  // separated by a given time.
+  // where 1 is the 850 nm LED and 2 is the 940 nm LED. 
+  // The output of the raw data array will look like a zig-zag, alternating between the
+  // values for the two LEDs. If the user adds in the environmentals section, the following:
+  // ["reshape", 12]
+  // where the digits to the left and right represent the ordering of the non-interdigitated 
+  // traces respectively.   
+  // The code below will reorder the data so that ti looks like this:
+  // 111....222...
+  // so that the two sub-traces will occur in order.
+  // In some cases, the protocol may have multiple replicates of a single LED spearated by 
+  // a different number of replicates from another LED. For example:
+  // 112112112...
+  // Using the following code:
+  //  ["reshape", 112]
+  // will give sub-traces like this:
+  // 111111...222
+  //Further, the protocol may have multiple LEDs, like this:
+  // 123123123123
+  // Using hte following code:
+  //  ["reshape", 123]
+  // will reshpae the data into 3 sequential subtraces appended to each other, as follows:
+  // 111...222...333...
+
+  
+ // reshape_pattern is an integer that describes how to re-shape the data_raw_average array.
+
+ //float test_float[1]={1}; //test_float is just a float array of size one; I use it to findg the length of an array of floats
+  // data_raw_average is the array we want to reshape
+
+  //float data_array[total_points] = {1.0, 1.0, 2.0, 1.1, 1.1, 2.1, 1.2, 1.2, 2.2, 1.3, 1.3, 2.3};
+
+  //unsigned int test_int[1]={1}; //test_int is just a int array of size one; I use it to findg the length of an array of ints
+ 
+  //Serial_Print("line 2271");
+   //the following code determines the number of subtrace types in reshape_pattern ;
+   int r =reshape_pattern;
+   int index=0;
+   while (r>0){
+       index+=1;
+       //cout << r%10 << endl; 
+       r=r/10;
+   }
+
+   int shape_len=index; // shape_length represents the number of elements in the reshape_pattern 
+
+  //Serial.printf("shape_len = %d \n\r", shape_len);
+
+   int shape[shape_len]; //generate an array, called shape, of ints to hold the separate elements 
+   int i=shape_len-1;
+   r=reshape_pattern;
+   while (r>0){
+       shape[i]=r%10;
+       r=r/10;
+       i-=1;
+   }
+  if (size_of_data_raw%shape_len == 0){ //test if size_of_data_raw is perfectly divisible by reshape_len. 
+      // test if the split_array is correct 
+      //for (int i=0; i<shape_len; i+=1){
+      //    Serial_Print(shape[i]);
+      //    Serial_Print("\r\n");     
+      //}
+
+    //if (sizeof(data_raw_average) % sizeof(test_float) == 0){ //check to see if the 
+      //int data_array_len=int(sizeof(data_raw_average)/sizeof(test_float)); //find the number of floats in the data_raw_average arrray 
+      //Serial.printf("data_array_len = %d \n\r", data_array_len); //test it
+    //}
+    //size_of_data_raw//
+      unsigned long reshaped_data_array[size_of_data_raw]; // generate a new array to temporarily hold the reshaped data
+      unsigned long reshaped_time_array[size_of_data_raw]; // generate a new array to temporarily hold the reshaped TIME data 
+
+      
+      int number_of_pulse_types=0;
+      for (int i=0; i<shape_len; i+=1){
+          if (shape[i]>number_of_pulse_types) {
+            //Serial.printf("shape[i] = %d \n\r", shape[i]);
+            number_of_pulse_types=shape[i];
+          }
+      }
+      //Serial.printf("number_of_pulse_types = %d \n\r", number_of_pulse_types);
+
+
+      //  number_of_pulse_types represents the total number of distinct subtraces
+      // usually this will equal the number of types of measurements, or LEDs 
+      // however, we might have something like 1112, giving the shape array ={1,1,1,1,2} 
+      // where the first LED pulse was repeated 4 times for each of the second LED pulse.
+      //To account for this, we run through each type and add up the contributions
+
+      int number_of_repeats_of_pulse_type[number_of_pulse_types];
+      for (int i=0; i<number_of_pulse_types; i+=1){
+        number_of_repeats_of_pulse_type[i]=0;
+      }
+      
+      for (int i=0; i<number_of_pulse_types; i+=1){ //cycle through each LED type
+        for (int j=0; j<shape_len; j+=1) {
+          if (shape[j]==i+1){
+            number_of_repeats_of_pulse_type[i]+=1;
+          }
+        }    
+        }
+    //calculate starting pointers for each pulse_type
+    // We will add the data for each sub-trace starting
+    // at its pointer,  ubtrace_pointer[number_of_pulse_types]
+    int subtrace_pointer[number_of_pulse_types];
+
+    // even_split is the length of each sub-trace if all sub-arrays were equal size (no repeats)
+    int even_split=size_of_data_raw/shape_len;
+    //Serial.printf("even_split= %d \n\r", even_split);
+
+    //the sub_array for the first measuring light, 1, will start at pointer=0  
+    int pointer_pos=0;
+    subtrace_pointer[0]=pointer_pos*even_split;
+    //the following cycles through the other sub-traces and assigns their pointer starting point
+    //based on the number of previous subtraces  
+    for (int i=1; i<number_of_pulse_types; i+=1){
+      pointer_pos+=number_of_repeats_of_pulse_type[i-1];
+      subtrace_pointer[i]=pointer_pos*even_split;
+    }
+
+    //for (int i=0; i<number_of_pulse_types; i+=1){
+    //  Serial.printf("i, subtrace_pointer= %d, %d \n\r", i, subtrace_pointer[i]);
+    //}
+    
+    // This is the clever part. where we reshape the array based on the calculations above. 
+    for (int i=0; i<size_of_data_raw; i+=shape_len) { //cycle through the array, take steps that are
+                                                              // the size of shape_len
+      for (int j=0; j<shape_len; j+=1){ //cycle through the data from the lights shape 
+        //Serial.printf("i=%d : %d j=%d : %d \n\r", i, data_array_len, j, shape_len);
+
+        int pulse_type=shape[j]; //find the pulse_type for this partilar datum
+        //Serial.printf("pulse_type[%d]=%d \n\r", j, pulse_type); 
+        //place data from data_raw_average into the appropriate position in reshaped_data_array
+        reshaped_data_array[subtrace_pointer[pulse_type-1]]=data_raw_average[i + j];  
+        reshaped_time_array[subtrace_pointer[pulse_type-1]]=time_values[i + j];  
+        
+        subtrace_pointer[pulse_type-1]+=1; //increment the subtrace pointer for this partilate subtrace
+        //Serial.printf("subtrace_pointer[%d]=%d \n\r", pulse_type, subtrace_pointer[pulse_type-1]);
+      }
+    }
+    //for testing, print out all the values
+    //for (unsigned int i=0; i<data_array_len; i+=1) {
+    //  Serial.printf("reshaped_data_array[%d]=%f \n\r", i, reshaped_data_array[i]);//
+    //}
+    // replace the values in data_raw_average by reshaped_data_array
+    //Serial.printf("len of data_raw_average = reshaped_data_array; %d, %d \n\r", sizeof(data_raw_average), sizeof(reshaped_data_array));
+    for (int i=0; i<size_of_data_raw; i+=1) { //cycle through the array, take steps that are
+
+      data_raw_average[i] = reshaped_data_array[i];
+      time_values[i] = reshaped_time_array[i];
+    }
+  }
+}
+
+//Serial_Print("line 2390");
+
+//**************************************************************************************************************
+// save time axis data
+if (save_trace_time_scale>0) {
+
+    //Serial_Print("\"data_raw_time\":[");
+  for (int i = 0; i < non_zero_lights-1; i++) {  //send all but last data poinmt with trailing comma 
+     Serial_Print((unsigned)(time_values[i]));
+     Serial_Print(",");
+    }
+  Serial_Print((unsigned)(time_values[non_zero_lights-1])); //add the final point with n0 comma
+  Serial_Print("],"); //close the bracket and add a comma to separate from the data_raw
+}
+
+//*************************************************************************************************************
+        //Serial_Print("line 2413");
         if (spec_on == 0) {
           Serial_Print("\"data_raw\":[");
           if (adc_show == 0) {                                                             // normal condition - show data_raw as per usual
@@ -1785,9 +2431,15 @@ void do_protocol()
             } // for
           }
 
-          Serial_Print("]}");
+          Serial_Print("]}"); //at the end of data_raw, close the [] and add a } to indicate the end of the data library
+                              //IMPORTANT: This means that the data_raw MUST be the final set of data in experiment
+                              //Also IMPORTANT: 
+                              //if _protocol_set_mode == 0 then this also closes the "sample"" dictionary.
+                              //if _protocol_set_mode == 1 then this only closes the "set" dictionary.
+
         }
 
+//Serial_Print("line 2434");
 
 #ifdef DEBUGSIMPLE
         Serial_Print("# of protocols repeats, current protocol repeat, number of total protocols, current protocol      ");
@@ -1800,15 +2452,23 @@ void do_protocol()
         Serial_Print_Line(q);
 #endif
 
-        if (q < number_of_protocols - 1 || u < protocols - 1) {                           // if it's not the last protocol in the measurement and it's not the last repeat of the current protocol, add a comma
+        if (q < number_of_protocols - 1 || u < protocols - 1) {  // if it's not the last protocol in the measurement and it's not the last repeat of the current protocol, add a comma
           Serial_Print(",");
-          if (protocols_delay_ms > 0) {
+          if (protocols_delay_ms > 0) { //don't put in data if the protocols_delay_ms is zero
             Serial_Input_Long("+", protocols_delay_ms);
           }
         }
         else if (q == number_of_protocols - 1 && u == protocols - 1) {                  // if it is the last protocol, then close out the data json
-          Serial_Print("]");
+          if (protocol_set_mode==0){   //we only want to do this if the protocols are treated separately, not in the 
+              Serial_Print("]");
+          }
+          else {
+            Serial_Printf("]}]"); //if we are using protocol_set_mode then add the end to the _protocol_set_ dictionary 
+                                // This indicates that we are at the end of "set"
+            }
+
         }
+
 
         averages = 1;                                                 // number of times to repeat the entire run
         averages_delay_ms = 0;                                                    // seconds wait time between averages
@@ -1816,6 +2476,7 @@ void do_protocol()
         for (unsigned i = 0; i < NUM_LEDS; i++) {
           _a_lights[i] = 0;
         }
+
 
         if (CORAL_SPEQ) {
           for (int i = 0; i < SPEC_CHANNELS; i++)
@@ -1829,9 +2490,10 @@ void do_protocol()
 
     }  // for each protocol q
 
+
     // [{      "environmental":[["light_intensity",0]],"pulses": [100,100,100],"a_lights": [[2],[2],[2]],"a_intensities": [["light_intensity_averaged"],[1000],["light_intensity_averaged"]],"pulsedistance": [10000,10000,10000],"m_intensities": [[500],[500],[500]],"pulsesize": [60,60,60],"detectors": [[1],[1],[1]],"meas_lights": [[3],[3],[3]],"averages": 1}]
 
-    Serial_Flush_Input();
+    //Serial_Flush_Input(); ***
     if (y < measurements - 1) {                                 // if not last measurement
       Serial_Print(",");                                        // add commas between measurements
       if (measurements_delay_ms > 0) {
@@ -1857,7 +2519,7 @@ abort:
 
   return;
 
-} // do_protocol()
+} // end of do_protocol()
 
 //  routines for LED pulsing
 
@@ -1925,7 +2587,8 @@ static void recall_save(JsonArray _recall_eeprom, JsonArray _save_eeprom) {
         Serial_Print(",");
       }
       else {
-        Serial_Print("},");
+        Serial_Print("},");  //terminate the save_recall.
+              // The presence of the "," means that the save/recall must NOT be the final saved thing. 
       }
     } // for
   } // if
@@ -1980,7 +2643,7 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
   DAC_set(this_light, par_to_dac(this_intensity, this_light));              // set the DAC, make sure to convert PAR intensity to DAC value
   DAC_change();
   AD7689_set (this_detector - 1);                                           // set ADC channel as specified
-  delay(50);                                                                // this is required for AD7689 to settle.  Otherwise, values from the following begin high and fall as it runs through the 5 repeats
+  delay(10);                                                                // this is required for AD7689 to settle.  Otherwise, values from the following begin high and fall as it runs through the 5 repeats
 
   for (uint16_t i = 0; i < 5; i++) {
     delayMicroseconds(1000);                                  // wait until next pulse, pulse distance == 1000
@@ -2154,6 +2817,7 @@ float get_adc_read3 (int adc_channel, int _averages) {       // adc channels 1 -
 
 static void environmentals(JsonArray environmental, const int _averages, const int count, int oneOrArray)
 {
+  //int reshape_pattern = 0;  //start with rechape off
 
   for (int i = 0; i < environmental.getLength(); i++) {                                       // call environmental measurements after the spectroscopic measurement
 
@@ -2176,8 +2840,27 @@ static void environmentals(JsonArray environmental, const int _averages, const i
     else if (thisSensor == "light_intensity") {                   // measure light intensity with par calibration applied
       get_light_intensity(_averages);
       if (count == _averages - 1 && oneOrArray == 0) {
+        previous_light_intensity_averaged=light_intensity_averaged;
+        previous_light_intensity=light_intensity;
+        previous_r_averaged=r_averaged;
+        previous_g_averaged=g_averaged;
+        previous_b_averaged=b_averaged;
+        previous_light_intensity_raw_averaged=light_intensity_raw_averaged;
+        use_previous_light_intensity =0;
         Serial_Printf("\"light_intensity\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,\"light_intensity_raw\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged, light_intensity_raw_averaged);
       }
+    }
+
+    else if (thisSensor == "previous_light_intensity") {                   // measure light intensity with par calibration applied
+        light_intensity=previous_light_intensity;
+        light_intensity_averaged=previous_light_intensity_averaged;
+        r_averaged=previous_r_averaged;
+        g_averaged=previous_g_averaged;
+        b_averaged=previous_b_averaged;
+        light_intensity_raw_averaged=previous_light_intensity_raw_averaged;
+        use_previous_light_intensity =1;
+        
+        Serial_Printf("\"light_intensity\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,\"light_intensity_raw\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged, light_intensity_raw_averaged);
     }
 
     else if (thisSensor == "contactless_temp") {                 // measure contactless temperature
@@ -2247,7 +2930,92 @@ static void environmentals(JsonArray environmental, const int _averages, const i
         Serial_Printf("\"detector_read3\":%f,", detector_read3_averaged);
       }
     }
+    else if (thisSensor == "save_trace_time_scale") {
+      save_trace_time_scale = environmental.getArray(i).getLong(1);
+    }
+    else if (thisSensor == "reshape") {
+      reshape_pattern = environmental.getArray(i).getLong(1);
+      //Serial.printf("test \r\n");
+      //Serial.printf("test: %d \r\n", reshape_pattern);
+      //int this_intensity = environmental.getArray(i).getLong(2);
+      //int this_detector = environmental.getArray(i).getLong(3);
+      //int this_pulsesize = environmental.getArray(i).getLong(4);
+      //get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 1);     // save as "detector_read1" from get_detector_value function
+      //if (count == _averages - 1 && oneOrArray == 0) {
+      //  Serial_Printf("\"detector_read1\":%f,", detector_read1_averaged);      
+    }
 
+ //new function to automatically set the "gain", i.e. the intensity of the LED pulse, to meet a particular target (as close to 50000 but no higher
+    
+//     else if (thisSensor == "autogain") {   //begin code for autogain function 
+//       int this_light = environmental.getArray(i).getLong(1);  //what LED to test
+//       int this_detector = environmental.getArray(i).getLong(2);  // what detector to use
+//       int this_pulsesize = environmental.getArray(i).getLong(3);  //what duration to use
+//       float this_target = environmental.getArray(i).getLong(4);  //what target value to use
+//       int this_gain_index = environmental.getArray(i).getLong(5);  //what index to store gain settings
+      
+//       float signal_amplitudes[20];
+//       float output_voltages[20];
+//       int gain_set=100; //set up the output variable and give it an initial value
+//       int i;
+//       for (i = 0; i < 12; i ++) {  //cycle through the range of voltages, using arithmetic progression 
+        
+//         int this_intensity = (1 << i) - 1; //start at 1.0 
+        
+//         //float this_intensity = float(j); //use a power of two increase in voltage, from zero to to 4095 (the maximum setting possible)
+        
+//         output_voltages[i]=float(float(this_intensity));
+        
+//         //Serial_Printf("output_voltages: %f ", output_voltages[i]);
+//         detector_read1_averaged=0;  
+//         get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 1);     // save as "detector_read1" from get_detector_value function
+//         signal_amplitudes[i]=detector_read1_averaged;    
+        
+//         //Serial_Printf("detector_read1 :%f \r\n,", detector_read1_averaged);
+
+//         if (detector_read1_averaged > this_target) {  //if the value exceeds the target stop the loop
+//           break;
+//          } // end break conditional on the value exceeds the target stop the loop              
+
+//         } //end cycle through the range of voltages, using arithmetic progression 
+        
+//         unsigned int exceeded_target=i;  //record the index when the target amplitude was exceeded
+        
+//         //Serial_Printf("target, exceeded value =  %f  %f \r\n", this_target, output_voltages[i]);
+        
+//         //assume that the two signal_amplitudes before exceeding the target are linear with voltage
+
+//         if (exceeded_target > 2){ //to do a linear approximation we need to have at least two points. 
+//             float slope_denom = output_voltages[exceeded_target-1] - output_voltages[exceeded_target-2];
+//             float slope_num=(signal_amplitudes[exceeded_target-1] - signal_amplitudes[exceeded_target-2]);
+            
+//             float gain_slope=slope_num/slope_denom;
+            
+//             //Serial_Printf("slope:%f \r\n", gain_slope);
+//             gain_set = int(output_voltages[exceeded_target-2] + (this_target-signal_amplitudes[exceeded_target-2])/gain_slope);
+//             //Serial_Printf("gain set:%d, target: %f \n\r", gain_set, this_target);
+//             } // end conditional on exceed-target
+//        else
+//          { //if there are fewer than 2 points, use the one before the exceeded_target index
+//           gain_set=int(output_voltages[exceeded_target-1]);
+//          }
+// //       for (i = 0; i < 12; i ++) {
+// //            delay(20);
+// //          detector_read1_averaged=0;  
+// //          get_detector_value (_averages, this_light, gain_set, this_detector, this_pulsesize, 1);
+// //          Serial_Printf("\"test point at autogain settings\":%f,", detector_read1_averaged);
+// //       }
+//               auto_bright[this_gain_index]=gain_set;
+//               auto_duration[this_gain_index]=this_pulsesize;
+// //              auto_bright[1]=gain_set;
+// //              auto_bright[2]=gain_set;
+// //              auto_bright[3]=gain_set;
+//           //Serial_Printf("auto_bright: %d,", auto_bright[2]);
+
+//     } //end code for autogain function
+
+
+     
     else if (thisSensor == "analog_read") {                      // perform analog reads
       int pin = environmental.getArray(i).getLong(1);
       get_analog_read(pin, _averages);

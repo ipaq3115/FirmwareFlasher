@@ -1,6 +1,6 @@
 
 // Firmware for MultispeQ 1.0 hardware.   Part of the PhotosynQ project.
-
+//test it for real
 // setup() - initize things on startup
 // main loop is in loop.cpp
 
@@ -212,6 +212,14 @@ void setup_pins(void);          // initialize pins
 
 void setup() 
 {
+energy_save_timeout=30000;
+
+activity();
+//  for(int i=0; i <= 9; i++){
+//    auto_bright[i]=i;
+//   } 
+
+  use_previous_light_intensity=0;
   // turn on power and initialize ICs
   
   // Set up I2C bus - CAUTION: any subsequent calls to Wire.begin() will mess this up
