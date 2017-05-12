@@ -349,116 +349,116 @@ void do_command()
       configure_bluetooth();
       break;
 
-    case hash("light1"):
-      turn_on_5V();                  // turn on 5V to turn on the lights
-      Serial_Print_Line("PULSE1");
-      DAC_set(1, 300);
-      DAC_change();
-      digitalWriteFast(PULSE1, HIGH);
-      delay(1000);
-      digitalWriteFast(PULSE1, LOW);
-      DAC_set(1, 0);
-      DAC_change();
-      break;
-    case hash("light2"):
-      turn_on_5V();                  // turn on 5V to turn on the lights
-      Serial_Print_Line("PULSE2");
-      DAC_set(2, 300);
-      DAC_change();
-      digitalWriteFast(PULSE2, HIGH);
-      delay(1000);
-      digitalWriteFast(PULSE2, LOW);
-      DAC_set(2, 0);
-      DAC_change();
-      break;
-    case hash("light3"):
-      turn_on_5V();                  // turn on 5V to turn on the lights
-      Serial_Print_Line("PULSE3");
-      DAC_set(3, 300);
-      DAC_change();
-      digitalWriteFast(PULSE3, HIGH);
-      delay(1000);
-      digitalWriteFast(PULSE3, LOW);
-      DAC_set(3, 0);
-      DAC_change();
-      break;
-    case hash("light4"):
-      turn_on_5V();                  // turn on 5V to turn on the lights
-      Serial_Print_Line("PULSE4");
-      DAC_set(4, 300);
-      DAC_change();
-      digitalWriteFast(PULSE4, HIGH);
-      delay(1000);
-      digitalWriteFast(PULSE4, LOW);
-      DAC_set(4, 0);
-      DAC_change();
-      break;
-    case hash("light5"):
-      turn_on_5V();                  // turn on 5V to turn on the lights
-      Serial_Print_Line("PULSE5");
-      DAC_set(5, 300);
-      DAC_change();
-      digitalWriteFast(PULSE5, HIGH);
-      delay(1000);
-      digitalWriteFast(PULSE5, LOW);
-      DAC_set(5, 0);
-      DAC_change();
-      break;
-    case hash("light6"):
-      turn_on_5V();                  // turn on 5V to turn on the lights
-      Serial_Print_Line("PULSE6");
-      DAC_set(6, 300);
-      DAC_change();
-      digitalWriteFast(PULSE6, HIGH);
-      delay(1000);
-      digitalWriteFast(PULSE6, LOW);
-      DAC_set(6, 0);
-      DAC_change();
-      break;
-    case hash("light7"):
-      turn_on_5V();                  // turn on 5V to turn on the lights
-      Serial_Print_Line("PULSE7");
-      DAC_set(7, 300);
-      DAC_change();
-      digitalWriteFast(PULSE7, HIGH);
-      delay(1000);
-      digitalWriteFast(PULSE7, LOW);
-      DAC_set(7, 0);
-      DAC_change();
-      break;
-    case hash("light8"):
-      turn_on_5V();                  // turn on 5V to turn on the lights
-      Serial_Print_Line("PULSE8");
-      DAC_set(8, 300);
-      DAC_change();
-      digitalWriteFast(PULSE8, HIGH);
-      delay(1000);
-      digitalWriteFast(PULSE8, LOW);
-      DAC_set(8, 0);
-      DAC_change();
-      break;
-    case hash("light9"):
-      turn_on_5V();                  // turn on 5V to turn on the lights
-      Serial_Print_Line("PULSE9");
-      DAC_set(9, 3000);
-      DAC_change();
-      digitalWriteFast(PULSE9, HIGH);
-      delay(1000);
-      digitalWriteFast(PULSE9, LOW);
-      DAC_set(9, 0);
-      DAC_change();
-      break;
-    case hash("light10"):
-      turn_on_5V();                  // turn on 5V to turn on the lights
-      Serial_Print_Line("PULSE10");
-      DAC_set(10, 300);
-      DAC_change();
-      digitalWriteFast(PULSE10, HIGH);
-      delay(1000);
-      digitalWriteFast(PULSE10, LOW);
-      DAC_set(10, 0);
-      DAC_change();
-      break;
+    // case hash("light1"):
+    //   turn_on_5V();                  // turn on 5V to turn on the lights
+    //   Serial_Print_Line("PULSE1");
+    //   DAC_set(1, 300);
+    //   DAC_change();
+    //   digitalWriteFast(PULSE1, HIGH);
+    //   delay(1000);
+    //   digitalWriteFast(PULSE1, LOW);
+    //   DAC_set(1, 0);
+    //   DAC_change();
+    //   break;
+    // case hash("light2"):
+    //   turn_on_5V();                  // turn on 5V to turn on the lights
+    //   Serial_Print_Line("PULSE2");
+    //   DAC_set(2, 300);
+    //   DAC_change();
+    //   digitalWriteFast(PULSE2, HIGH);
+    //   delay(1000);
+    //   digitalWriteFast(PULSE2, LOW);
+    //   DAC_set(2, 0);
+    //   DAC_change();
+    //   break;
+    // case hash("light3"):
+    //   turn_on_5V();                  // turn on 5V to turn on the lights
+    //   Serial_Print_Line("PULSE3");
+    //   DAC_set(3, 300);
+    //   DAC_change();
+    //   digitalWriteFast(PULSE3, HIGH);
+    //   delay(1000);
+    //   digitalWriteFast(PULSE3, LOW);
+    //   DAC_set(3, 0);
+    //   DAC_change();
+    //   break;
+    // case hash("light4"):
+    //   turn_on_5V();                  // turn on 5V to turn on the lights
+    //   Serial_Print_Line("PULSE4");
+    //   DAC_set(4, 300);
+    //   DAC_change();
+    //   digitalWriteFast(PULSE4, HIGH);
+    //   delay(1000);
+    //   digitalWriteFast(PULSE4, LOW);
+    //   DAC_set(4, 0);
+    //   DAC_change();
+    //   break;
+    // case hash("light5"):
+    //   turn_on_5V();                  // turn on 5V to turn on the lights
+    //   Serial_Print_Line("PULSE5");
+    //   DAC_set(5, 300);
+    //   DAC_change();
+    //   digitalWriteFast(PULSE5, HIGH);
+    //   delay(1000);
+    //   digitalWriteFast(PULSE5, LOW);
+    //   DAC_set(5, 0);
+    //   DAC_change();
+    //   break;
+    // case hash("light6"):
+    //   turn_on_5V();                  // turn on 5V to turn on the lights
+    //   Serial_Print_Line("PULSE6");
+    //   DAC_set(6, 300);
+    //   DAC_change();
+    //   digitalWriteFast(PULSE6, HIGH);
+    //   delay(1000);
+    //   digitalWriteFast(PULSE6, LOW);
+    //   DAC_set(6, 0);
+    //   DAC_change();
+    //   break;
+    // case hash("light7"):
+    //   turn_on_5V();                  // turn on 5V to turn on the lights
+    //   Serial_Print_Line("PULSE7");
+    //   DAC_set(7, 300);
+    //   DAC_change();
+    //   digitalWriteFast(PULSE7, HIGH);
+    //   delay(1000);
+    //   digitalWriteFast(PULSE7, LOW);
+    //   DAC_set(7, 0);
+    //   DAC_change();
+    //   break;
+    // case hash("light8"):
+    //   turn_on_5V();                  // turn on 5V to turn on the lights
+    //   Serial_Print_Line("PULSE8");
+    //   DAC_set(8, 300);
+    //   DAC_change();
+    //   digitalWriteFast(PULSE8, HIGH);
+    //   delay(1000);
+    //   digitalWriteFast(PULSE8, LOW);
+    //   DAC_set(8, 0);
+    //   DAC_change();
+    //   break;
+    // case hash("light9"):
+    //   turn_on_5V();                  // turn on 5V to turn on the lights
+    //   Serial_Print_Line("PULSE9");
+    //   DAC_set(9, 3000);
+    //   DAC_change();
+    //   digitalWriteFast(PULSE9, HIGH);
+    //   delay(1000);
+    //   digitalWriteFast(PULSE9, LOW);
+    //   DAC_set(9, 0);
+    //   DAC_change();
+    //   break;
+    // case hash("light10"):
+    //   turn_on_5V();                  // turn on 5V to turn on the lights
+    //   Serial_Print_Line("PULSE10");
+    //   DAC_set(10, 300);
+    //   DAC_change();
+    //   digitalWriteFast(PULSE10, HIGH);
+    //   delay(1000);
+    //   digitalWriteFast(PULSE10, LOW);
+    //   DAC_set(10, 0);
+    //   DAC_change();
+    //   break;
 
     case hash("set_serial"):
       {
@@ -1003,10 +1003,11 @@ void do_command()
 
 void do_protocol()
 {
+  String protocol_id="";
   //Serial_Flush_Output(); ***
   reshape_pattern = 0;  //start with rechape off
   save_trace_time_scale = 0;
-  const int serial_buffer_size = 10000;                                        // max size of the incoming jsons
+  const int serial_buffer_size = 9000;                                        // max size of the incoming jsons
   const int max_jsons = 15;                                                   // max number of protocols per measurement
   const int MAX_JSON_ELEMENTS = 800;      //
 
@@ -1070,7 +1071,7 @@ void do_protocol()
       return;
     }
 
-    
+
 int length_of_serial_buffer=0; 
 int start_offset=1; //where to start the decoding. 
 
@@ -1102,10 +1103,65 @@ if ((start_of_protocol_set == 0) || (start_of_protocol_set == NULL)) {  //if thi
 else {  // If we get here true, this is a "_protocol_set_", and the data will be be saved in one object, not the older protocols   
                               // for which the data for each is saved as separate object. This is an important distinction because the macro
                               // functions can only work on one data object at a time
-// Next, strip off the leading and trailing bits so that the _protocol_set_ looks like a normal set of protocols
-      
-      
       protocol_set_mode=1; //set the protocol_set_mode flag to 1. This will be used during the saving of data
+
+      char * start_of_protocol_id = strstr (serial_buffer, "protocol_id" ); //find the protocol id
+      //Serial_Printf("\r\n protocol_id start: %d ", start_of_protocol_id);
+
+      if ((start_of_protocol_id == 0) || (start_of_protocol_id == NULL)) {
+       protocol_id=""; 
+       //Serial_Print("no id");
+      }
+      else {
+        char t=*start_of_protocol_id;
+        //Serial_Print(t);
+
+      char * begin_id_ptr = start_of_protocol_id+9;
+      while ((begin_id_ptr<end_pointer) && (* begin_id_ptr != ':')  ){ //increment the new_begin_ptr until we reach the first ':'
+        begin_id_ptr+=1;
+      } 
+      //Serial_Printf("\r\n protocol_id start pt: %d ", begin_id_ptr);
+      char * end_id_ptr = begin_id_ptr+1;
+      if (* end_id_ptr == '\"'){ //if the first character is a " then skip it.
+        end_id_ptr+=1;
+      }
+      protocol_id="";
+      while ((end_id_ptr<end_pointer) && (* end_id_ptr != ',') && (* end_id_ptr != '}') && (* end_id_ptr != ']') && (* end_id_ptr != '\"')){ //increment the end_id_ptr until we reach the first ',' '}'
+        protocol_id += *end_id_ptr;
+        end_id_ptr+=1;
+      }
+      if ((end_id_ptr-begin_id_ptr>0) && (end_id_ptr-begin_id_ptr<20)){ //check to see if the length of protocol_id is reasonable
+        //Serial_Printf("\r\n protocol_id start pt: %d ", end_id_ptr);
+        //Serial_Print("protocol_id = ");      
+        //Serial_Print(protocol_id);      
+        //Serial_Print("\r\n");
+      }
+      else {  //if the length of protocol_id is garbage, sound error and skip it 
+        Serial_Print("error in protocol_id");
+        protocol_id="";
+      }
+      //protocol_id="";
+
+      }
+
+
+
+
+
+      // char * end_id_ptr = begin_id_ptr+1;
+      // while ((end_id_ptr<end_pointer) && (* end_id_ptr != ',')){ //increment the new_begin_ptr until we reach the first '['
+      //   end_id_ptr+=1;
+      //   Serial_Print(*end_id_ptr);
+      //   protocol_id += *end_id_ptr;
+      // }   
+      // //protocol_id = str.substr (begin_id_ptr,end_id_ptr-begin_id_ptr);
+      // //protocol_id.replace("\"", " ");
+      // Serial_Print("\r\n protocol_ID: ");
+      // Serial_Print(protocol_id);
+      
+      
+      
+      // Next, strip off the leading and trailing bits so that the _protocol_set_ looks like a normal set of protocols
 
       char * new_begin_ptr = start_of_protocol_set;       // set up an adjustable pointer to the beginning of the set of protocols
       
@@ -1187,6 +1243,11 @@ Serial_Print(",\"sample\":[");
 if (protocol_set_mode==1) {
 
   Serial_Print("{\"light_intensity_raw\":0,\"data_raw\":[],"); //This is a hack to get around the insertion of the time zone information
+  
+  Serial_Print("\"protocol_id\":\"");
+  Serial_Print(protocol_id.c_str());
+  Serial_Print("\",");
+  
   Serial_Print("\"set\": [{\"blank:\":\"blank\"},"); //if we are using protocol_set_mode then wrap the output data as a dictionary, called 
 }
 
@@ -1231,7 +1292,10 @@ if (protocol_set_mode==1) {
         uint16_t adc_show =       hashTable.getLong("adc_show");                                // this tells the MultispeQ to print the ADC values only instead of the normal data_raw (for signal quality debugging)
         uint16_t adc_only[150];                                                   // this and first_adc_ref are used to save the first set of ADC averages produced, so it can be optionally displayed instead of data_raw (for signal quality debugging).  USE ONLY WITH REFERENCE == 0 (ie reference is OFF!)
         JsonArray pulses =        hashTable.getArray("pulses");                                // the number of measuring pulses, as an array.  For example [50,10,50] means 50 pulses, followed by 10 pulses, follwed by 50 pulses.
-        String protocol_id =      hashTable.getString("protocol_id");                          // used to determine what macro to apply
+        if (protocol_set_mode == 0){ 
+          protocol_id =      hashTable.getString("protocol_id");                          // used to determine what macro to apply
+        }
+
         int analog_averages =     hashTable.getLong("analog_averages");                          // DEPRECIATED IN NEWEST HARDWARE 10/14 # of measurements per measurement pulse to be internally averaged (min 1 measurement per 6us pulselengthon) - LEAVE THIS AT 1 for now
         
         
@@ -1427,9 +1491,11 @@ if (protocol_set_mode==1) {
 
         Serial_Print("{");
 
-        Serial_Print("\"protocol_id\":\"");
-        Serial_Print(protocol_id.c_str());
-        Serial_Print("\",");
+        if (protocol_set_mode == 0){ //if we are not in protocol_set mode, add protocol ID for each
+            Serial_Print("\"protocol_id\":\"");
+            Serial_Print(protocol_id.c_str());
+            Serial_Print("\",");
+        }
 
         unsigned long data_raw_average[size_of_data_raw];                                          // buffer for ADC output data
         for (int i = 0; i < size_of_data_raw; ++i)                                                 // zero it
@@ -1724,15 +1790,15 @@ if (protocol_set_mode==1) {
             if (pulse == 0) {                                                                                     // if it's the first pulse of a cycle, we need to set up the new set of lights and intensities...
               meas_array_size = meas_lights.getArray(cycle).getLength();                                          // get the number of measurement/detector subsets in the new cycle
 
-              if (PULSERDEBUG) {
-                Serial_Printf("\n _number_samples: %d \n", _number_samples);
-              } // PULSERDEBUG
+              // if (PULSERDEBUG) {
+              //   Serial_Printf("\n _number_samples: %d \n", _number_samples);
+              // } // PULSERDEBUG
 
               for (unsigned i = 0; i < NUM_LEDS; i++) {                                  // save the list of act lights in the previous pulse set to turn off later
                 _a_lights_prev[i] = _a_lights[i];
-                if (PULSERDEBUG) {
-                  Serial_Printf("\n i = %d, all a_lights_prev: %d\n", i, _a_lights_prev[i]);
-                } // PULSERDEBUG
+                // if (PULSERDEBUG) {
+                //   Serial_Printf("\n i = %d, all a_lights_prev: %d\n", i, _a_lights_prev[i]);
+                // } // PULSERDEBUG
               }
 
               for (unsigned i = 0; i < NUM_LEDS; i++) {                                   // save the current list of act lights, determine if they should be on, and determine their intensity
@@ -1741,9 +1807,9 @@ if (protocol_set_mode==1) {
                 _a_intensities[i] = expr(intensity_string.c_str());                       // evaluate as an expression
                 
                 
-                if (PULSERDEBUG) {
-                  Serial_Printf("\n i= %d, all a_lights, intensities: %d,%d,|%s|,%f,%f,%f\n", i, _a_lights[i], _a_intensities[i], intensity_string.c_str(), expr(intensity_string.c_str()), light_intensity, light_intensity_averaged);
-                } // PULSERDEBUG
+                // if (PULSERDEBUG) {
+                //   Serial_Printf("\n i= %d, all a_lights, intensities: %d,%d,|%s|,%f,%f,%f\n", i, _a_lights[i], _a_intensities[i], intensity_string.c_str(), expr(intensity_string.c_str()), light_intensity, light_intensity_averaged);
+                // } // PULSERDEBUG
               }
 
               if (CORAL_SPEQ) {
@@ -1814,10 +1880,10 @@ if (protocol_set_mode==1) {
               AD7689_set (detector - 1);        // set ADC channel as specified
             }
 
-            if (PULSERDEBUG) {
-              Serial_Printf("measurement light, intensity, detector, reference:  %d, %d, %d, %d\n", _meas_light, _m_intensity, detector, _reference);
-              Serial_Printf("pulsedistance = %d, pulsesize = %d, cycle = %d, measurement number = %d, measurement array size = %d,total pulses = %d\n", (int) _pulsedistance, (int) _pulsesize, (int) cycle, (int) meas_number, (int) meas_array_size, (int) total_pulses);
-            } // PULSERDEBUG
+            // if (PULSERDEBUG) {
+            //   Serial_Printf("measurement light, intensity, detector, reference:  %d, %d, %d, %d\n", _meas_light, _m_intensity, detector, _reference);
+            //   Serial_Printf("pulsedistance = %d, pulsesize = %d, cycle = %d, measurement number = %d, measurement array size = %d,total pulses = %d\n", (int) _pulsedistance, (int) _pulsesize, (int) cycle, (int) meas_number, (int) meas_array_size, (int) total_pulses);
+            // } // PULSERDEBUG
 
             if (pulse < meas_array_size) {   // if it's the first pulse of a cycle, then change act 1,2,3,4 values as per array's set at beginning of the file
 
@@ -1898,18 +1964,18 @@ if (protocol_set_mode==1) {
                 if (_a_lights[i] != 0) {                                        // if there's a light there, then change it, otherwise skip
                   if (!dac_lights) {                                                                            // evaluate as an expression...
                     DAC_set(_a_lights[i], par_to_dac(_a_intensities[i], _a_lights[i]));
-                    if (PULSERDEBUG) {
-                    Serial_Printf("par_to_dac = %d", par_to_dac(_a_intensities[i], _a_lights[i]));
-                    }
+                    // if (PULSERDEBUG) {
+                    // Serial_Printf("par_to_dac = %d", par_to_dac(_a_intensities[i], _a_lights[i]));
+                    // }
                   }
                   else {                                                                                      // otherwise evaluate directly as a number to enter into the DAC
                     DAC_set(_a_lights[i], _a_intensities[i]);
                   }
-                  if (PULSERDEBUG) {
-                    Serial_Printf("actinic pin : %d \nactinic intensity %d \n", _a_lights[i], _a_intensities[i]);
-                    Serial_Printf("length of _a_lights : %d \n ", sizeof(_a_lights));
-                    Serial_Printf("\n _number_samples, _reference, adc_show: %d %d %d\n", _number_samples, _reference, adc_show);
-                  } // PULSERDEBUG
+                  // if (PULSERDEBUG) {
+                  //   Serial_Printf("actinic pin : %d \nactinic intensity %d \n", _a_lights[i], _a_intensities[i]);
+                  //   Serial_Printf("length of _a_lights : %d \n ", sizeof(_a_lights));
+                  //   Serial_Printf("\n _number_samples, _reference, adc_show: %d %d %d\n", _number_samples, _reference, adc_show);
+                  // } // PULSERDEBUG
                 }
               } // for
 
@@ -2003,31 +2069,31 @@ if (protocol_set_mode==1) {
               }
             }
             if (_reference != 0) {                                                        // now calculate the outputted data value based on the main and reference values, and the initial main and reference values for normalization
-              if (PULSERDEBUG) {
-                Serial_Printf("reference_start = %d, reference_now = %d,       _main_start = %d, main_now = %d", (int) _reference_start, (int) data_ref, (int) _main_start, (int) data);
-              } // PULSERDEBUG
+              // if (PULSERDEBUG) {
+              //   Serial_Printf("reference_start = %d, reference_now = %d,       _main_start = %d, main_now = %d", (int) _reference_start, (int) data_ref, (int) _main_start, (int) data);
+              // } // PULSERDEBUG
 
               data = data - _main_start * (data_ref - _reference_start) / _reference_start; // adjust main value according to the % change in the reference relative to main on the first pulse.  You adjust the main in the opposite direction of the reference (to compensate)
 
-              if (PULSERDEBUG) {
-                float changed = (data_ref - _reference_start) / _reference_start;
-                Serial_Printf(",      main = %d, ref = %d, data_normalized = %f, percent_change = %f\n", detector, _reference, data, changed);
-              } // PULSERDEBUG
+              // if (PULSERDEBUG) {
+              //   float changed = (data_ref - _reference_start) / _reference_start;
+              //   Serial_Printf(",      main = %d, ref = %d, data_normalized = %f, percent_change = %f\n", detector, _reference, data, changed);
+              // } // PULSERDEBUG
             }
             
             //if (power_save==1){ //DMK disabled this when power_sav=0
-              if (PULSERDEBUG) {        // use this to see all of the adc reads which are being averaged
-                //Serial_Printf("median + first value :%d,%d", data, sample_adc[5]);
-                //Serial_Printf("median + first value reference :%d,%d", data_ref, sample_adc_ref[5]);
-              } // PULSERDEBUG
+              // if (PULSERDEBUG) {        // use this to see all of the adc reads which are being averaged
+              //   //Serial_Printf("median + first value :%d,%d", data, sample_adc[5]);
+              //   //Serial_Printf("median + first value reference :%d,%d", data_ref, sample_adc_ref[5]);
+              // } // PULSERDEBUG
         
               if (first_flag == 1) {  
                 for (unsigned i = 0; i < NUM_LEDS; i++) {                            // Turn off all of the previous actinic lights
                   if (_a_lights_prev[i] != 0) {                                                                 // just skip it if it's zero
                     digitalWriteFast(LED_to_pin[_a_lights_prev[i]], LOW);
-                    if (PULSERDEBUG) {
-                      Serial_Printf("turned off actinic light: %d\n", LED_to_pin[_a_lights_prev[i]]);
-                    } // PULSERDEBUG
+                    // if (PULSERDEBUG) {
+                    //   Serial_Printf("turned off actinic light: %d\n", LED_to_pin[_a_lights_prev[i]]);
+                    // } // PULSERDEBUG
                  }
                }
               DAC_change();                                                                               // initiate actinic lights which were set above
@@ -2035,9 +2101,9 @@ if (protocol_set_mode==1) {
               for (unsigned i = 0; i < NUM_LEDS; i++) {                            // Turn on all the new actinic lights for this pulse set
                 if (_a_lights[i] != 0) {                                                                 // just skip it if it's zero
                   digitalWriteFast(LED_to_pin[_a_lights[i]], HIGH);
-                   if (PULSERDEBUG) {
-                      Serial_Printf("turned on new actinic light: %d\n", LED_to_pin[_a_lights[i]]);
-                   } // PULSERDEBUG
+                  //  if (PULSERDEBUG) {
+                  //     Serial_Printf("turned on new actinic light: %d\n", LED_to_pin[_a_lights[i]]);
+                  //  } // PULSERDEBUG
                   }
                 }
                 first_flag = 0;                                                              // reset flag
