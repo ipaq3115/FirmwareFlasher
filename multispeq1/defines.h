@@ -183,7 +183,9 @@ EXTERN float b;
 EXTERN float b_averaged;
 
 EXTERN int status_of_5; //global for setting and determining the status of the 5 V power supply
-EXTERN int energy_save_timeout;
+EXTERN unsigned int energy_save_timeout;
+EXTERN unsigned int energy_min_wake_time;
+
 
 EXTERN float previous_light_intensity;
 EXTERN float previous_light_intensity_averaged;

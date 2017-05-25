@@ -120,6 +120,8 @@ void loop() {
     activity();   //activity occured happened
 
     do_protocol();          // start of json
+
+    activity();   //activity occured happened
   }
   else {
     activity(); //activity occured happened
@@ -1620,6 +1622,12 @@ if (protocol_set_mode==1) {
           
           energy_save_timeout=hashTable.getLong("energy_save_timeout"); 
         }
+
+        if (hashTable.getLong("energy_min_wake_time") != 0) {
+          
+          energy_min_wake_time=hashTable.getLong("energy_min_wake_time"); 
+        }
+        
 
         if (hashTable.getLong("max_hold_time") != 0) {
           if ((hashTable.getLong("max_hold_time")>0) &&  (hashTable.getLong("max_hold_time")<1000000)){ //between zero and 10^6 seconds

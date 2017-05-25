@@ -212,7 +212,8 @@ void setup_pins(void);          // initialize pins
 
 void setup() 
 {
-energy_save_timeout=30000;
+energy_save_timeout=120000;
+energy_min_wake_time=10000;
 
 activity();
 //  for(int i=0; i <= 9; i++){
