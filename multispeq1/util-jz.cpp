@@ -13,7 +13,7 @@
 #include <SPI.h>                    // include the new SPI library
 #include <i2c_t3.h>
 unsigned long last_activity;
-unsigned long energy_sleep_time;
+//unsigned long energy_sleep_time;
 
 
 unsigned int read_once(unsigned char address);
@@ -33,25 +33,26 @@ void unset_pins(void);            // change pin states to save power
 
 void  __attribute__ (( noinline, noclone, optimize("Os") )) turn_on_5V()
 {
- if (status_of_5==0){ //only do this if the 5V is off!
+  digitalWriteFast(WAKE_DC, HIGH); 
+ if (status_of_5<1){ //only do this if the 5V is off!
   // enable 5V and analog power - also DAC, ADC, Hall effect sensor
   // dither this on slowly to prevent a brownout - input to MK20 cannot fall below 2.7V
   
   //The following code ensures that at least 10s have passed since the 5V was switched
   //off prior to re-activating 5V.
+  if (status_of_5==0){ // in normal operation, wait until 10 s past switching off 5V
+    for (int ii=0; ii<1000; ii++){  //wait for a maimum of 10 s
+        if (millis() > 10000 + energy_sleep_time){ //check if it's been more than 10s since 5V off'
+                                                    //energy_sleep_time was set when 5V was switched off
+            //Serial_Print_Line(millis());
+            //Serial_Print_Line(energy_sleep_time);
+            
+            break;
 
-  for (int ii=0; ii<1000; ii++){  //wait for a maimum of 10 s
-       if (millis() > 10000 + energy_sleep_time){ //check if it's been more than 10s since 5V off'
-                                                  //energy_sleep_time was set when 5V was switched off
-          //Serial_Print_Line(millis());
-          //Serial_Print_Line(energy_sleep_time);
-          
-          break;
-
-       }  // record when the 5V was switched off
-       delay(10); // for each loop wait for 10 ms, so that after 1000 loops, or 10s, proceed 
-  } 
-  
+        }  // record when the 5V was switched off
+        delay(10); // for each loop wait for 10 ms, so that after 1000 loops, or 10s, proceed 
+    } 
+  }  // if status_of_5 =-1 then don't do the wait'
 
   pinMode(WAKE_DC, OUTPUT);
   digitalWriteFast(WAKE_DC, LOW);  //start on low

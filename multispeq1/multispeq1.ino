@@ -238,7 +238,7 @@ activity();
   // set up serial ports (Serial and Serial1)
   Serial_Set(4);                // auto switch between USB and BLE
   Serial_Begin(115200);
-
+  status_of_5=-1; // when set to -1, the turn_on_5V function will not wait for the delay time
   turn_on_5V();                  // LEAVE THIS HERE!  Lots of hard to troubleshoot problems emerge if this is removed.
 
   // set up MCU pins

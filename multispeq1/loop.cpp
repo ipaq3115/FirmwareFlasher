@@ -74,6 +74,7 @@ struct theReadings {                                            // use to return
   const char* reading5;
   int numberReadings;
 };
+
 theReadings getReadings (const char* _thisSensor);                        // get the actual sensor readings associated with each environmental call (so compass and angle when you call compass_and_angle, etc.)
 
 //////////////////////// MAIN LOOP /////////////////////////
@@ -81,8 +82,11 @@ theReadings getReadings (const char* _thisSensor);                        // get
 // process ascii serial input commands of two forms:
 // 1010+<parameter1>+<parameter2>+...  (a command)
 // [...] (a json protocol to be executed)
+// void init_all () {
+//   status_of_5=0;
+//   turn_on_5V(); 
+// }
 
-   
 
 void loop() {
 
@@ -1062,7 +1066,7 @@ void do_protocol()
     
     if (end_pointer == NULL) {         // This just checks of the number of {'s = number of }'s, and that 
 
-                                      // as `received` is not valid json, this throws out the json parser on the other end
+                       // as `received` is not valid json, this throws out the json parser on the other end
                     
       //      Serial_Print("{\"error\":\"bad json protocol (braces or CRC)\"}");
       Serial_Print("{\"error\":\"bad json protocol (braces or CRC)\"              ");

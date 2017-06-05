@@ -186,7 +186,7 @@ EXTERN int status_of_5; //global for setting and determining the status of the 5
 EXTERN unsigned int energy_save_timeout;
 EXTERN unsigned int energy_min_wake_time;
 
-
+EXTERN unsigned long energy_sleep_time;
 EXTERN float previous_light_intensity;
 EXTERN float previous_light_intensity_averaged;
 EXTERN float previous_light_intensity_raw;
