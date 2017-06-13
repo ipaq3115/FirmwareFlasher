@@ -1,0 +1,32 @@
+{
+  "name": "ir_baseline",
+  "description": "Text with markdown formatting, no html",
+  "alias": [],
+  "input": "number, array, nested array, string",
+  "values": [],
+  "code": "\"command name\": <number>",
+  "type": "protocol",
+  "editor": "table, fixed, editor instructions",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:26:11+00:00",
+    "created": "2017-06-06T19:26:11+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "3b717a703cc4b37334b6250390e3a058"
+}

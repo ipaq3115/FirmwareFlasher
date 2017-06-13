@@ -1,0 +1,39 @@
+{
+  "name": "number_samples",
+  "description": "\"number_samples\" sets the number of samples taken by the ADC (analog to digital converter) on the sample and hold circuit.  The median value of these samples is then saved as a single detector value in \"data_raw\".  The ADC is used to measure the detectors (1 - 4).  This value is already set to the optimum value, and most signal noise comes from other source, but in certain cases increasing the value may yield improved signal.",
+  "alias": [],
+  "input": "number",
+  "values": [
+    "1 - 500"
+  ],
+  "code": "\"number_samples\": <number>",
+  "type": "protocol",
+  "editor": "fixed",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/number_samples",
+  "dependencies": [
+    "pulses",
+    "pulse_length",
+    "pulse_distance",
+    "detectors"
+  ],
+  "parent": "",
+  "md5": "6d574673393a27fa81680e5236e35c07"
+}

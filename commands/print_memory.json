@@ -1,0 +1,32 @@
+{
+  "name": "print_memory",
+  "description": "Print out all information stored in the instruments memory.",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "print_memory+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:22:30+00:00",
+    "created": "2017-06-06T19:22:30+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "c8fd1173ef452683ef3460318199382f"
+}

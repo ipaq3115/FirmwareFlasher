@@ -1,0 +1,32 @@
+{
+  "name": "constant_light",
+  "description": "Starting constant light source. Stop output using the command `-1+`.",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "constant_light+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:21:57+00:00",
+    "created": "2017-06-06T19:21:57+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "c6f1fd67831a9e8e71161d1476461037"
+}

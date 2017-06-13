@@ -1,0 +1,32 @@
+{
+  "name": "set_detector2_offset",
+  "description": "",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "set_detector2_offset+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:25:31+00:00",
+    "created": "2017-06-06T19:25:31+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "ca5f9d365fd474743ba60a88d185e7cb"
+}

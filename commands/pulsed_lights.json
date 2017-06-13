@@ -1,0 +1,39 @@
+{
+  "name": "pulsed_lights",
+  "description": "\"pulsed_lights\" defines which lights are pulsed, and in what order.  When set to 0, no lights are pulsed and no readings are recorded (see Example section here for details).",
+  "alias": [],
+  "input": "nested array",
+  "values": [
+    "0 - 10"
+  ],
+  "code": "\"pulsed_lights\": [[<number>], ... ]",
+  "type": "protocol",
+  "editor": "table",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/pulsed_lights",
+  "dependencies": [
+    "pulses",
+    "pulse_distance",
+    "pulse_length",
+    "pulsed_lights_brightness"
+  ],
+  "parent": "",
+  "md5": "40884c42a15d11c192363998b86ac8c6"
+}

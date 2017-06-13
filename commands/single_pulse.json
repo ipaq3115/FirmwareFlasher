@@ -1,0 +1,32 @@
+{
+  "name": "single_pulse",
+  "description": "Read and analyze noise on ADC from a single LED pulse.",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "single_pulse+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:29:19+00:00",
+    "created": "2017-06-06T19:29:19+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "dc47c9b0c4ae077470edae7bd7ffa409"
+}

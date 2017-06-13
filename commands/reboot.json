@@ -1,0 +1,32 @@
+{
+  "name": "reboot",
+  "description": "",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "reboot+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:27:09+00:00",
+    "created": "2017-06-06T19:27:09+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "1e563f51c18e731a8e767b9d3ed120bb"
+}

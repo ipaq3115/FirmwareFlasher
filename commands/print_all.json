@@ -1,0 +1,32 @@
+{
+  "name": "print_all",
+  "description": "print everything in the eeprom (all values defined in eeprom.h)",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "print_all+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:24:10+00:00",
+    "created": "2017-06-06T19:24:10+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "56ee2e70c4541e55a616ac11b82b7e56"
+}

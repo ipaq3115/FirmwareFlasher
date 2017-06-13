@@ -1,0 +1,36 @@
+{
+  "name": "averages_delay",
+  "description": "\"averages_delay\" defines the delay between protocol averages in in milliseconds (ms).",
+  "alias": [],
+  "input": "auto",
+  "values": [
+    "0 - 9999999999"
+  ],
+  "code": "\"averages_delay\": <number>",
+  "type": "protocol",
+  "editor": "fixed",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/averages_delay",
+  "dependencies": [
+    "averages"
+  ],
+  "parent": "",
+  "md5": "ec579146021671efd8513107ddbfe6cd"
+}

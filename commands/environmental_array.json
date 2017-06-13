@@ -1,0 +1,38 @@
+{
+  "name": "environmental_array",
+  "description": "\"environmental_array\" defines additional sensors or functionality, just like \"environmental\".  However, \"environmental_array\" returns sensor data once per pulse, as defined in \"pulses\".  This allows a string of sensor measurements to be used in a single macro.  The advantage is you can calculate and return in real time things like rates of change, minima and maxima, etc.  See examples for details.  NOTE!  \"pulsed_lights_brightness\" must NOT be set to zero for any given pulse set for the sensors set in \"environmental_array\" to measure.",
+  "alias": [],
+  "input": "nested array",
+  "values": [],
+  "code": "\"environmental_array\": [[<number>], ... ]",
+  "type": "protocol",
+  "editor": "fixed",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/environmental_array",
+  "dependencies": [
+    "pulses",
+    "pulse_length",
+    "pulse_distance",
+    "pulsed_lights",
+    "pulsed_lights_brightness"
+  ],
+  "parent": "",
+  "md5": "a9f27c37670f56f6ab312aafe72b60c6"
+}

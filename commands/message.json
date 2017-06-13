@@ -1,0 +1,40 @@
+{
+  "name": "message",
+  "description": "\"message\" sends text to the user between pulse sets, and waits for a response before proceeding. Set <message type> to \"0\" to not send a message.  \"message\" should have the same length as \"pulses\".",
+  "alias": [],
+  "input": "nested array",
+  "values": [
+    "`alert` - message with an OK button",
+    "`prompt` - message with an OK and Cancel button",
+    "`confirm` - message with an OK and Cancel button and text input box"
+  ],
+  "code": "\"message\": [[<message type>, <message>], ... ]",
+  "type": "protocol",
+  "editor": "table",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/message",
+  "dependencies": [
+    "pulses",
+    "pulse_length",
+    "pulse_distance"
+  ],
+  "parent": "",
+  "md5": "890fad98f8b5625eef2121a898cf7b73"
+}

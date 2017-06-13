@@ -1,0 +1,40 @@
+{
+  "name": "detectors",
+  "description": "\"detectors\" defines which detectors are being measured, and in what order.  The chosen \"meas_light\" supplies the light source to be measured.  The detector measurement is recorded in \"data_raw\" in the data received from the MultispeQ, which is then graphed for the user.  When \"detectors\" is set to 0, no detector is read and responses will be recorded as zero.",
+  "alias": [],
+  "input": "nested array",
+  "values": [
+    "0 - 4"
+  ],
+  "code": "\"detectors\": [[<detector>], ... ]",
+  "type": "protocol",
+  "editor": "table",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/detectors",
+  "dependencies": [
+    "pulses",
+    "pulse_length",
+    "pulse_distance",
+    "pulsed_lights",
+    "pulsed_lights_brightness"
+  ],
+  "parent": "",
+  "md5": "e8b16b6a4825e8d66def7b5450f534ed"
+}

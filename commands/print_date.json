@@ -1,0 +1,32 @@
+{
+  "name": "print_date",
+  "description": "Print date based on instruments RTC (if available).\ne.g.`2004-02-12T15:19:21.000Z`",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "print_date+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:28:31+00:00",
+    "created": "2017-06-06T19:28:31+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "6b4fbb6c9da6f684a50a2897e987c2e3"
+}

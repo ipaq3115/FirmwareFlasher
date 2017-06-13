@@ -1,0 +1,32 @@
+{
+  "name": "readonce",
+  "description": "Access write once flash",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "readonce+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:28:20+00:00",
+    "created": "2017-06-06T19:28:20+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "e5c2e01bbb7d219aaf57c1cb7a516f34"
+}

@@ -1,0 +1,32 @@
+{
+  "name": "par_led",
+  "description": "",
+  "alias": [],
+  "input": "par_led",
+  "values": [],
+  "code": "par_led+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:22:23+00:00",
+    "created": "2017-06-06T19:22:23+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "fec4cc7c011d17bf79df96c73f732517"
+}

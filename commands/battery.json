@@ -1,0 +1,32 @@
+{
+  "name": "battery",
+  "description": "Test the instruments battery with load returning the charge state in percent (%)",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "battery+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:28:37+00:00",
+    "created": "2017-06-06T19:28:37+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "d0f6dd8616ab830a260197bcffd4c3ca"
+}

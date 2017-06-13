@@ -1,0 +1,32 @@
+{
+  "name": "set_date",
+  "description": "Set the date of the RTC of the instrument (if available)",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "set_date+\nhours+min+sec+day+month+year+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:28:26+00:00",
+    "created": "2017-06-06T19:28:26+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "653a26fbc0444645f2d6e447f2e67e82"
+}

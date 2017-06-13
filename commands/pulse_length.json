@@ -1,0 +1,39 @@
+{
+  "name": "pulse_length",
+  "description": "\"pulse_length\" defines the length, in microseconds (us), of a pulse.",
+  "alias": [],
+  "input": "nested array",
+  "values": [
+    "1 - 150"
+  ],
+  "code": "\"pulse_length\": [[<number>], ... ]",
+  "type": "protocol",
+  "editor": "table",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/pulse_length",
+  "dependencies": [
+    "pulses",
+    "pulse_distance",
+    "pulsed_lights",
+    "pulsed_lights_brightness"
+  ],
+  "parent": "",
+  "md5": "d6b80d65bacb730acec3e087759019c6"
+}

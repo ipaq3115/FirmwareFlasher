@@ -1,0 +1,32 @@
+{
+  "name": "p2p",
+  "description": "Read multiple pulses with increasing intensity or pulse width for linearity test. With constant DAC value and pulse width, it is good for a pulse-to-pulse stdev test",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "p2p+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:29:26+00:00",
+    "created": "2017-06-06T19:29:26+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "9e23c6e4ac75fb1c18e82f334bd0aa1d"
+}

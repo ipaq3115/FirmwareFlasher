@@ -1,0 +1,36 @@
+{
+  "name": "protocols_delay",
+  "description": "\"protocols_delay\" defines the delay between protocol repeats in in milliseconds (us).",
+  "alias": [],
+  "input": "auto",
+  "values": [
+    "0 - 9999999999"
+  ],
+  "code": "\"protocols_delay\": <number>",
+  "type": "protocol",
+  "editor": "fixed",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/protocols_delay",
+  "dependencies": [
+    "protocols"
+  ],
+  "parent": "",
+  "md5": "b83d1dd7bac0b29dca65936278b4585e"
+}

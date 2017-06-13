@@ -1,0 +1,39 @@
+{
+  "name": "pulsed_lights_brightness",
+  "description": "\"pulsed_lights_brightness\" sets the brightness in microEinsteins (uE) of the pulsed lights.   Definition of microEinsteins (uE) here.",
+  "alias": [],
+  "input": "nested array",
+  "values": [
+    "0 - 15000"
+  ],
+  "code": "\"pulsed_lights_brightness\": [[<number>], ... ]",
+  "type": "protocol",
+  "editor": "table",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/pulsed_lights_brightness",
+  "dependencies": [
+    "pulses",
+    "pulse_distance",
+    "pulse_length",
+    "pulsed_lights"
+  ],
+  "parent": "",
+  "md5": "290c26ecb36550fa5076a70b30c94e83"
+}

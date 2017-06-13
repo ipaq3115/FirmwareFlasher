@@ -1,0 +1,32 @@
+{
+  "name": "start_watchdog",
+  "description": "",
+  "alias": [],
+  "input": "",
+  "values": [],
+  "code": "start_watchdog+",
+  "type": "console",
+  "editor": "",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T19:27:09+00:00",
+    "created": "2017-06-06T19:27:09+00:00"
+  },
+  "deprecated": false,
+  "url": "",
+  "dependencies": [],
+  "parent": "",
+  "md5": "a4d65842ed5d37d696c163ca932be6b7"
+}

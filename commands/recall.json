@@ -1,0 +1,32 @@
+{
+  "name": "recall",
+  "description": "This command returns values from the device memory (EEPROM). This includes values saved by the user (see Examples below for details) as well as values saved during factory calibration.  For a full list of saved values which can be recalled, see expr.cpp .  Expressions may be applied to \"recall\" requests ([more](https://github.com/Photosynq/PhotosynQ-Firmware/wiki/How-to-use-Expressions)).",
+  "alias": [],
+  "input": "array",
+  "values": [],
+  "code": "\"recall\": [\"userdef[<location>]\", ... ]",
+  "type": "protocol",
+  "editor": "fixed",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/recall",
+  "dependencies": [],
+  "parent": "",
+  "md5": "0bf7556ec68481a141efe9121268f569"
+}

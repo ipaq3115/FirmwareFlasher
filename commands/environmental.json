@@ -1,0 +1,32 @@
+{
+  "name": "environmental",
+  "description": "`environmental` defines which additional sensor(s) to measure. The environmental calls occur at the very beginning of the measurement, prior to any pulses. Some sensors require additional information, like specifying which pin to measure, brightness, etc. In addition to sensor measurements, there are also calls to flip digital pins on/off or set a pwm which could be used to control external lights or even motors. Below is the full list of parameters available in `environmental`.\n\nThe returned sensor values from most `environmental` calls are accessible inside a protocol using Expressions ([details](https://github.com/Photosynq/PhotosynQ-Firmware/wiki/How-to-use-Expressions)). Adjusting protocols in real time based on these values can be very handy for certain types of protocols.",
+  "alias": [],
+  "input": "nested array",
+  "values": [],
+  "code": "\"environmental\": [[<sensor>], ... ]",
+  "type": "protocol",
+  "editor": "fixed",
+  "versions": [
+    "1.06",
+    "1.07",
+    "1.08",
+    "1.10",
+    "1.11",
+    "1.14",
+    "1.16",
+    "1.17"
+  ],
+  "devices": [
+    "MultispeQ 1"
+  ],
+  "time": {
+    "modified": "2017-06-06T18:32:47+00:00",
+    "created": "2017-06-06T18:32:47+00:00"
+  },
+  "deprecated": false,
+  "url": "https://github.com/Photosynq/PhotosynQ-Firmware/wiki/environmental",
+  "dependencies": [],
+  "parent": "",
+  "md5": "443fa690aa480d1ec3c3198354b91e6b"
+}
