@@ -4,7 +4,7 @@
 //  *** Important: assume that the DAC ICs have i2C addresses of 1,2,3 (can be set with a routine below)
 //  Jon Zeeff, March, 2016
 
-#include "utility/mcp4728.h"              // DAC
+#include "src/mcp4728.h"              // DAC
 #include "DAC.h"
 #include "serial.h"
 #include "defines.h"
@@ -28,8 +28,8 @@ int DAC_init(void)
   digitalWriteFast(LDAC1, HIGH);
   pinMode(LDAC2, OUTPUT);
   digitalWriteFast(LDAC2, HIGH);
-  pinMode(LDAC3, OUTPUT);
-  digitalWriteFast(LDAC3, HIGH);
+//  pinMode(LDAC3, OUTPUT);
+//  digitalWriteFast(LDAC3, HIGH);
 
   // initialize DACs
   for (int i = 0; i < NUM_DACS; ++i) {
@@ -43,8 +43,11 @@ int DAC_init(void)
 
   DAC_change();  // cause changes to take effect
 
+  // reset previous values
+  for (int i = 0; i < NUM_LEDS; ++i)
+    prev_value[i] = 6666;            // impossible value
   return 0;
-
+  
 }  // DAC_init()
 
 
@@ -54,7 +57,7 @@ void DAC_shutdown()
  // set up ldac pins
   pinMode(LDAC1, INPUT);
   pinMode(LDAC2, INPUT);
-  pinMode(LDAC3, INPUT);   
+//  pinMode(LDAC3, INPUT);   
 }
 
 // set the DAC value for a particular LED (eg, 1-10)
@@ -62,7 +65,7 @@ void DAC_shutdown()
 // value is 0-4095 (12 bits)
 
 void DAC_set(unsigned int led, unsigned int value)
-{
+{ 
   if (led ==  0)                                            // if you get a zero, quietly skip it
     return;
 
@@ -92,14 +95,15 @@ void DAC_set(unsigned int led, unsigned int value)
 
 void DAC_change(void)
 {
+  
   // toggle all ldac lines for 1 usecond
   digitalWriteFast(LDAC1, LOW);
   digitalWriteFast(LDAC2, LOW);
-  digitalWriteFast(LDAC3, LOW);
+ // digitalWriteFast(LDAC3, LOW);
   delayMicroseconds(1);
   digitalWriteFast(LDAC1, HIGH);
   digitalWriteFast(LDAC2, HIGH);
-  digitalWriteFast(LDAC3, HIGH);
+//  digitalWriteFast(LDAC3, HIGH);
 } // DAC_change()
 
 

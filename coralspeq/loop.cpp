@@ -15,7 +15,7 @@
 #include <i2c_t3.h>
 #include "src/TCS3471.h"              // color sensor
 
-#define CORAL_SPEQ 1
+// function declarations
 
 inline static void startTimers(unsigned _pulsedistance);
 inline static void stopTimers(void);
@@ -71,6 +71,8 @@ theReadings getReadings (const char* _thisSensor);                        // get
 // process ascii serial input commands of two forms:
 // 1010+<parameter1>+<parameter2>+...  (a command)
 // [...] (a json protocol to be executed)
+
+
 
 void loop() {
 
@@ -156,8 +158,8 @@ void do_command()
       Serial_Print("dac 1, ");
       DAC_set_address(LDAC2, 0, 2);
       Serial_Print("dac 2, ");
-      DAC_set_address(LDAC3, 0, 3);
-      Serial_Print_Line("dac 3");
+      //DAC_set_address(LDAC3, 0, 3);
+      //Serial_Print_Line("dac 3");
       get_set_device_info(1);                                                           //  input device info and write to eeprom
       break;
 
@@ -500,22 +502,18 @@ void do_command()
         Serial_Print(response);
       }
       break;
-    
+
     case hash("set_magnetometer_bias"):
     case 1030: // 3 magnetometer bias values
       store(mag_bias[0], Serial_Input_Double("+", 0));
       store(mag_bias[1], Serial_Input_Double("+", 0));
       store(mag_bias[2], Serial_Input_Double("+", 0));
-//      Serial.print(eeprom->mag_bias[0], 20);
-//      Serial.print(eeprom->mag_bias[1], 20);
-//      Serial.print(eeprom->mag_bias[2], 20);
       break;
     case hash("set_magnetometer"):
     case 1031: // 9 magnetometer calibration values
       for (uint16_t i = 0; i < 3; i++) {
         for (uint16_t j = 0; j < 3; j++) {
           store(mag_cal[j][i], Serial_Input_Double("+", 0));
-//          Serial.print(eeprom->mag_cal[j][i], 20);
         }
       }
       break;
@@ -524,16 +522,12 @@ void do_command()
       store(accel_bias[0], Serial_Input_Double("+", 0));
       store(accel_bias[1], Serial_Input_Double("+", 0));
       store(accel_bias[2], Serial_Input_Double("+", 0));
-//      Serial.print(eeprom->accel_bias[0], 20);
-//      Serial.print(eeprom->accel_bias[1], 20);
-//      Serial.print(eeprom->accel_bias[2], 20);
       break;
     case hash("set_accelerometer"):
     case 1033: // 9 accelerometer calibration values
       for (uint16_t i = 0; i < 3; i++) {
         for (uint16_t j = 0; j < 3; j++) {
           store(accel_cal[j][i], Serial_Input_Double("+", 0));
-//          Serial.print(eeprom->accel_cal[j][i], 20);
         }
       }
       break;
@@ -1012,29 +1006,26 @@ void do_protocol()
 
   v =  ((v - min_level) / (max_level - min_level)) * 100;     // express as %
 
-  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":%s", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
+  Serial_Printf("{\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\",\"firmware_version\":\"%s\"", DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
                 (unsigned)eeprom->device_id & 0xff, v,
-                DEVICE_FIRMWARE);
+                DEVICE_FIRMWARE, DEVICE_FIRMWARE);
 
-  //  if (year() >= 2016)
-  //    Serial_Printf(",\"device_time\":%u", now());
-  
+  if (year() >= 2016)
+    Serial_Printf(",\"device_time\":%u", now());
   Serial_Print(",\"sample\":[");
 
   // discharge sample and hold in case the cap is currently charged (on add on and main board)
   digitalWriteFast(HOLDM, HIGH);
   digitalWriteFast(HOLDADD, HIGH);
   delay(10);
-  
-Serial_Print("debug10");
 
   // loop through the all measurements to create a measurement group
   for (int y = 0; y < measurements; y++) {                   // measurements is initially 1, but gets updated after the json is parsed
 
-    //    Serial_Print("[");                                                                        // print brackets to define single measurement
+    Serial_Print("[");                                                                        // print brackets to define single measurement
 
     for (int q = 0; q < number_of_protocols; q++) {                                           // loop through all of the protocols to create a measurement
 
@@ -1145,8 +1136,6 @@ Serial_Print("debug10");
 
         long size_of_data_raw = 0;
         long total_pulses = 0;
-        
-Serial_Print("debug11");
 
         for (int i = 0; i < pulses.getLength(); i++) {                                      // count the number of non zero lights and total pulses
           total_pulses += pulses.getLong(i) * meas_lights.getArray(i).getLength();          // count the total number of pulses
@@ -1191,7 +1180,7 @@ Serial_Print("debug11");
             }
           }
         }
-Serial_Print("debug12");
+
 #ifdef DEBUGSIMPLE
         Serial_Print_Line("");
         Serial_Print("size of data raw:  ");
@@ -1337,8 +1326,6 @@ Serial_Print("debug12");
                   Serial_Printf("\n all a_lights, intensities: %d,%d,|%s|,%f,%f,%f\n", _a_lights[i], _a_intensities[i], intensity_string.c_str(), expr(intensity_string.c_str()), light_intensity, light_intensity_averaged);
                 } // PULSERDEBUG
               }
-              
-Serial_Print("debug13");
 
               if (CORAL_SPEQ) {
                 _spec = spec.getLong(cycle);                                                      // pull whether the spec will get called in this cycle or not for coralspeq and set parameters.  If they are empty (not defined by the user) set them to the default value
@@ -1651,14 +1638,13 @@ Serial_Print("debug13");
             Serial_Print(",");
             Serial_Print_Line(size_of_data_raw);
 #endif
-
             if (_spec != 1) {                                                    // if spec_on is not equal to 1, then coralspeq is off and proceed as per normal MultispeQ measurement.
               if (_meas_light  != 0) {                                                      // save the data, so long as the measurement light is not equal to zero.
                 data_raw_average[data_count] += data - _offset;
                 data_count++;
               }
             }
-            else if (_spec == 1) {                                              // if spec_on is 1 for this cycle, then collect data from the coralspeq and save it to data_raw_average.
+            else if (_spec == 1) {// if spec_on is 1 for this cycle, then collect data from the coralspeq and save it to data_raw_average.
               readSpectrometer(_intTime, _delay_time, _read_time, _accumulateMode);                                                        // collect a reading from the spec
               for (int i = 0 ; i < SPEC_CHANNELS; i++) {
                 data_raw_average[data_count] += spec_data[i];
@@ -1850,8 +1836,7 @@ Serial_Print("debug13");
 
 abort:
 
-  //  Serial_Print("]}");                // terminate output json
-  Serial_Print("}");                // terminate output json
+  Serial_Print("]}");                // terminate output json
   Serial_Print_CRC();             // TODO put this back in one android app is fixed
   Serial_Flush_Output();
 
@@ -2314,23 +2299,25 @@ static void environmentals(JsonArray environmental, const int _averages, const i
     else if (thisSensor == "analog_write") {                      // perform analog write with length of time to apply the pwm
       int pin = environmental.getArray(i).getLong(1);
       int setting = environmental.getArray(i).getLong(2);
-      int resolution = environmental.getArray(i).getLong(3);
+      int freq = environmental.getArray(i).getLong(3);
       int wait = environmental.getArray(i).getLong(4);
-
-      // create lookup table for resolution and frequency settings (values start at position 2 for a resolution of 2):
-      float freq_table [] = {0, 0, 15000000, 7500000, 3750000, 1875000, 937500, 468750, 234375, 117187.5, 58593.75, 29296.875, 14648.437, 7324.219, 3662.109, 1831.055, 915.527};
-
-      //      Serial_Printf("pin = %d, setting = %d, resolution = %d, wait = %d",pin, setting, resolution, wait);
 
       // TODO sanity checks
 
+#ifdef DEBUGSIMPLE
+      Serial_Print_Line(pin);
+      Serial_Print_Line(pin);
+      Serial_Print_Line(wait);
+      Serial_Print_Line(setting);
+      Serial_Print_Line(freq);
+#endif
+
       pinMode(pin, OUTPUT);
-      analogWriteFrequency(pin, freq_table[resolution]);                                                           // set analog frequency
-      analogWriteResolution(resolution);                                                           // set analog frequency
+      analogWriteFrequency(pin, freq);                                                           // set analog frequency
       analogWrite(pin, setting);
       delay(wait);
       analogWrite(pin, 0);
-      analogWriteResolution(12);                                                                  // reset analog resolution
+      //reset_freq();                                                                              // reset analog frequencies
     } // if
   } // for
 }  //environmentals()
@@ -2371,7 +2358,7 @@ void reset_freq() {
 void print_calibrations() {
   unsigned i;
 
-  Serial_Printf("{\n\"device_id\":\"%2.2x:%2.2x:%2.2x:%2.2x\",\n",
+  Serial_Printf("{\n\"device_id\":\"d4:f5:%x:%x:%x:%x\",\n",
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
@@ -2568,6 +2555,7 @@ void get_set_device_info(const int _set) {
     //    Serial_Print_Line("{\"message\": \"Please enter device mac address (long int) followed by +: \"}\n");
     val =  Serial_Input_Long("+", 0);              // save to eeprom
     store(device_id, val);              // save to eeprom
+
   } // if
 
   // print
@@ -2583,15 +2571,13 @@ void get_set_device_info(const int _set) {
     Serial_Printf("\n battery percent: %d; battery level: %d \n",battery_percent(0), battery_level(0));
   */
 
-  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\"", DEVICE_NAME, DEVICE_VERSION,
+  //  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_firmware\":\"%s\",\"device_manufacture\":%6.6d}", DEVICE_NAME, DEVICE_VERSION,
+  Serial_Printf("{\"device_name\":\"%s\",\"device_version\":\"%s\",\"device_id\":\"d4:f5:%2.2x:%2.2x:%2.2x:%2.2x\",\"device_battery\":%d,\"device_firmware\":\"%s\"}", DEVICE_NAME, DEVICE_VERSION,    // I did this so it would work with chrome app
                 (unsigned)eeprom->device_id >> 24,
                 ((unsigned)eeprom->device_id & 0xff0000) >> 16,
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
                 (unsigned)eeprom->device_id & 0xff, v,
                 DEVICE_FIRMWARE);
-  Serial_Print(DEVICE_CONFIGURATION);
-  Serial_Print("}");
-
   Serial_Print_CRC();
 
   return;

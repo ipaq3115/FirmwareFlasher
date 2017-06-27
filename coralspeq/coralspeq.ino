@@ -1,5 +1,5 @@
 
-// Firmware for MultispeQ 1.0 hardware. v1.1.7   Part of the PhotosynQ project.
+// Firmware for MultispeQ 1.0 hardware. v1.1.8  Part of the PhotosynQ project.
 
 // setup() - initize things on startup
 // main loop is in loop.cpp
@@ -203,7 +203,7 @@ set #define BLE_DELAY  to 0 (no delay between packets)
 #include <SPI.h>              
 #include "util.h"
 #include <TimeLib.h>
-#define CORAL_SPEQ 1
+#include "src/AD7689.h"    // spec video now on external ADC SPI CZ
 
 void setup_pins(void);          // initialize pins
 
@@ -228,9 +228,7 @@ void setup()
   }
 
   // set up serial ports (Serial and Serial1)
-  
   Serial_Set(4);                // auto switch between USB and BLE
-  
   Serial_Begin(115200);
 
   turn_on_5V();                  // LEAVE THIS HERE!  Lots of hard to troubleshoot problems emerge if this is removed.
@@ -244,8 +242,7 @@ void setup()
   eeprom_initialize();      // eeprom
   assert(sizeof(eeprom_class) < 2048);      // check that we haven't exceeded eeprom space
 
-#if CORALSPEQ == 1
-
+#if CORAL_SPEQ == 1
   // Set pinmodes for the coralspeq
   //pinMode(SPEC_EOS, INPUT);
   pinMode(SPEC_GAIN, OUTPUT);
@@ -299,3 +296,137 @@ void unset_pins()     // save power, set pins to high impedance
 //     if (i != 18 && i != 19 && i != WAKE_DC && i != WAKE_3V3 && i != 0 && i != 1)  // leave I2C and power control on
         pinMode(i, INPUT);  
 }
+
+
+#if CORAL_SPEQ == 1
+
+void readSpectrometer(int intTime, int delay_time, int read_time, int accumulateMode)
+{
+  /*
+    //int delay_time = 35;     // delay per half clock (in microseconds).  This ultimately conrols the integration time.
+    int delay_time = 1;     // delay per half clock (in microseconds).  This ultimately conrols the integration time.
+    int idx = 0;
+    int read_time = 35;      // Amount of time that the analogRead() procedure takes (in microseconds)
+    int intTime = 100;
+    int accumulateMode = false;
+  */
+
+  // Step 1: start leading clock pulses
+  for (int i = 0; i < SPEC_CHANNELS; i++) {
+    digitalWrite(SPEC_CLK, LOW);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, HIGH);
+    delayMicroseconds(delay_time);
+  }
+
+  // Step 2: Send start pulse to signal start of integration/light collection
+  digitalWrite(SPEC_CLK, LOW);
+  delayMicroseconds(delay_time);
+  digitalWrite(SPEC_CLK, HIGH);
+  digitalWrite(SPEC_ST, LOW);
+  delayMicroseconds(delay_time);
+  digitalWrite(SPEC_CLK, LOW);
+  delayMicroseconds(delay_time);
+  digitalWrite(SPEC_CLK, HIGH);
+  digitalWrite(SPEC_ST, HIGH);
+  delayMicroseconds(delay_time);
+
+  // Step 3: Integration time -- sample for a period of time determined by the intTime parameter
+  int blockTime = delay_time * 8;
+  int numIntegrationBlocks = (intTime * 1000) / blockTime;
+  for (int i = 0; i < numIntegrationBlocks; i++) {
+    // Four clocks per pixel
+    // First block of 2 clocks -- measurement
+    digitalWrite(SPEC_CLK, LOW);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, HIGH);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, LOW);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, HIGH);
+    delayMicroseconds(delay_time);
+
+    digitalWrite(SPEC_CLK, LOW);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, HIGH);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, LOW);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, HIGH);
+    delayMicroseconds(delay_time);
+  }
+
+
+  // Step 4: Send start pulse to signal end of integration/light collection
+  digitalWrite(SPEC_CLK, LOW);
+  delayMicroseconds(delay_time);
+  digitalWrite(SPEC_CLK, HIGH);
+  digitalWrite(SPEC_ST, LOW);
+  delayMicroseconds(delay_time);
+  digitalWrite(SPEC_CLK, LOW);
+  delayMicroseconds(delay_time);
+  digitalWrite(SPEC_CLK, HIGH);
+  digitalWrite(SPEC_ST, HIGH);
+  delayMicroseconds(delay_time);
+
+  // Step 5: Read Data 2 (this is the actual read, since the spectrometer has now sampled data)
+  AD7689_set( SPEC_ADC_CHANNEL );
+  idx = 0;
+  for (int i = 0; i < SPEC_CHANNELS; i++) {
+    // Four clocks per pixel
+    // First block of 2 clocks -- measurement
+    digitalWrite(SPEC_CLK, LOW);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, HIGH);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, LOW);
+
+    // Analog value is valid on low transition
+    if (accumulateMode == false) {
+      AD7689_sample();
+      spec_data[idx] = AD7689_read_sample();
+      spec_data_average[idx] += spec_data[idx];
+    } else {
+      AD7689_sample();
+      spec_data[idx] += AD7689_read_sample();
+    }
+    idx += 1;
+    if (delay_time > read_time) delayMicroseconds(delay_time - read_time);   // Read takes about 135uSec
+
+    digitalWrite(SPEC_CLK, HIGH);
+    delayMicroseconds(delay_time);
+
+    // Second block of 2 clocks -- idle
+    digitalWrite(SPEC_CLK, LOW);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, HIGH);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, LOW);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, HIGH);
+    delayMicroseconds(delay_time);
+  }
+
+  // Step 6: trailing clock pulses
+  for (int i = 0; i < SPEC_CHANNELS; i++) {
+    digitalWrite(SPEC_CLK, LOW);
+    delayMicroseconds(delay_time);
+    digitalWrite(SPEC_CLK, HIGH);
+    delayMicroseconds(delay_time);
+  }
+  //Serial_Print("readSpectrometer2");
+}
+
+void print_data()
+{
+  Serial_Print("\"data_raw\":[");
+  for (int i = 0; i < SPEC_CHANNELS; i++)
+  {
+    Serial_Print((int)spec_data[i]);
+    if (i != SPEC_CHANNELS - 1) {               // if it's the last one in printed array, don't print comma
+      Serial_Print(",");
+    }
+  }
+  Serial_Print("]");
+}
+#endif

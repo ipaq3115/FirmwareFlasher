@@ -294,9 +294,6 @@ static void Serial_Print_BLE(const char *str)
 
     if (count == BLE_PACKET_SIZE) {   // full buffer - send it
       flush_BLE();
-    } 
-    else if(!packet_mode) {
-      flush_BLE();  
     }
   } // while
 }

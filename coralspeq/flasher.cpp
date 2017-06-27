@@ -82,7 +82,7 @@ void Serial_Printf(const char * format, ... )
 
 // ********************************************************************************************
 
-// Version 1.3
+// Version 1.3B
 
 // code to allow firmware update over any byte stream (serial port, radio link, etc)
 // for teensy 3.x.  It is intended that this code always be included in your application.
@@ -427,6 +427,7 @@ flash_hex_line (const char *line)
     case 0:             // normal data
       break;
     case 1:             // EOF
+      delay(1000);
       Serial_Printf ("done, %d hex lines, address range %x:%x, waiting for :flash %d\n", line_count, min_address, max_address, line_count);
       if (check_compatible(min_address + FLASH_SIZE / 2, max_address + FLASH_SIZE / 2))
         done = 1;
@@ -487,7 +488,7 @@ void flash_erase_upper()
   // erase each block
   for (address = FLASH_SIZE / 2; address < (FLASH_SIZE - RESERVE_FLASH); address += FLASH_SECTOR_SIZE) {
     if (!flash_sector_erased(address)) {
-      Serial_Printf("erase sector %x\n", address);
+      //Serial_Printf("erase sector %x\n", address);
       if ((ret = flash_erase_sector(address, 0)) != 0)
         Serial_Printf("flash erase error %d\n", ret);
     }
