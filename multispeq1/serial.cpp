@@ -60,19 +60,21 @@ void Serial_Set(int s)
 // Do a printf to either port
 // CAUTION: only 200 bytes
 
-#define SIZE 200
+//        Serial_Printf("integer: %d",test_int);
+
+
+#define SIZE 200  //DMK 
 
 void Serial_Printf(const char * format, ... )
 {
   char string[SIZE + 1];        // Warning: fixed buffer size
   va_list v_List;
   va_start( v_List, format );
-  vsnprintf( string, SIZE, format, v_List );
+  vsnprintf( v_string, SIZE, format, v_List );
 
-  //  assert(strlen(string) < SIZE);
-
-  string[SIZE] = 0;
-  Serial_Print(string);
+//  //  assert(strlen(string) < SIZE);
+  v_string[SIZE] = 0;
+  Serial_Print(v_string);
   va_end( v_List );
 }
 
@@ -327,17 +329,24 @@ void Serial_Flush_Output()
 }
 
 
-void
-Serial_Print(const float x, int places)
+void Serial_Print(const float x, int places)
 {
+  int n = places+1;
+  int i = (int)x;
+  while(i != 0){
+    i = i / 10;
+    n++;
+  }
+  
   char str[50 + 1];
-  snprintf(str, 50, "%.*f", places, x);
+  dtostrf(x, n, places, str);
+  
+  //snprintf(str, 50, "%.*f", places, x);
   // output to both ports
   Serial_Print ((char *)str);
 }
 
-void
-Serial_Print(const double xx, int places)
+void Serial_Print(const double xx, int places)
 {
   char str[50 + 1];
   snprintf(str, 50, "%.*f", places, xx);
@@ -345,8 +354,7 @@ Serial_Print(const double xx, int places)
   Serial_Print ((char *)str);
 }
 
-void
-Serial_Print(const int i)
+void Serial_Print(const int i)
 {
   char str[50 + 1];
   snprintf(str, 50, "%d", i);
@@ -354,8 +362,7 @@ Serial_Print(const int i)
   Serial_Print ((char *)str);
 }
 
-void
-Serial_Print(const unsigned u)
+void Serial_Print(const unsigned u)
 {
   char str[50 + 1];
   snprintf(str, 50, "%u", u);
@@ -363,8 +370,7 @@ Serial_Print(const unsigned u)
   Serial_Print ((char *)str);
 }
 
-void
-Serial_Print(const String string)
+void Serial_Print(const String string)
 {
   // output to both ports
   Serial_Print (string.c_str());
@@ -518,6 +524,5 @@ String Serial_Input_String(const char *terminators, long unsigned int timeout)
   //  assert(strlen(str) < 100);
 
   return serial_string;
-
 }  // user_enter_str()
 

@@ -364,12 +364,12 @@ void par_led_start_on_open(int led, int max_hold_time){
         }
         else {
           
-        int temp_light_intensity=light_intensity; //store these values to reassert after function, so not to interfere with the "light_intensity" environmental paramter, if measured separately
-        int temp_light_intensity_averaged=light_intensity_averaged;
-        int temp_r_averaged=r_averaged;
-        int temp_g_averaged=g_averaged;
-        int temp_b_averaged=b_averaged;
-        int temp_light_intensity_raw_averaged=light_intensity_raw_averaged;
+        float temp_light_intensity=light_intensity; //store these values to reassert after function, so not to interfere with the "light_intensity" environmental paramter, if measured separately
+        float temp_light_intensity_averaged=light_intensity_averaged;
+        float temp_r_averaged=r_averaged;
+        float temp_g_averaged=g_averaged;
+        float temp_b_averaged=b_averaged;
+        float temp_light_intensity_raw_averaged=light_intensity_raw_averaged;
 
         light_intensity=0; //reset these values so not to interfere with the "light_intensity" environmental paramter, if measured separately
         light_intensity_averaged=0;
@@ -428,12 +428,12 @@ void par_led_start_on_close(int led, int max_hold_time) {
           //Serial_Printf(" using previous light intensity of: %.2f", par);
         }
         else {
-        int temp_light_intensity=light_intensity; //store these values to reassert after function, so not to interfere with the "light_intensity" environmental paramter, if measured separately
-        int temp_light_intensity_averaged=light_intensity_averaged;
-        int temp_r_averaged=r_averaged;
-        int temp_g_averaged=g_averaged;
-        int temp_b_averaged=b_averaged;
-        int temp_light_intensity_raw_averaged=light_intensity_raw_averaged;
+        float temp_light_intensity=light_intensity; //store these values to reassert after function, so not to interfere with the "light_intensity" environmental paramter, if measured separately
+        float temp_light_intensity_averaged=light_intensity_averaged;
+        float temp_r_averaged=r_averaged;
+        float temp_g_averaged=g_averaged;
+        float temp_b_averaged=b_averaged;
+        float temp_light_intensity_raw_averaged=light_intensity_raw_averaged;
 
         light_intensity=0; //reset these values so not to interfere with the "light_intensity" environmental paramter, if measured separately
         light_intensity_averaged=0;
@@ -595,3 +595,283 @@ unsigned long requestCo2(int timeout) {
   Serial2.end();
   return val * valMultiplier;
 }
+
+
+unsigned int set_flow(int setpoint) {  
+  //int returned_value=0;
+  //Serial_Print("start");
+    Wire1.beginTransmission(0x01); //pumop is on address 01
+    Wire1.write(2);  // send command 2, program flow
+    Wire1.write(highByte(setpoint));  // send two bytes for the flow value 
+    Wire1.write(lowByte(setpoint));
+    Wire1.endTransmission();
+    delay(100);
+
+    int bb=Wire1.requestFrom(0x01, 0);
+      for (int i=0; i<bb; i++){
+        Wire1.read();
+      }
+     return(1);
+}
+
+void set_default_flow_rate(int default_flow_rate){
+  //int returned_value=0;
+  //Serial_Print("start");
+    Wire1.beginTransmission(0x01); //pumop is on address 01
+    Wire1.write(11);  // send command 11, send new default flow rate to EEPROM
+    Wire1.write(highByte(default_flow_rate));  // send two bytes for the flow value 
+    Wire1.write(lowByte(default_flow_rate));
+    Wire1.endTransmission();
+    delay(100);
+
+    int bb=Wire1.requestFrom(0x01, 0);
+      for (int i=0; i<bb; i++){
+        Wire1.read();
+      }
+}
+
+
+void reset_flow(void) {
+  
+    Wire1.beginTransmission(0x01); //pumop is on address 01
+    Wire1.write(9);  // send command 2, program flow
+    Wire1.write(9);  // send two bytes for the flow value 
+    Wire1.write(9);
+    Wire1.endTransmission();
+    delay(100);
+
+int bb=Wire1.requestFrom(0x01, 0);
+  for (int i=0; i<bb; i++){
+  Wire1.read();  
+  }
+  
+}
+
+
+void reset_flow_calibration(void) {
+  int returned_value=0;
+    Wire1.beginTransmission(0x01); //pumop is on address 01
+    Wire1.write(9);  // send command 2, program flow
+    Wire1.write(9);  // send two bytes for the flow value 
+    Wire1.write(9);
+    Wire1.endTransmission();
+    delay(100);
+
+int bb=Wire1.requestFrom(0x01, 0);
+  for (int i=0; i<bb; i++){
+      returned_value = Wire1.read();
+  }  
+}
+
+//
+//int get_flow() {
+//
+//  char databuf[50];
+//  int returned_value;
+//  int average_index=0;
+//  signed int average_returned_value=0;
+//  int number_flow_averages =4;
+//  signed int pressure_now=0;
+//  int bb=0;
+//  
+//  for (int i=0; i<number_flow_averages; i++){
+//    pressure_now=0;
+//    Wire1.resetBus();
+//    Wire1.beginTransmission(0x01);    
+//    Wire1.write(3);
+//    Wire1.write(3);
+//    Wire1.write(3);    
+//    Wire1.endTransmission();
+//    delay(100);    
+//    delay(20);
+//    
+//    bb=Wire1.requestFrom(0x01, 40);
+//    if(Wire1.getError()){  //mark as an error
+//            Serial.println("I2C ERROR");
+//            return(-1); 
+//            break;
+//    }
+//        else
+//    {
+//    for (int i=0; i<bb; i++){   
+//      returned_value = Wire1.read();
+//      databuf[i]=returned_value;
+//    }
+//      pressure_now = databuf[1];              //send x_high to rightmost 8 bits HIGH BYTE!
+//      pressure_now = pressure_now<<8;         //shift x_high over to leftmost 8 bits
+//      pressure_now |= databuf[2];                 //logical OR keeps x_high intact in combined and fills in                                                             //rightmost 8 bits
+//      if (pressure_now>32767){
+//        pressure_now=pressure_now-65535;
+//      }
+//      
+//      //pressure_now=256*databuf[1] + databuf[2];
+//    
+//    // ****}
+//    if (i>2) {  //the first two values are bad. 
+//    //Serial.println(pressure_now);
+//    average_returned_value = average_returned_value + pressure_now;
+//    average_index+=1;
+//    }
+//    delay(1);
+//
+//}
+//      //Serial.print("measured flow rate = ");
+//      //Serial.print(0.1*pressure_now);
+//      
+//      byte number_calibration_points = databuf[3];
+//
+//      Serial.print("Calibration Set Points    = ");
+//      
+//      int starting_address=4; //start at the 4th byte of databuf
+//      
+//      for (int ii=0; ii < number_calibration_points * 2; ii=ii+2){ 
+//          int i = starting_address+ii;
+//          int tv= databuf[i];
+//          tv = tv<<8;   
+//          tv |= databuf[i+1]; 
+//          Serial.print(tv);
+//          Serial.print(", ");
+//      }
+//      
+//      Serial.println(" ");
+//      Serial.print("Calibration values Points = ");
+//      
+//      starting_address=4+(2*number_calibration_points);  // start after the number_calibration_points
+//      for (int ii=0; ii < number_calibration_points * 2; ii=ii+2){ 
+//          int i = starting_address+ii;
+//          int tv= databuf[i];
+//          tv = tv<<8;   
+//          tv |= databuf[i+1]; 
+//          Serial.print(tv);
+//          Serial.print(", ");
+//      }
+//                                                 
+//     return(average_returned_value); 
+//  }
+//}
+//
+
+
+int pump_status(int status_values) {
+  int error_occured=0;
+  char databuf[50];
+  int returned_value;
+  float average_index=0;
+  signed int accumulated_returned_value=0;
+  signed int average_returned_value=0;
+  int number_flow_averages =4;
+  signed int pressure_now=0;
+  int bb=0;
+  
+  for (int i=0; i<number_flow_averages; i++){
+    pressure_now=0;
+    Wire1.resetBus();
+    Wire1.beginTransmission(0x01);    
+    Wire1.write(3);
+    Wire1.write(3);
+    Wire1.write(3);    
+    Wire1.endTransmission();
+    delay(100);    
+    delay(20);
+    
+    bb=Wire1.requestFrom(0x01, 40);
+    if(Wire1.getError()){  //mark as an error
+          error_occured=1;
+            break;            
+    }
+        else
+    {
+    for (int i=0; i<bb; i++){   
+      returned_value = Wire1.read();
+      databuf[i]=returned_value;
+    }
+      pressure_now = databuf[1];              //send x_high to rightmost 8 bits HIGH BYTE!
+      pressure_now = pressure_now<<8;         //shift x_high over to leftmost 8 bits
+      pressure_now |= databuf[2];                 //logical OR keeps x_high intact in combined and fills in                                                             //rightmost 8 bits
+      if (pressure_now>32767){
+        pressure_now=pressure_now-65535;
+      }
+      
+      //pressure_now=256*databuf[1] + databuf[2];
+    
+    // ****}
+    if (i>2) {  //the first two values are bad. 
+    //Serial.println(pressure_now);
+    accumulated_returned_value = accumulated_returned_value + pressure_now;
+    average_index=average_index+1.0;
+    }
+    delay(1);
+    }
+    }
+
+    if (error_occured>0) {
+      Serial_Print("\"air_flow\": -1,");
+      return(-1); 
+      
+    }
+    else {
+//    Serial.println(  accumulated_returned_value);
+//    Serial.println(  average_index);
+    
+    int averaged=(float)accumulated_returned_value/average_index;
+//    Serial.println(  averaged);
+    
+    //Serial.print(average_returned_value);
+    float fval;
+    
+    fval=(float)accumulated_returned_value/(average_index*10.0);
+   // Serial.println(fval);
+    
+    //Serial_Printf("\"air_flow\" : %f ,", fval);
+    
+    average_returned_value=average_returned_value/average_index;
+    
+    Serial_Printf("\"air_flow\":%d ,", accumulated_returned_value);
+    //Serial_Printf("\"air_flow\": %d ,", average_returned_value);
+
+    if (status_values>0) {
+      //Serial.print("measured flow rate = ");
+      //Serial.print(0.1*pressure_now);
+      
+      byte number_calibration_points = databuf[3];
+
+      Serial_Printf("\"calibration_set_points\": [");
+      
+      int starting_address=4; //start at the 4th byte of databuf
+      
+      for (int ii=0; ii < number_calibration_points * 2; ii=ii+2){ 
+          int i = starting_address+ii;
+          int tv= databuf[i];
+          tv = tv<<8;   
+          tv |= databuf[i+1]; 
+          
+          Serial_Print(tv);
+          if (ii< ((number_calibration_points-1) * 2)){
+            Serial_Print(",");
+          }
+
+      }
+      Serial_Print("],");
+      
+      
+      Serial_Printf("\"calibration_values\": [");
+
+      starting_address = 4 + (2*number_calibration_points);  // start after the number_calibration_points
+      for (int ii=0; ii < number_calibration_points * 2; ii=ii+2){ 
+          int i = starting_address+ii;
+          int tv= databuf[i];
+          tv = tv<<8;   
+          tv |= databuf[i+1]; 
+          Serial_Print(tv);
+          if (ii< ((number_calibration_points-1) * 2)){
+            Serial_Print(",");
+          }
+      }
+     Serial_Print("],");
+    }                                          
+     return(average_returned_value); 
+    
+    }
+    
+  }
+  

@@ -184,8 +184,8 @@ case hash("memory"):
   }
   break;
 
-#ifdef PULSE_TEST
 
+#ifdef PULSE_TEST
 case hash("single_pulse"):
   {
     // JZ test - do not remove

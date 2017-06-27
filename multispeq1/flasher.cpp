@@ -60,8 +60,9 @@ void loop ()
 }  // loop()
 
 
+//DMK removed the following 
 #if 0
-// Example Serial_Printf() if needed as a reference.  With this, you need to write Serial_Print() (probably easier).
+ Example Serial_Printf() if needed as a reference.  With this, you need to write Serial_Print() (probably easier).
 #define SIZE 200
 
 void Serial_Printf(const char * format, ... )
@@ -76,7 +77,6 @@ void Serial_Printf(const char * format, ... )
   string[SIZE] = 0;
   Serial_Print(string);
   va_end( v_List );
-}
 #endif
 
 #endif

@@ -224,7 +224,12 @@ activity();
   // turn on power and initialize ICs
   
   // Set up I2C bus - CAUTION: any subsequent calls to Wire.begin() will mess this up
-  Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_800);  // using alternative wire library
+  Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_800);  // using alternative wire libra
+
+    // Set up second I2C bus - use this for breakout and expension boards
+
+  Wire1.begin(I2C_MASTER, 0x00, I2C_PINS_29_30, I2C_PULLUP_INT, I2C_RATE_800);  // using alternative wire library
+
 
   turn_on_3V3();                 // note: these routines already have delay() in them
   

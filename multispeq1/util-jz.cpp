@@ -423,7 +423,7 @@ int accel_changed()
   return changed;
 }  // accel_changed()
 
-const unsigned long SHUTDOWN = (3 * 60 * 60 * 1000);   // power down after X min or seconds of inactivity (in msec)
+const unsigned long SHUTDOWN = (3 * 60 * 60 * 1000);   // power down after 3 hours of inactivity (in msec)
 //const unsigned long SHUTDOWN = (30 * 1000);     // quick powerdown, used for testing
 
 

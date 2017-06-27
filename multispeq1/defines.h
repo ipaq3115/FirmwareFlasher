@@ -13,7 +13,7 @@ const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 #define CORAL_SPEQ 0
 
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
-#define DEVICE_FIRMWARE "1.18"
+#define DEVICE_FIRMWARE "1.19"
 #define DEVICE_NAME "MultispeQ"
 #define DEVICE_VERSION "1"
 #define DEVICE_CONFIGURATION ",\"configuration\": \
@@ -166,6 +166,7 @@ void deep_sleep(void);
 
 //EXTERN int PULSERDEBUG;   // uncomment to debug the pulser and detector
 
+EXTERN char v_string[201];
 
 EXTERN int save_trace_time_scale; //this holds the flag to determine whether to save the time values
 EXTERN int reshape_pattern;
@@ -181,6 +182,7 @@ EXTERN float g;
 EXTERN float g_averaged;
 EXTERN float b;
 EXTERN float b_averaged;
+EXTERN int gain_set;
 
 EXTERN int status_of_5; //global for setting and determining the status of the 5 V power supply
 EXTERN unsigned int energy_save_timeout;
@@ -210,7 +212,7 @@ EXTERN int x_compass_raw, y_compass_raw, z_compass_raw;
 EXTERN float x_compass_raw_averaged, y_compass_raw_averaged, z_compass_raw_averaged;
 
 EXTERN double angle;
-EXTERN double angle_averaged;
+EXTERN float angle_averaged;
 EXTERN String angle_direction;
 EXTERN float roll, pitch;
 EXTERN float roll_averaged, pitch_averaged;

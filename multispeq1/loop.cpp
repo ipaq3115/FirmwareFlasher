@@ -17,6 +17,7 @@
 
 // function declarations
 
+int flow_value=0;
 inline static void startTimers(unsigned _pulsedistance);
 inline static void stopTimers(void);
 void reset_freq(void);
@@ -25,6 +26,11 @@ void boot_check(void);                  // for over-the-air firmware updates
 int get_light_intensity(int x);
 static void recall_save(JsonArray _recall_eeprom, JsonArray _save_eeprom);
 void get_set_device_info(const int _set);
+void perform_auto_blank(JsonArray auto_blank);
+void perform_autogain(JsonArray autogain);
+void perform_auto_zero(JsonArray auto_zero);
+void perform_absorbance(JsonArray absorbance, String title, float scale, int details);
+
 void temp_get_set_device_info();
 int abort_cmd(void);
 static void environmentals(JsonArray a, const int _averages, const int x, int oneOrArray);
@@ -36,6 +42,15 @@ float MLX90615_Read(int TaTo);
 uint16_t par_to_dac (float _par, uint16_t _pin);
 float light_intensity_raw_to_par (float _light_intensity_raw, float _r, float _g, float _b);
 unsigned long requestCo2(int timeout);
+unsigned int set_flow(int set_point);
+int pump_status(int status_values);
+void reset_flow();
+void set_default_flow_rate(int default_flow_rate);
+void reset_flow_calibration();
+int flow_calibration_setting=0;  //stores the setting for a single air flow calibration point
+int flow_calibration_value=0;  //stores the value (outcome) for a single air flow calibration point
+int flow_calibration_location=0; //stores the slocation in EEPROM on pump chip for a single air flow calibration point
+
 static void print_all (void);
 float expr(const char str[]);
 void do_protocol(void);
@@ -65,6 +80,17 @@ void reboot(void);
 void turn_on_3V3(void);
 void turn_on_5(void);
 void constant_light (void);
+
+                 
+int this_gain_index = 0;// autogain.getArray(i).getLong(0); ///hat index to store gain settings
+int this_light =0; // autogain.getArray(i).getLong(1); //what LED to test
+int this_detector = 0; //autogain.getArray(i).getLong(2); // what detector to use
+int this_pulsesize = 0; //autogain.getArray(i).getLong(3); // what pulse size to use
+float this_target = 0; //autogain.getArray(i).getLong(4); //what target value to use
+
+float signal_amplitudes[20];
+float output_voltages[20];
+
 
 struct theReadings {                                            // use to return which readings are associated with the environmental_array calls
   const char* reading1;
@@ -100,16 +126,23 @@ void loop() {
   // read until we get a character - primary idle loop
   int c;
 
-  //activity();               // record fact that we have seen activity (used with powerdown()), make sure it's recorded after the latest protocol or command is completed.
+  activity();               // record fact that we have seen activity (used with powerdown()), make sure it's recorded after the latest protocol or command is completed.
+  
   ///**********************************************************
-  for (;;) {
+  for (;;) { //this loop continues forever until comething is recieved. 
+    
     c = Serial_Peek();
     powerdown();            // if no activity for x second do major shutdown
-    energySave();             //if no activity for 15 s power down 5V
+    energySave();             //if no activity fo120 15 s power down 5V
+    sleep_cpu();         // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
 
     if (c != -1){            // received something
 
       break;  
+    powerdown();            // if no activity for x second do major shutdown
+    energySave();             //if no activity fo120 15 s power down 5V
+    sleep_cpu();         // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
+
 
     }
   } // for
@@ -153,6 +186,7 @@ int max_hold_time = 15000;  //number of miliseconds after which the hold loops b
 
 void do_command()
 {
+   int setting=0;
   char choose[50];
   Serial_Input_Chars(choose, "+", 500, sizeof(choose) - 1);
 
@@ -197,7 +231,49 @@ void do_command()
       Serial_Print_Line("dac 3");
       get_set_device_info(1);                                                           //  input device info and write to eeprom
       break;
+      
 
+ 
+ case hash("get_flow"):
+      turn_on_5V();
+      pump_status(1);  
+      
+      //float fv;
+      //flow_value=pump_status(1);  
+          
+      //Serial.print("flow (10*int) = ");
+      //Serial.println(flow_value);     
+      //Serial.print("flow = ");
+      //fv=(float)flow_value/10.0;
+      //Serial.println(fv);      
+      break;
+
+ case hash("flow_off"):
+      turn_on_5V();
+      set_flow(0);
+      break;
+
+ case hash("reset_flow_zero_point"):
+      turn_on_5V();
+      reset_flow();
+      Serial_Print("flow zero point reset");
+
+   break;
+
+ case hash("set_default_flow_rate"):
+      turn_on_5V();
+      Serial_Print_Line("\"message\": \"Enter desired air flow (0-80 cc per min) followed by +: \"}");
+      setting =  Serial_Input_Double("+", 0);
+      set_default_flow_rate(setting);
+//      //Serial_Print("flow zero point reset");
+
+   break;
+
+ case hash("reset_flow_calibration"):
+      reset_flow_calibration();
+
+ break;
+    
     case hash("constant_light"):
       turn_on_5V();                     // is normally off, but many of the below commands need it
       Serial_Print("Starting constant light source");
@@ -228,6 +304,7 @@ void do_command()
       
 
 
+
     case hash("all_sensors"):                                                                          // continuously output until user enter -1+
       { //start all sensors
         int Xcomp, Ycomp, Zcomp;
@@ -254,9 +331,47 @@ void do_command()
           float relative_humidity2 = bme2.readHumidity();
           float pressure1 = bme1.readPressure() / 100;
           float pressure2 = bme2.readPressure() / 100;
-          Serial_Printf("{\"par\":%f,\"temperature\":%f,\"relative_humidity\":%f,\"pressure\":%f,\"temperature2\":%f,\"relative_humidity2\":%f,\"pressure2\":%f,\"contactless_temp\":%f,\"hall\":%d,\"accelerometer\":[%d,%d,%d],\"magnetometer\":[%d,%d,%d]}", par, temperature1, relative_humidity1, pressure1, temperature2, relative_humidity2, pressure2, contactless_temp, hall, Xval, Yval, Zval, Xcomp, Ycomp, Zcomp);
+          
+          //Serial_Printf("{\"par\":%f,\"temperature\":%f,\"relative_humidity\":%f,\"pressure\":%f,\"temperature2\":%f,\"relative_humidity2\":%f,\"pressure2\":%f,\"contactless_temp\":%f,\"hall\":%d,\"accelerometer\":[%d,%d,%d],\"magnetometer\":[%d,%d,%d]}", par, temperature1, relative_humidity1, pressure1, temperature2, relative_humidity2, pressure2, contactless_temp, hall, Xval, Yval, Zval, Xcomp, Ycomp, Zcomp);
+
+          Serial_Print("{\"par\":");
+          Serial_Print(par); // for floats we need to indicate the number of decimal places 
+
+          Serial_Print(",\"temperature\":");
+          Serial_Print(temperature1,2); // for floats we need to indicate the number of decimal places 
+          Serial_Print(",\"relative_humidity\":");
+          Serial_Print(relative_humidity1,2); // for floats we need to indicate the number of decimal places 
+          Serial_Print(",\"pressure\":");
+          Serial_Print(pressure1,2); // for floats we need to indicate the number of decimal places 
+
+          Serial_Print(",\"temperature2\":");
+          Serial_Print(temperature2,2); // for floats we need to indicate the number of decimal places 
+          Serial_Print(",\"relative_humidity2\":");
+          Serial_Print(relative_humidity2,2); // for floats we need to indicate the number of decimal places 
+          Serial_Print(",\"pressure\":");
+          Serial_Print(pressure2,2); // for floats we need to indicate the number of decimal places 
+          Serial_Print(",\"contactless_temp\":");
+          Serial_Print(contactless_temp,2); // for floats we need to indicate the number of decimal places 
+          Serial_Print(",\"hall\":");
+          Serial_Print(hall); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(",\"accelerometer\":[");
+          Serial_Print(Xval); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(","); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(Yval); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(","); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(Zval); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(","); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(",\"magnetometer\":[");
+          Serial_Print(Xcomp); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(","); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(Ycomp); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(","); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(Zcomp); // for integer, we should NOT indicate the number of decimal places 
+          Serial_Print(","); // for integer, we should NOT indicate the number of decimal places 
+          
           //          Serial_Printf("{\"par_raw\":%d,\"contactless_temp\":%f,\"hall\":%d,\"accelerometer\":[%d,%d,%d],\"magnetometer\":[%d,%d,%d]}", par_raw, contactless_temp, hall, Xval, Yval, Zval, Xcomp, Ycomp, Zcomp);
           Serial_Print_CRC();
+          
         } // end loop conditional on leave
       } //end all_sensors
       break;
@@ -283,7 +398,8 @@ void do_command()
           float hall_value = (analogRead(HALL_OUT) + analogRead(HALL_OUT) + analogRead(HALL_OUT)) / 3;
           //float hall = measure_hall()
           //Serial_Print_Line(hall_value);
-          Serial_Printf("Hall: %f ", hall_value);
+          Serial_Printf("Hall: ");
+          Serial_Print(hall_value, 3);
           delay(1);
           float temperature1 = bme1.readTemperature();
           float temperature2 = bme2.readTemperature();
@@ -355,26 +471,129 @@ void do_command()
       configure_bluetooth();
       break;
 
-    // case hash("light1"):
-    //   turn_on_5V();                  // turn on 5V to turn on the lights
-    //   Serial_Print_Line("PULSE1");
-    //   DAC_set(1, 300);
-    //   DAC_change();
-    //   digitalWriteFast(PULSE1, HIGH);
-    //   delay(1000);
-    //   digitalWriteFast(PULSE1, LOW);
-    //   DAC_set(1, 0);
-    //   DAC_change();
-    //   break;
-    // case hash("light2"):
-    //   turn_on_5V();                  // turn on 5V to turn on the lights
-    //   Serial_Print_Line("PULSE2");
-    //   DAC_set(2, 300);
-    //   DAC_change();
-    //   digitalWriteFast(PULSE2, HIGH);
-    //   delay(1000);
-    //   digitalWriteFast(PULSE2, LOW);
-    //   DAC_set(2, 0);
+
+    case hash("set_flow"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        Serial_Print_Line("\"message\": \"Enter desired air flow (0-80 cc per min) followed by +: \"}");
+        int setting =  Serial_Input_Double("+", 0);
+        //code to send information to pump conmtroller
+          Wire1.beginTransmission(0x01); //pumop is on address 01
+          Wire1.write(2);  // send command 2, program flow
+          Wire1.write(highByte(setting));  // send two bytes for the flow value 
+          Wire1.write(lowByte(setting));
+          Wire1.endTransmission();
+          delay(100);
+
+      }
+      break;
+
+    
+     
+    case hash("fcs"):
+    case hash("flow_calibration_setting"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        Serial_Print_Line("\"message\": \"Enter raw flow_calibration_setting (0-80) followed by +: \"}");
+        flow_calibration_setting =  Serial_Input_Double("+", 0);
+         //code to send information to pump conmtroller
+          Wire1.beginTransmission(0x01); //pumop is on address 01
+          Wire1.write(5);  // send command 5, set pump with raw setting and use this as a calibration point
+          Wire1.write(highByte(flow_calibration_setting));  // send two bytes for the flow value 
+          Wire1.write(lowByte(flow_calibration_setting));
+          Wire1.endTransmission();
+          delay(100);
+ 
+      }
+      break;
+
+    case hash("fcv"):
+    case hash("flow_calibration_value"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        Serial_Print_Line("\"message\": \"Read the flow rate on the flow meter and enter value as integer followed by +: \"}");
+        flow_calibration_value =  Serial_Input_Double("+", 0);
+          //code to send information to pump conmtroller
+          Wire1.beginTransmission(0x01); //pumop is on address 01
+          Wire1.write(6);  // send command 6, set the flow rate value for the current calibration point
+          Wire1.write(highByte(flow_calibration_value));  // send two bytes for the flow value 
+          Wire1.write(lowByte(flow_calibration_value));
+          Wire1.endTransmission();
+          delay(100);
+
+      }
+      break;
+
+
+    case hash("fcsp"):
+    case hash("flow_calibration_set_point"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        Serial_Print_Line("\"message\": \"Enter the calibration point number (0-9) followed by +: \"}");
+        flow_calibration_location =  Serial_Input_Double("+", 0);
+
+        //code to send information to pump conmtroller
+          Wire1.beginTransmission(0x01); //pumop is on address 01
+          Wire1.write(7);  // send command 7, save the current flow_calibration_setting and flow_calibration_value to the EEPROM at address of flow_calibration_location      
+          Wire1.write(highByte(flow_calibration_location));  // send two bytes for the flow value 
+          Wire1.write(lowByte(flow_calibration_location));
+          Wire1.endTransmission();
+          delay(100);
+
+      }
+      break;
+
+
+    case hash("flow_v"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        Serial_Print_Line("\"message\": \"Enter the DAC output to override the motor voltage (0-4095) followed by +: \"}");
+        int flow_v =  Serial_Input_Double("+", 0);
+
+        //code to send information to pump conmtroller
+          Wire1.beginTransmission(0x01); //pumop is on address 01
+          Wire1.write(12);  // send command 7, save the current flow_calibration_setting and flow_calibration_value to the EEPROM at address of flow_calibration_location      
+          Wire1.write(highByte(flow_v));  // send two bytes for the flow value 
+          Wire1.write(lowByte(flow_v));
+          Wire1.endTransmission();
+          delay(100);
+
+      }
+      break;
+
+
+
+    case hash("set_time_out"):
+      {
+        //turn_on_5V();                  // turn on 5V to turn on the lights
+        Serial_Print_Line("\"message\": \"Enter desired timeout (in s) before energy save timeout followed by +: \"}");
+        int setting =  Serial_Input_Double("+", 0);
+        energy_save_timeout=1000*setting;
+        
+      }
+      break;
+
+
+//        case hash("light1"):
+//        turn_on_5V();                  // turn on 5V to turn on the lights
+//     Serial_Print_Line("PULSE1");
+//     DAC_set(1, 300);
+//      DAC_change();
+//       digitalWriteFast(PULSE1, HIGH);
+//       delay(1000);
+//       digitalWriteFast(PULSE1, LOW);
+//       DAC_set(1, 0);
+//       DAC_change();
+//    break;
+//    case hash("light2"):
+//    turn_on_5V();                  // turn on 5V to turn on the lights
+//    Serial_Print_Line("PULSE2");
+//    DAC_set(2, 300);
+//    DAC_change();
+//    digitalWriteFast(PULSE2, HIGH);
+//    delay(1000);
+//    digitalWriteFast(PULSE2, LOW);
+//    DAC_set(2, 0);
     //   DAC_change();
     //   break;
     // case hash("light3"):
@@ -468,7 +687,6 @@ void do_command()
 
     case hash("set_serial"):
       {
-
         Serial_Print("Enter 1/2/3/4+\n");
         long setserial = Serial_Input_Long();
         Serial_Printf("set serial to %d\n", (int)setserial);
@@ -877,7 +1095,13 @@ void do_command()
 
     case hash("print_magnetometer_bias"):
     case 1051:
-      Serial_Printf("Magnetometer Bias: %f, %f, %f", eeprom->mag_bias[0], eeprom->mag_bias[1], eeprom->mag_bias[2]);
+      Serial_Printf("Magnetometer Bias:");
+      Serial_Print(eeprom->mag_bias[0], 3);
+      Serial_Print(",");
+      Serial_Print(eeprom->mag_bias[1], 3);
+      Serial_Print(",");
+      Serial_Print(eeprom->mag_bias[2], 3);
+      
       break;
 
     case hash("print_magnetometer"):
@@ -913,12 +1137,20 @@ void do_command()
           Tilt deviceTilt = calculateTilt(roll, pitch, yaw);
 
           rad_to_deg(&roll, &pitch, &yaw);
-
-
-          Serial_Printf("Roll: %f, Pitch: %f, Compass: %f, Compass Direction: ", roll, pitch, yaw);
-          Serial_Printf("%s, ", getDirection(compass_segment(yaw)));
-
-          Serial_Printf("Tilt angle: %f, Tilt direction: ", deviceTilt.angle);
+          Serial_Printf("Roll:");
+          Serial_Print(roll, 3);
+          Serial_Print(",");
+          Serial_Print("pitch:");
+          Serial_Print(pitch, 3);
+          Serial_Print(",");
+          Serial_Print("yaw:");
+          Serial_Print(yaw, 3);
+          Serial_Print("Compass Direction:");
+          //Serial_Print(Compass, 3);
+          //Serial_Print("%s, ", getDirection(compass_segment(yaw)));
+          Serial_Print("Tilt angle:");
+          Serial_Print(deviceTilt.angle, 3);
+          Serial_Print(", Tilt direction:"); 
           Serial_Print_Line(deviceTilt.angle_direction);
         }
 
@@ -1009,6 +1241,8 @@ void do_command()
 
 void do_protocol()
 {
+  turn_on_5V();
+  
   String protocol_id="";
   //Serial_Flush_Output(); ***
   reshape_pattern = 0;  //start with rechape off
@@ -1085,7 +1319,7 @@ char * start_of_protocol_set = strstr (serial_buffer, "_protocol_set_" ); //if _
 
 //Serial_Printf("start_of_protocol_set = %d ", start_of_protocol_set );
 
-if ((start_of_protocol_set == 0) || (start_of_protocol_set == NULL)) {  //if this is true, then swe are using the old style sets of protocols and we pass 
+if ((start_of_protocol_set == 0) || (start_of_protocol_set == NULL)) {  //if this is true, then we are using the old style sets of protocols and we pass 
   length_of_serial_buffer=strlen(serial_buffer); //find the total length of the serial_buffer
   protocol_set_mode=0;
 
@@ -1266,11 +1500,13 @@ if (protocol_set_mode==1) {
 
   // loop through the all measurements to create a measurement group
   for (int y = 0; y < measurements; y++) {                   // measurements is initially 1, but gets updated after the json is parsed
-
+  
     //    Serial_Print("[");                                                                        // print brackets to define single measurement
 
-    for (int q = 0; q < number_of_protocols; q++) {                                           // loop through all of the protocols to create a measurement
-
+    for (int q = 0; q < number_of_protocols; q++) {                                           // loop through all of REPEATS of protocols!) to create a measurement
+    // if (protocol_set_mode==1) {
+    //   Serial_Print("\",");
+    // }
       JsonHashTable hashTable;
       JsonParser<MAX_JSON_ELEMENTS> root;
       char json[json2[q].length() + 1];                                     // we need a writeable C string
@@ -1389,75 +1625,11 @@ if (protocol_set_mode==1) {
     
         JsonArray autogain = hashTable.getArray("autogain");
 
+        JsonArray auto_blank = hashTable.getArray("auto_blank");
+        JsonArray auto_zero = hashTable.getArray("auto_zero");
 
-
-
-    // for (uint16_t i = 0; i < autogain.getLength(); i++) {                                                  // identify how many arrays to save for each requested environmental variable, based on the number of outputs per call... so compass yields two arrays ("compass" and "angle")... etc.
-
-    //         //int this_gain_index = environmental.getArray(i).getLong(5);  //what index to store gain settings
-    //   int this_gain_index = autogain.getArray(i).getLong(0); // what detector to use
-      
-    //   int this_light = autogain.getArray(i).getLong(1); //what LED to test
-      
-    //   //environmental.getArray(i).getLong(1);  //what LED to test
-    //   //int this_detector = environmental.getArray(i).getLong(2);  // what detector to use
-
-    //   int this_detector = autogain.getArray(i).getLong(2); // what detector to use
-
-    //   //int this_pulsesize = environmental.getArray(i).getLong(3);  //what duration to use
-    //   int this_pulsesize = autogain.getArray(i).getLong(3); // what detector to use
-
-    //   //float this_target = environmental.getArray(i).getLong(4);  //what target value to use
-    //   float this_target = autogain.getArray(i).getLong(4); // what detector to use
-
-    //   Serial_Print("i:");
-
-    //   Serial_Print(this_gain_index);
-
-    //   Serial_Print("l:");
-
-    //   Serial_Print(this_light);
-
-    //   Serial_Print("d:");
-      
-    //   Serial_Print(this_detector);
-
-    //   Serial_Print("p:");
-
-    //   Serial_Print(this_pulsesize);
-
-    //   Serial_Print("t:");
-
-    //   Serial_Print(this_target);
-
-    //   Serial_Print("\r\n");
-
-    // }
-      
-      
-      // Serial_Print("tp:");      
-
-
-
-
-
-      // String tttt = autogain.getArray(i).getString(0);
-      // Serial_Print(tttt);
-      // String ttttt = autogain.getArray(i).getLong(1);
-      // Serial_Print(ttttt);
-
-      // ttttt = autogain.getArray(i).getLength();
-      // Serial_Print(ttttt);
-      
-    //}
-
-
-    // for (uint16_t i = 0; i < autogain_array.getLength(); i++) {                                                  // identify how many arrays to save for each requested environmental variable, based on the number of outputs per call... so compass yields two arrays ("compass" and "angle")... etc.
-    //   Serial_Print("ag:");      
-    //   Serial_Print(i);
-    // }
-
-
+        JsonArray absorbance = hashTable.getArray("absorbance");
+        JsonArray spad = hashTable.getArray("spad");
 
         // ********************INPUT DATA FOR CORALSPEQ*******************
         JsonArray spec =          hashTable.getArray("spec");                                // defines whether the spec will be called during each array.  note for each single plus, the spec will call and add 256 values to data_raw!
@@ -1611,17 +1783,6 @@ if (protocol_set_mode==1) {
             start_on_open(max_hold_time);
             start_on_close(max_hold_time); 
           }
-        
-
-//        //added by DMK
-//        if (hashTable.getLong("open_close_start") == 2) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
-//          start_on_open(max_hold_time);
-//        }
-//        //added by DMK
-//
-//        if (hashTable.getLong("open_close_start") == 3) {                                     // wait for device to CLOSE (read hall sensor) before proceeding with protocol
-//          start_on_close(max_hold_time);
-//        }
         if (hashTable.getLong("energy_save_timeout") != 0) {
           
           energy_save_timeout=hashTable.getLong("energy_save_timeout"); 
@@ -1659,7 +1820,7 @@ if (protocol_set_mode==1) {
           //Serial_Printf("\n par_led_start_on_open: %d\n",led, max_hold_time );
           par_led_start_on_open(led, max_hold_time); 
         }
-
+    
         if (hashTable.getLong("par_led_start_on_close") != 0) {
           int led=hashTable.getLong("par_led_start_on_close");  // wait for device to open (read hall sensor), then close before proceeding with protocol
            
@@ -1677,96 +1838,77 @@ if (protocol_set_mode==1) {
           
         }
 
+        if (hashTable.getLong("set_air_flow") != 0) {
+          int setting=hashTable.getLong("set_air_flow");  // obtain the desired flow rate
+              //code to send information to pump conmtroller
+                Wire1.beginTransmission(0x01); //pumop is on address 01
+                Wire1.write(2);  // send command 2, program flow
+                Wire1.write(highByte(setting));  // send two bytes for the flow value 
+                Wire1.write(lowByte(setting));
+                Wire1.endTransmission();
+                delay(100);          
+        }
 
-//**********************************************************************
-      // Serial.print("autogain \n\r");
-      // JsonArray autogain = hashTable.getArray("autogain"); 
-      // int t autogain.getLength()
-      // Serial.print(t);
-      // Serial.print(t);
-      // String tttt = autogain.getArray(0).getString(0);          // evaluate input intensity to see if it was an expression
-      // Serial.print(tttt);
 
-      //       uint16_t _m_intensity = expr(intensity_string.c_str());
- 
-      // 
-      // int tt=autogain.getLength(); 
-      // Serial.print("autogain \n\r");
-      // Serial.print(tt);
-      // int ttt=autogain.getArray(0).getLong(1); 
-      // Serial.print(ttt);
-      // ttt=autogain.getArray(1).getLong(1); 
-      // Serial.print(ttt);
-      //Serial.print("autogain \n\r");
+        if (hashTable.getLong("wake_pump") != 0) {
+          int setting=hashTable.getLong("wake_pump");  // obtain the desired flow rate
+          turn_on_5V();
+          delay(setting);
+        }
 
-      //Serial.print(hashTable.getArray("autogain").getLong(1));
-      //Serial.print("autogain");
+
+        if (hashTable.getLong("set_default_flow_rate") != 0) {
+          int setting=hashTable.getLong("set_air_flow");  // obtain the desired flow rate
+           set_default_flow_rate(setting);
+        }
+
 
     if (autogain.getLength()>0){
-        for (uint16_t i = 0; i < autogain.getLength(); i++) {                                                 
-
-                 
-          int this_gain_index = autogain.getArray(i).getLong(0); ///hat index to store gain settings
-          int this_light = autogain.getArray(i).getLong(1); //what LED to test
-          int this_detector = autogain.getArray(i).getLong(2); // what detector to use
-          int this_pulsesize = autogain.getArray(i).getLong(3); // what pulse size to use
-          float this_target = autogain.getArray(i).getLong(4); //what target value to use
-
-          // Serial_Print("i:");
-          // Serial_Print(this_gain_index);
-          // Serial_Print("l:");
-          // Serial_Print(this_light);
-          // Serial_Print("d:");
-          // Serial_Print(this_detector);
-          // Serial_Print("p:");
-          // Serial_Print(this_pulsesize);
-          // Serial_Print("t:");
-          // Serial_Print(this_target);
-          // Serial_Print("\r\n");
-          
-          float signal_amplitudes[20];
-          float output_voltages[20];
-          int gain_set=100; //set up the output variable and give it an initial value
-          int ix;
-          for (ix = 0; ix < 12; ix ++) {  //cycle through the range of voltages, using arithmetic progression 
-            int this_intensity = (1 << ix) - 1; //start at 1.0 
-            output_voltages[ix]=float(this_intensity);
-            detector_read1_averaged=0;  
-            get_detector_value (1, this_light, this_intensity, this_detector, this_pulsesize, 1);     // save as "detector_read1" from get_detector_value function
-            signal_amplitudes[ix]=detector_read1_averaged;                
-            //Serial_Printf("intensity: %d, detector_read: %f \r\n,", this_intensity, detector_read1_averaged);
-            if (detector_read1_averaged > this_target) {  //if the value exceeds the target stop the loop
-              break;
-            } // end break conditional on the value exceeds the target stop the loop              
-            } //end cycle through the range of voltages, using arithmetic progression 
-            unsigned int exceeded_target=ix;  //record the index when the target amplitude was exceeded
-
-            //Serial_Printf("target, exceeded value =  %f  %f \r\n", this_target, output_voltages[i]);
-            //assume that the two signal_amplitudes before exceeding the target are linear with voltage
-            if (exceeded_target > 2){ //to do a linear approximation we need to have at least two points. 
-                float slope_denom = output_voltages[exceeded_target-1] - output_voltages[exceeded_target-2];
-                float slope_num=(signal_amplitudes[exceeded_target-1] - signal_amplitudes[exceeded_target-2]);
-                
-                float gain_slope=slope_num/slope_denom;
-                
-                //Serial_Printf("slope:%f \r\n", gain_slope);
-                gain_set = int(output_voltages[exceeded_target-2] + (this_target-signal_amplitudes[exceeded_target-2])/gain_slope);
-                //Serial_Printf("gain set:%d, target: %f \n\r", gain_set, this_target);
-                } // end conditional on exceed-target
-          else
-            { //if there are fewer than 2 points, use the one before the exceeded_target index
-              gain_set=int(output_voltages[exceeded_target-1]);
-            }
-                  auto_bright[this_gain_index]=gain_set;
-                  auto_duration[this_gain_index]=this_pulsesize;
-        } //end code for autogain function
+      perform_autogain(autogain);
     }
+
+
+//******************************************************************************************
+
+// auto_blank will work just like auto_gain, except that it will store the values of the 
+// gain settings and the intensitgies in thge EEPROM for later use in measuring absorbance
+//  changes. This requires an additional paramter, called index that contains the pointer to the
+// specific locatio n in the EEPROM where the values are stored. 
+
+// TODO: In the next iteration, autogain and auto_blank should be merged.
+
+
+    if (auto_blank.getLength()>0){
+      perform_auto_blank(auto_blank);
+    }
+
+    if (auto_zero.getLength()>0){
+      perform_auto_zero(auto_zero);
+    }
+
+
+  if (absorbance.getLength()>0){
+        String abs_parameter="absorbance";
+        float scale=1.0;
+        int details=0;
+      
+      perform_absorbance(absorbance, abs_parameter, scale, details);
+    }
+
+
+  if (spad.getLength()>0){
+        String abs_parameter="spad";
+        float scale=35.0;
+        int details=0;
+        perform_absorbance(absorbance, abs_parameter, scale, details);
+    }
+
 //******************************************************************************************
 
 
-        if (hashTable.getLong("pin_high_start") != 0) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
-          start_on_pin_high(hashTable.getLong("pin_high_start"));
-        }
+    if (hashTable.getLong("pin_high_start") != 0) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
+      start_on_pin_high(hashTable.getLong("pin_high_start"));
+    }
 
         // perform the protocol averages times
         for (int x = 0; x < averages; x++) {                                                 // Repeat the protocol this many times
@@ -2256,10 +2398,18 @@ if (protocol_set_mode==1) {
             }
             for (uint16_t j = 0; j < size_of_data_raw; j++) {
               if (j != size_of_data_raw - 1) {
-                Serial_Printf("\"%f\",", environmental_array_averages[counter1][j]);
+                Serial_Print("\"");
+                Serial_Print(environmental_array_averages[counter1][j], 3);
+                Serial_Print("\",");
+                //Serial_Printf("\"%f\",", environmental_array_averages[counter1][j]);
+                
               }
               else {
-                Serial_Printf("\"%f\"],", environmental_array_averages[counter1][j]);
+                 Serial_Print("\"");
+                Serial_Print(environmental_array_averages[counter1][j], 3);
+                Serial_Print("\"");
+
+                //Serial_Printf("\"%f\"],", environmental_array_averages[counter1][j]);
               }
             }
             counter1++;
@@ -2313,7 +2463,7 @@ if (protocol_set_mode==1) {
 //**************************************************************************************************************
 // Function to split data sets in protocols with more than one measuring pulse into sequential traces.
 
-if (reshape_pattern != 0){
+/*if (reshape_pattern != 0){
   //Serial_Print("line 2230");
   // This section reshapes the trace data array to better visualize the results. 
   // Often there are more than one pulse type, interdigitated with a certain pattern.
@@ -2347,14 +2497,6 @@ if (reshape_pattern != 0){
   
  // reshape_pattern is an integer that describes how to re-shape the data_raw_average array.
 
- //float test_float[1]={1}; //test_float is just a float array of size one; I use it to findg the length of an array of floats
-  // data_raw_average is the array we want to reshape
-
-  //float data_array[total_points] = {1.0, 1.0, 2.0, 1.1, 1.1, 2.1, 1.2, 1.2, 2.2, 1.3, 1.3, 2.3};
-
-  //unsigned int test_int[1]={1}; //test_int is just a int array of size one; I use it to findg the length of an array of ints
- 
-  //Serial_Print("line 2271");
    //the following code determines the number of subtrace types in reshape_pattern ;
    int r =reshape_pattern;
    int index=0;
@@ -2366,8 +2508,6 @@ if (reshape_pattern != 0){
 
    int shape_len=index; // shape_length represents the number of elements in the reshape_pattern 
 
-  //Serial.printf("shape_len = %d \n\r", shape_len);
-
    int shape[shape_len]; //generate an array, called shape, of ints to hold the separate elements 
    int i=shape_len-1;
    r=reshape_pattern;
@@ -2377,16 +2517,7 @@ if (reshape_pattern != 0){
        i-=1;
    }
   if (size_of_data_raw%shape_len == 0){ //test if size_of_data_raw is perfectly divisible by reshape_len. 
-      // test if the split_array is correct 
-      //for (int i=0; i<shape_len; i+=1){
-      //    Serial_Print(shape[i]);
-      //    Serial_Print("\r\n");     
-      //}
 
-    //if (sizeof(data_raw_average) % sizeof(test_float) == 0){ //check to see if the 
-      //int data_array_len=int(sizeof(data_raw_average)/sizeof(test_float)); //find the number of floats in the data_raw_average arrray 
-      //Serial.printf("data_array_len = %d \n\r", data_array_len); //test it
-    //}
     //size_of_data_raw//
       unsigned long reshaped_data_array[size_of_data_raw]; // generate a new array to temporarily hold the reshaped data
       unsigned long reshaped_time_array[size_of_data_raw]; // generate a new array to temporarily hold the reshaped TIME data 
@@ -2471,7 +2602,9 @@ if (reshape_pattern != 0){
       time_values[i] = reshaped_time_array[i];
     }
   }
-}
+}  //end of reshape
+
+*/
 
 //Serial_Print("line 2390");
 
@@ -2517,7 +2650,6 @@ if (save_trace_time_scale>0) {
 
         }
 
-//Serial_Print("line 2434");
 
 #ifdef DEBUGSIMPLE
         Serial_Print("# of protocols repeats, current protocol repeat, number of total protocols, current protocol      ");
@@ -2537,6 +2669,7 @@ if (save_trace_time_scale>0) {
           }
         }
         else if (q == number_of_protocols - 1 && u == protocols - 1) {                  // if it is the last protocol, then close out the data json
+          
           if (protocol_set_mode==0){   //we only want to do this if the protocols are treated separately, not in the 
               Serial_Print("]");
           }
@@ -2585,7 +2718,7 @@ abort:
 
   //  Serial_Print("]}");                // terminate output json
   Serial_Print("}");                // terminate output json
-  Serial_Print_CRC();             // TODO put this back in one android app is fixed
+  Serial_Print_CRC();             // 
   Serial_Flush_Output();
 
   act_background_light = 0;          // ??
@@ -2658,8 +2791,13 @@ static void recall_save(JsonArray _recall_eeprom, JsonArray _save_eeprom) {
     for (int i = 0; i < number_recalls; i++) {
 
       String recall_string = _recall_eeprom.getString(i);
-
-      Serial_Printf("\"%s\":%f", recall_string.c_str(), expr(recall_string.c_str()));
+      Serial_Print("\"");
+      Serial_Print(recall_string.c_str());
+      Serial_Print("\":");
+      float expression_string=expr(recall_string.c_str());
+      Serial_Print(expression_string, 3);
+      
+      //Serial_Printf("\"%s\":%f", recall_string.c_str(), expr(recall_string.c_str()));
 
       if (i != number_recalls - 1) {
         Serial_Print(",");
@@ -2694,10 +2832,16 @@ void get_temperature_humidity_pressure (int _averages) {    // read temperature,
   temperature = bme1.readTemperature();                // temperature in C
   humidity = bme1.readHumidity();                      // humidity in %
   pressure = bme1.readPressure() / 100;               // pressure in millibar
-
+  
   temperature_averaged += temperature / _averages;                // same as above, but averaged if API requests averaging
   humidity_averaged += humidity / _averages;
   pressure_averaged += pressure / _averages;
+  
+//  Serial_Print("\"got temperature\":");
+//  Serial_Print((int)temperature_averaged);
+//  Serial_Print(",");
+  
+  
 
   //  sensorValues thisSensor = {temperature, humidity, pressure};
 }
@@ -2752,6 +2896,7 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
   }
   if (detector_read1or2or3 == 1) {                                                                 // save in detector_read1 or 2 depending on which is called
     detector_read1 = median16(thisData, 4);                                            // using median - 25% improvements over using mean to determine this value
+    //detector_read1 = median16(thisData, 4); 
     detector_read1_averaged += detector_read1 / _averages;
     //    Serial_Printf("read1: %f\n",detector_read1);
   }
@@ -2766,6 +2911,65 @@ void get_detector_value (int _averages, int this_light, int this_intensity, int 
     //    Serial_Printf("read3: %f\n",detector_read3);
   }
 }
+
+//DMK: The above version of get_detector_value has seriaout errors, especially that it does not use the averages parameter and the use of median rather than mean. That is strange.
+//I rewrote as follows, but keep the original for now in case other parts of the code rely on the errors....just daying...
+
+void get_detector_value_DMK (int _averages, int this_light, int this_intensity, int this_detector, int this_pulsesize, int detector_read1or2or3) {    // read reflectance of LED 5 (940nm) with 5 pulses and averages.  Keep # of pulses low as a large number of pulses could impact the sample
+
+  const unsigned  STABILIZE = 10;                                           // this delay gives the LED current controller op amp the time needed to stabilize
+  uint16_t thisData[5];
+  DAC_set(this_light, par_to_dac(this_intensity, this_light));              // set the DAC, make sure to convert PAR intensity to DAC value
+  DAC_change();
+  AD7689_set (this_detector - 1);                                           // set ADC channel as specified
+  delay(10);                                                                // this is required for AD7689 to settle.  Otherwise, values from the following begin high and fall as it runs through the 5 repeats
+
+  for (uint16_t i = 0; i < 5; i++) {
+    delayMicroseconds(1000);                                  // wait until next pulse, pulse distance == 1000
+    uint16_t this_sample_adc[19];                                              // initialize the variables to hold the main and reference detector data
+    noInterrupts();
+    digitalWriteFast(LED_to_pin[this_light], HIGH);            // turn on measuring light
+    delayMicroseconds(STABILIZE);           // this delay gives the LED current controller op amp the time needed to turn
+    // the light on completely + stabilize.
+    // Very low intensity measuring pulses may require an even longer delay here.
+    digitalWriteFast(HOLDADD, LOW);        // turn off sample and hold discharge
+    digitalWriteFast(HOLDM, LOW);          // turn off sample and hold discharge
+    delayMicroseconds(this_pulsesize);         // pulse width
+    digitalWriteFast(LED_to_pin[this_light], LOW);            // turn off measuring light
+
+    if (i >= 1 && i <= 4) {               // skip the first and last because I'm paranoid to make 48 total samples :)
+      AD7689_read_array(this_sample_adc, 19);                                              // read detector, 19 values and save them in this_sample_adc
+      thisData[i - 1] = median16(this_sample_adc, 19);
+      /*
+            for (int i = 0; i < 19; i++) {
+              Serial.print(this_sample_adc[i]);
+              Serial.print(",");
+            }
+      */
+    }
+    //    Serial_Print_Line("");
+    interrupts();                                             // re-enable interrupts (left off after LED ISR)
+    digitalWriteFast(HOLDM, HIGH);                            // discharge integrators
+    digitalWriteFast(HOLDADD, HIGH);
+  }
+  if (detector_read1or2or3 == 1) {                                                                 // save in detector_read1 or 2 depending on which is called
+    detector_read1 = median16(thisData, 4);                                            // using median - 25% improvements over using mean to determine this value
+    //detector_read1 = median16(thisData, 4); 
+    detector_read1_averaged += detector_read1 / _averages;
+    //    Serial_Printf("read1: %f\n",detector_read1);
+  }
+  else if (detector_read1or2or3 == 2) {
+    detector_read2 = median16(thisData, 4);                                             // using median - 25% improvements over using mean to determine this value
+    detector_read2_averaged += detector_read2 / _averages;
+    //    Serial_Printf("read2: %f\n",detector_read2);
+  }
+  else if (detector_read1or2or3 == 3) {
+    detector_read3 = median16(thisData, 4);                                             // using median - 25% improvements over using mean to determine this value
+    detector_read3_averaged += detector_read3 / _averages;
+    //    Serial_Printf("read3: %f\n",detector_read3);
+  }
+}
+
 
 float get_contactless_temp (int _averages) {
   contactless_temp = (MLX90615_Read(0) + MLX90615_Read(0) + MLX90615_Read(0)) / 3;
@@ -2903,15 +3107,38 @@ static void environmentals(JsonArray environmental, const int _averages, const i
     //    Serial_Printf("thisSensor: %s", thisSensor);
 
     if (thisSensor == "temperature_humidity_pressure") {                   // measure light intensity with par calibration applied
+      
+//      Serial_Print("\"got here\": 1,");
+//      Serial_Print(_averages);
+//      
+
       get_temperature_humidity_pressure(_averages);
+      
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"temperature\":%f,\"humidity\":%f,\"pressure\":%f,", temperature_averaged, humidity_averaged, pressure_averaged);
+        Serial_Print("\"temperature\":");
+        Serial_Print(temperature_averaged,3);
+        Serial_Print(",\"humidity\":");
+        Serial_Print(humidity_averaged,3);
+        Serial_Print(",\"pressure\":");
+        Serial_Print(pressure_averaged, 3);
+        Serial_Print(",");
+        
+        //Serial_Printf("\"temperature\":%f,\"humidity\":%f,\"pressure\":%f,", temperature_averaged, humidity_averaged, pressure_averaged);
       }
     }
     else if (thisSensor == "temperature_humidity_pressure2") {                   // measure light intensity with par calibration applied
       get_temperature_humidity_pressure2(_averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"temperature2\":%f,\"humidity2\":%f,\"pressure2\":%f,", temperature2_averaged, humidity2_averaged, pressure2_averaged);
+
+        Serial_Print("\"temperature2\":");
+        Serial_Print(temperature2_averaged,3);
+        Serial_Print(",\"humidity2\":");
+        Serial_Print(humidity2_averaged,3);
+        Serial_Print(",\"pressure2\":");
+        Serial_Print(pressure2_averaged, 3);
+        Serial_Print(",");
+        
+        //Serial_Printf("\"temperature2\":%f,\"humidity2\":%f,\"pressure2\":%f,", temperature2_averaged, humidity2_averaged, pressure2_averaged);
       }
     }
 
@@ -2925,7 +3152,19 @@ static void environmentals(JsonArray environmental, const int _averages, const i
         previous_b_averaged=b_averaged;
         previous_light_intensity_raw_averaged=light_intensity_raw_averaged;
         use_previous_light_intensity =0;
-        Serial_Printf("\"light_intensity\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,\"light_intensity_raw\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged, light_intensity_raw_averaged);
+        Serial_Print("\"light_intensity\":");
+        Serial_Print(light_intensity_averaged, 3);
+        Serial_Print(",\"r\":");
+        Serial_Print(r_averaged, 1);
+        Serial_Print(",\"g\":");
+        Serial_Print(g_averaged, 1);
+        Serial_Print(",\"b\":");
+        Serial_Print(b_averaged, 1);
+        Serial_Print(",\"light_intensity_raw\":");
+        Serial_Print(light_intensity_raw_averaged, 1);
+        Serial_Print(",");
+                
+        //Serial_Printf("\"light_intensity\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,\"light_intensity_raw\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged, light_intensity_raw_averaged);
       }
     }
 
@@ -2938,20 +3177,51 @@ static void environmentals(JsonArray environmental, const int _averages, const i
         light_intensity_raw_averaged=previous_light_intensity_raw_averaged;
         use_previous_light_intensity =1;
         
-        Serial_Printf("\"light_intensity\":%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,\"light_intensity_raw\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged, light_intensity_raw_averaged);
+        Serial_Print("\"light_intensity\":");
+        Serial_Print(light_intensity_averaged, 1);
+        Serial_Print(",\"r\":");
+        Serial_Print(r_averaged, 1);
+        Serial_Print(",\"g\":");
+        Serial_Print(g_averaged, 1);
+        Serial_Print(",\"b\":");
+        Serial_Print(b_averaged, 1);
+        Serial_Print(",\"light_intensity_raw\":");
+        Serial_Print(light_intensity_raw_averaged, 1);
+        Serial_Print(",");
+        
+        //%.2f,\"r\":%.2f,\"g\":%.2f,\"b\":%.2f,\"light_intensity_raw\":%.2f,", light_intensity_averaged, r_averaged, g_averaged, b_averaged, light_intensity_raw_averaged);
     }
+
+        else if (thisSensor == "air_flow") {
+            pump_status(0);  //return just the flow rate
+          
+        }
+
+        else if (thisSensor == "pump_status") {
+            pump_status(1);  //return flow rate and pump calibration settings
+          
+        }
+
 
     else if (thisSensor == "contactless_temp") {                 // measure contactless temperature
       get_contactless_temp(_averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"contactless_temp\":%.2f,", contactless_temp_averaged);
+        Serial_Print("\"contactless_temp\":");
+        Serial_Print(contactless_temp_averaged,2);
+        Serial_Print(",");
+                
+        //Serial_Printf("\"contactless_temp\":%.2f,", contactless_temp_averaged);
       }
     }
 
     else if (thisSensor == "thickness") {                        // measure thickness via hall sensor, with calibration applied
       get_thickness(1, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"thickness\":%.2f,", thickness_averaged);
+        Serial_Print("\"thickness\":");
+        Serial_Print(thickness_averaged,2);
+        Serial_Print(",");
+
+        //Serial_Printf("\"thickness\":%.2f,", thickness_averaged);
       }
     }
 
@@ -2965,7 +3235,25 @@ static void environmentals(JsonArray environmental, const int _averages, const i
     else if (thisSensor == "compass_and_angle") {                             // measure tilt in -180 - 180 degrees
       get_compass_and_angle(1, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"compass_direction\":%s,\"compass\":\"%.2f\",\"angle\":%.2f,\"angle_direction\":%s,\"pitch\":%.2f,\"roll\":%.2f,", getDirection(compass_segment(compass_averaged)), compass_averaged, angle_averaged, angle_direction.c_str(), pitch_averaged, roll_averaged);
+          Serial_Print("\"compass_direction\":");
+          
+          getDirection(compass_segment(compass_averaged));
+          
+          Serial_Print(getDirection(compass_segment(compass_averaged)));
+          Serial_Print(",\"compass\":");
+          Serial_Print(compass_averaged,2);
+          Serial_Print(",\"angle\":");
+          Serial_Print(angle_averaged, 3);  
+          Serial_Print(",\"angle_direction\":");
+          Serial_Print(angle_direction.c_str());
+          Serial_Print(",\"pitch\":");
+          Serial_Print(pitch_averaged,2);
+          Serial_Print(",\"roll\":");
+          Serial_Print(roll_averaged,2);
+          Serial_Print(",");
+
+          
+        //Serial_Printf("\"compass_direction\":%s,\"compass\":\"%.2f\",\"angle\":%.2f,\"angle_direction\":%s,\"pitch\":%.2f,\"roll\":%.2f,", getDirection(compass_segment(compass_averaged)), compass_averaged, angle_averaged, angle_direction.c_str(), pitch_averaged, roll_averaged);
       }
     }
 
@@ -2983,7 +3271,11 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int this_pulsesize = environmental.getArray(i).getLong(4);
       get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 1);     // save as "detector_read1" from get_detector_value function
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"detector_read1\":%f,", detector_read1_averaged);
+        Serial_Print("\"detector_read1\":");
+        Serial_Print(detector_read1_averaged, 3);
+        Serial_Print(",");
+        
+        //Serial_Printf("\"detector_read1\":%f,", detector_read1_averaged);
       }
     }
 
@@ -2994,7 +3286,11 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int this_pulsesize = environmental.getArray(i).getLong(4);
       get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 2);     // save as "detector_read2" from get_detector_value function
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"detector_read2\":%f,", detector_read2_averaged);
+        Serial_Print("\"detector_read2\":");
+        Serial_Print(detector_read2_averaged, 3);
+        Serial_Print(",");
+
+        //Serial_Printf("\"detector_read2\":%f,", detector_read2_averaged);
       }
     }
 
@@ -3005,7 +3301,12 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int this_pulsesize = environmental.getArray(i).getLong(4);
       get_detector_value (_averages, this_light, this_intensity, this_detector, this_pulsesize, 3);     // save as "detector_read3" from get_detector_value function
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"detector_read3\":%f,", detector_read3_averaged);
+        Serial_Print("\"detector_read3\":");
+        Serial_Print(detector_read3_averaged, 3);
+        Serial_Print(",");
+
+        
+        //Serial_Printf("\"detector_read3\":%f,", detector_read3_averaged);
       }
     }
     else if (thisSensor == "save_trace_time_scale") {
@@ -3098,7 +3399,11 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int pin = environmental.getArray(i).getLong(1);
       get_analog_read(pin, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"analog_read\":%f,", analog_read_averaged);
+         Serial_Print("\"analog_read\":");
+        Serial_Print(analog_read_averaged, 3);
+        Serial_Print(",");
+
+        //Serial_Printf("\"analog_read\":%f,", analog_read_averaged);
       }
     }
 
@@ -3106,14 +3411,23 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int pin = environmental.getArray(i).getLong(1);
       get_digital_read(pin, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"digital_read\":%f,", digital_read_averaged);
+        Serial_Print("\"digital_read\":");
+        Serial_Print(digital_read_averaged, 3);
+        Serial_Print(",");
+        
+        //Serial_Printf("\"digital_read\":%f,", digital_read_averaged);
+        
       }
     }
 
     else if (thisSensor == "co2") {                            // perform digital reads
       get_co2(_averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"co2\":%f,", co2_averaged);
+          Serial_Print("\"co2\":");
+          Serial_Print(co2_averaged, 3);
+          Serial_Print(",");
+        
+        //Serial_Printf("\"co2\":%f,", co2_averaged);
       }
     }
 
@@ -3121,7 +3435,11 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int adc_channel = environmental.getArray(i).getLong(1);
       get_adc_read(adc_channel, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"adc_read\":%f,", adc_read_averaged);
+        Serial_Print("\"adc_read\":");
+          Serial_Print(adc_read_averaged, 3);
+          Serial_Print(",");
+          
+        //Serial_Printf("\"adc_read\":%f,", adc_read_averaged);
       }
     }
 
@@ -3129,7 +3447,11 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int adc_channel = environmental.getArray(i).getLong(1);
       get_adc_read2(adc_channel, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"adc_read2\":%f,", adc_read2_averaged);
+          Serial_Print("\"adc_read2\":");
+          Serial_Print(adc_read2_averaged, 3);
+          Serial_Print(",");
+          
+        //Serial_Printf("\"adc_read2\":%f,", adc_read2_averaged);
       }
     }
 
@@ -3137,7 +3459,12 @@ static void environmentals(JsonArray environmental, const int _averages, const i
       int adc_channel = environmental.getArray(i).getLong(1);
       get_adc_read3(adc_channel, _averages);
       if (count == _averages - 1 && oneOrArray == 0) {
-        Serial_Printf("\"adc_read3\":%f,", adc_read3_averaged);
+          Serial_Print("\"adc_read3\":");
+          Serial_Print(adc_read3_averaged, 3);
+          Serial_Print(",");
+
+        
+        //Serial_Printf("\"adc_read3\":%f,", adc_read3_averaged);
       }
     }
 
@@ -3208,6 +3535,8 @@ void reset_freq() {
 #endif
 
 void print_calibrations() {
+
+
   unsigned i;
 
   Serial_Printf("{\n\"device_id\":\"%2.2x:%2.2x:%2.2x:%2.2x\",\n",
@@ -3216,105 +3545,451 @@ void print_calibrations() {
                 ((unsigned)eeprom->device_id & 0xff00) >> 8,
                 (unsigned)eeprom->device_id & 0xff
                );
-  Serial_Printf("\"mag_bias\": [\"%f\",\"%f\",\"%f\"],\n", eeprom->mag_bias[0], eeprom->mag_bias[1], eeprom->mag_bias[2]);
-  Serial_Printf("\"mag_cal\": [[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"]],\n", eeprom->mag_cal[0][0], eeprom->mag_cal[0][1], eeprom->mag_cal[0][2], eeprom->mag_cal[1][0], eeprom->mag_cal[1][1], eeprom->mag_cal[1][2], eeprom->mag_cal[2][0], eeprom->mag_cal[2][1], eeprom->mag_cal[2][2]);
-  Serial_Printf("\"accel_bias\": [\"%f\",\"%f\",\"%f\"],\n", eeprom->accel_bias[0], eeprom->accel_bias[1], eeprom->accel_bias[2]);
-  Serial_Printf("\"accel_cal\": [[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"]],\n", eeprom->accel_cal[0][0], eeprom->accel_cal[0][1], eeprom->accel_cal[0][2], eeprom->accel_cal[1][0], eeprom->accel_cal[1][1], eeprom->accel_cal[1][2], eeprom->accel_cal[2][0], eeprom->accel_cal[2][1], eeprom->accel_cal[2][2]);
-  Serial_Printf("\"light_slope_all\": \"%f\",\n", eeprom->light_slope_all);
-  Serial_Printf("\"light_slope_r\": \"%f\",\n", eeprom->light_slope_r);
-  Serial_Printf("\"light_slope_g\": \"%f\",\n", eeprom->light_slope_g);
-  Serial_Printf("\"light_slope_b\": \"%f\",\n", eeprom->light_slope_b);
-  Serial_Printf("\"light_yint\": \"%f\",\n", eeprom->light_yint);
-  Serial_Printf("\"detector_offset_slope\": [\"%f\",\"%f\",\"%f\",\"%f\"],\n", eeprom->detector_offset_slope[0], eeprom->detector_offset_slope[1], eeprom->detector_offset_slope[2], eeprom->detector_offset_slope[3]);
-  Serial_Printf("\"detector_offset_yint\": [\"%f\",\"%f\",\"%f\",\"%f\"],\n", eeprom->detector_offset_yint[0], eeprom->detector_offset_yint[1], eeprom->detector_offset_yint[2], eeprom->detector_offset_yint[3]);
-  Serial_Printf("\"thickness_a\": \"%f\",\n", eeprom->thickness_a);
-  Serial_Printf("\"thickness_b\": \"%f\",\n", eeprom->thickness_b);
-  Serial_Printf("\"thickness_c\": \"%f\",\n", eeprom->thickness_c);
-  Serial_Printf("\"thickness_min\": \"%f\",\n", eeprom->thickness_min);
-  Serial_Printf("\"thickness_max\": \"%f\",\n", eeprom->thickness_max);
+//  %f\",\"%f\",\"%f\"],\n", , eeprom->mag_bias[1], eeprom->mag_bias[2]);
+
+  Serial_Print("\"mag_bias\": [\"");
+  Serial_Print(eeprom->mag_bias[0], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->mag_bias[1], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->mag_bias[2], 3),
+  Serial_Print("],\n");
+
+    //Serial_Printf("\"mag_cal\": [[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"]],\n", eeprom->mag_cal[0][0], eeprom->mag_cal[0][1], eeprom->mag_cal[0][2], eeprom->mag_cal[1][0], eeprom->mag_cal[1][1], eeprom->mag_cal[1][2], eeprom->mag_cal[2][0], eeprom->mag_cal[2][1], eeprom->mag_cal[2][2]);
+
+  Serial_Print("\"mag_cal\": [[\"");
+  Serial_Print(eeprom->mag_cal[0][0], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->mag_cal[0][1], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->mag_cal[0][2], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->mag_cal[1][0], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->mag_cal[1][1], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->mag_cal[1][2], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->mag_cal[2][0], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->mag_cal[2][1], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->mag_cal[2][2], 3),
+  Serial_Print("],\n");
+
+
+   // Serial_Printf("\"accel_bias\": [\"%f\",\"%f\",\"%f\"],\n", eeprom->accel_bias[0], eeprom->accel_bias[1], eeprom->accel_bias[2]);
+
+  Serial_Print("\"accel_bias\": [\"");
+  Serial_Print(eeprom->accel_bias[0], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->accel_bias[1], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->accel_bias[2], 3),
+  Serial_Print("],\n");
+
+
+  
+    //Serial_Printf("\"accel_cal\": [[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"]],\n", eeprom->accel_cal[0][0], eeprom->accel_cal[0][1], eeprom->accel_cal[0][2], eeprom->accel_cal[1][0], eeprom->accel_cal[1][1], eeprom->accel_cal[1][2], eeprom->accel_cal[2][0], eeprom->accel_cal[2][1], eeprom->accel_cal[2][2]);
+
+  Serial_Print("\"mag_cal\": [[\"");
+  Serial_Print(eeprom->accel_cal[0][0], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->accel_cal[0][1], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->accel_cal[0][2], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->accel_cal[1][0], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->accel_cal[1][1], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->accel_cal[1][2], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->accel_cal[2][0], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->accel_cal[2][1], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->accel_cal[2][2], 3),
+  Serial_Print("],\n");
+
+
+
+
+//  Serial_Printf("\"light_slope_all\": \"%f\",\n", eeprom->light_slope_all);
+  
+  
+  Serial_Print("\"light_slope_all\": [\"");
+  Serial_Print(eeprom->light_slope_all,3),
+  Serial_Print("],\n");
+
+
+//  Serial_Printf("\"light_slope_r\": \"%f\",\n", eeprom->light_slope_r);
+
+  Serial_Print("\"light_slope_r\": [\"");
+  Serial_Print(eeprom->light_slope_r,3),
+  Serial_Print("],\n");
+  
+//  Serial_Printf("\"light_slope_g\": \"%f\",\n", eeprom->light_slope_g);
+  Serial_Print("\"light_slope_g\": [\"");
+  Serial_Print(eeprom->light_slope_g,3),
+  Serial_Print("],\n");
+ 
+ // Serial_Printf("\"light_slope_b\": \"%f\",\n", eeprom->light_slope_b);
+  Serial_Print("\"light_slope_b\": [\"");
+  Serial_Print(eeprom->light_slope_b,3),
+  Serial_Print("],\n");
+  
+  
+  
+//  Serial_Printf("\"light_yint\": \"%f\",\n", eeprom->light_yint);
+
+  Serial_Print("\"light_yint\": [\"");
+  Serial_Print(eeprom->light_yint),
+  Serial_Print("],\n");
+
+//  Serial_Printf("\"detector_offset_slope\": [\"%f\",\"%f\",\"%f\",\"%f\"],\n", eeprom->detector_offset_slope[0], eeprom->detector_offset_slope[1], eeprom->detector_offset_slope[2], eeprom->detector_offset_slope[3]);
+  
+  Serial_Print("\"detector_offset_slope\": [[\"");
+  Serial_Print(eeprom->detector_offset_slope[0], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->detector_offset_slope[1], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->detector_offset_slope[2], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->detector_offset_slope[3], 3),
+  Serial_Print("],\n");
+
+
+  
+  
+//  Serial_Printf("\"detector_offset_yint\": [\"%f\",\"%f\",\"%f\",\"%f\"],\n", eeprom->detector_offset_yint[0], eeprom->detector_offset_yint[1], eeprom->detector_offset_yint[2], eeprom->detector_offset_yint[3]);
+  Serial_Print("\"detector_offset_yint\": [[\"");
+  Serial_Print(eeprom->detector_offset_yint[0], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->detector_offset_yint[1], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->detector_offset_yint[2], 3),
+  Serial_Print(",");
+  Serial_Print(eeprom->detector_offset_yint[3], 3),
+  Serial_Print("],\n");
+
+
+//  Serial_Printf("\"thickness_a\": \"%f\",\n", eeprom->thickness_a);
+
+  Serial_Print("\"thickness_a\": [\"");
+  Serial_Print(eeprom->thickness_a,3),
+  Serial_Print("],\n");
+
+//  Serial_Printf("\"thickness_b\": \"%f\",\n", eeprom->thickness_b);
+  Serial_Print("\"thickness_b\": [\"");
+  Serial_Print(eeprom->thickness_b,3),
+  Serial_Print("],\n");
+ 
+ // Serial_Printf("\"thickness_c\": \"%f\",\n", eeprom->thickness_c);
+  Serial_Print("\"thickness_c\": [\"");
+  Serial_Print(eeprom->thickness_c, 3),
+  Serial_Print("],\n");
+  
+  
+ // Serial_Printf("\"thickness_min\": \"%f\",\n", eeprom->thickness_min);
+  
+  Serial_Print("\"thickness_min\": [\"");
+  Serial_Print(eeprom->thickness_min, 3),
+  Serial_Print("],\n");
+
+ // Serial_Printf("\"thickness_max\": \"%f\",\n", eeprom->thickness_max);
+
+  Serial_Print("\"thickness_max\": [\"");
+  Serial_Print(eeprom->thickness_max, 3);
+  Serial_Print("],\n");
+
 
   Serial_Print("\"par_to_dac_slope1\": [");
-  for (i = 0; i < arraysize(eeprom->par_to_dac_slope1) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->par_to_dac_slope1[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope1[i]);
+  for (i = 0; i < arraysize(eeprom->par_to_dac_slope1) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->par_to_dac_slope1[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->par_to_dac_slope1[i], 3);
+    Serial_Print("\"],\n");
+
+
+  // Serial_Print("\"par_to_dac_slope2\": [");
+  // for (i = 0; i < arraysize(eeprom->par_to_dac_slope2) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->par_to_dac_slope2[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope2[i]);
 
   Serial_Print("\"par_to_dac_slope2\": [");
-  for (i = 0; i < arraysize(eeprom->par_to_dac_slope2) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->par_to_dac_slope2[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope2[i]);
+  for (i = 0; i < arraysize(eeprom->par_to_dac_slope2) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->par_to_dac_slope2[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->par_to_dac_slope2[i], 3);
+    Serial_Print("\"],\n");
 
-  Serial_Print("\"par_to_dac_slope3\": [");
-  for (i = 0; i < arraysize(eeprom->par_to_dac_slope3) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->par_to_dac_slope3[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope3[i]);
 
-  Serial_Print("\"par_to_dac_slope4\": [");
-  for (i = 0; i < arraysize(eeprom->par_to_dac_slope4) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->par_to_dac_slope4[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope4[i]);
+  // Serial_Print("\"par_to_dac_slope3\": [");
+  // for (i = 0; i < arraysize(eeprom->par_to_dac_slope3) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->par_to_dac_slope3[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope3[i]);
 
-  Serial_Print("\"par_to_dac_yint\": [");
-  for (i = 0; i < arraysize(eeprom->par_to_dac_yint) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->par_to_dac_yint[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_yint[i]);
+Serial_Print("\"par_to_dac_slope3\": [");
+  for (i = 0; i < arraysize(eeprom->par_to_dac_slope3) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->par_to_dac_slope3[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->par_to_dac_slope3[i], 3);
+    Serial_Print("\"],\n");
 
-  Serial_Print("\"ir_baseline_slope\": [");
-  for (i = 0; i < arraysize(eeprom->ir_baseline_slope) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->ir_baseline_slope[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->ir_baseline_slope[i]);
 
-  Serial_Print("\"ir_baseline_yint\": [");
-  for (i = 0; i < arraysize(eeprom->ir_baseline_yint) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->ir_baseline_yint[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->ir_baseline_yint[i]);
+  // Serial_Print("\"par_to_dac_slope4\": [");
+  // for (i = 0; i < arraysize(eeprom->par_to_dac_slope4) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->par_to_dac_slope4[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_slope4[i]);
 
-  Serial_Print("\"colorcal_intensity1_slope\": [");
-  for (i = 0; i < arraysize(eeprom->colorcal_intensity1_slope) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->colorcal_intensity1_slope[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity1_slope[i]);
+Serial_Print("\"par_to_dac_slope4\": [");
+  for (i = 0; i < arraysize(eeprom->par_to_dac_slope4) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->par_to_dac_slope4[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->par_to_dac_slope4[i], 3);
+    Serial_Print("\"],\n");
 
-  Serial_Print("\"colorcal_intensity1_yint\": [");
-  for (i = 0; i < arraysize(eeprom->colorcal_intensity1_yint) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->colorcal_intensity1_yint[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity1_yint[i]);
 
-  Serial_Print("\"colorcal_intensity2_slope\": [");
-  for (i = 0; i < arraysize(eeprom->colorcal_intensity2_slope) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->colorcal_intensity2_slope[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity2_slope[i]);
-  Serial_Print("\"colorcal_intensity2_yint\": [");
-  for (i = 0; i < arraysize(eeprom->colorcal_intensity2_yint) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->colorcal_intensity2_yint[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity2_yint[i]);
 
-  Serial_Print("\"colorcal_intensity3_slope\": [");
-  for (i = 0; i < arraysize(eeprom->colorcal_intensity3_slope) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->colorcal_intensity3_slope[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity3_slope[i]);
-  Serial_Print("\"colorcal_intensity3_yint\": [");
-  for (i = 0; i < arraysize(eeprom->colorcal_intensity3_yint) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->colorcal_intensity3_yint[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity3_yint[i]);
+  // Serial_Print("\"par_to_dac_yint\": [");
+  // for (i = 0; i < arraysize(eeprom->par_to_dac_yint) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->par_to_dac_yint[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->par_to_dac_yint[i]);
 
-  Serial_Print("\"colorcal_blank1\": [");
-  for (i = 0; i < arraysize(eeprom->colorcal_blank1) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->colorcal_blank1[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank1[i]);
-  Serial_Print("\"colorcal_blank2\": [");
-  for (i = 0; i < arraysize(eeprom->colorcal_blank2) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->colorcal_blank2[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank2[i]);
-  Serial_Print("\"colorcal_blank3\": [");
-  for (i = 0; i < arraysize(eeprom->colorcal_blank3) - 1; i++)
-    Serial_Printf("\"%f\",", eeprom->colorcal_blank3[i]);
-  Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank3[i]);
+Serial_Print("\"par_to_dac_yint\": [");
+  for (i = 0; i < arraysize(eeprom->par_to_dac_yint) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->par_to_dac_yint[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->par_to_dac_yint[i], 3);
+    Serial_Print("\"],\n");
 
-  for (i = 0; i < NUM_USERDEFS - 1; i++)
-    Serial_Printf("\"userdef%d\": \"%f\",\n", i, eeprom->userdef[i]);
-  Serial_Printf("\"userdef%d\": \"%f\"\n}", i, eeprom->userdef[i]);
+
+  // Serial_Print("\"ir_baseline_slope\": [");
+  // for (i = 0; i < arraysize(eeprom->ir_baseline_slope) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->ir_baseline_slope[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->ir_baseline_slope[i]);
+
+Serial_Print("\"ir_baseline_slope\": [");
+  for (i = 0; i < arraysize(eeprom->ir_baseline_slope) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->ir_baseline_slope[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->ir_baseline_slope[i], 3);
+    Serial_Print("\"],\n");
+
+
+
+  // Serial_Print("\"ir_baseline_yint\": [");
+  // for (i = 0; i < arraysize(eeprom->ir_baseline_yint) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->ir_baseline_yint[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->ir_baseline_yint[i]);
+
+Serial_Print("\"ir_baseline_yint\": [");
+  for (i = 0; i < arraysize(eeprom->ir_baseline_yint) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->ir_baseline_yint[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->ir_baseline_yint[i], 3);
+    Serial_Print("\"],\n");
+
+
+  // Serial_Print("\"colorcal_intensity1_slope\": [");
+  // for (i = 0; i < arraysize(eeprom->colorcal_intensity1_slope) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->colorcal_intensity1_slope[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity1_slope[i]);
+
+Serial_Print("\"colorcal_intensity1_slope\": [");
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity1_slope) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->colorcal_intensity1_slope[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->colorcal_intensity1_slope[i], 3);
+    Serial_Print("\"],\n");
+
+
+
+  // Serial_Print("\"colorcal_intensity1_yint\": [");
+  // for (i = 0; i < arraysize(eeprom->colorcal_intensity1_yint) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->colorcal_intensity1_yint[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity1_yint[i]);
+
+
+
+Serial_Print("\"colorcal_intensity1_yint\": [");
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity1_yint) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->colorcal_intensity1_yint[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->colorcal_intensity1_yint[i], 3);
+    Serial_Print("\"],\n");
+
+
+
+  // Serial_Print("\"colorcal_intensity2_slope\": [");
+  // for (i = 0; i < arraysize(eeprom->colorcal_intensity2_slope) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->colorcal_intensity2_slope[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity2_slope[i]);
+
+
+Serial_Print("\"colorcal_intensity2_slope\": [");
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity2_slope) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->colorcal_intensity2_slope[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->colorcal_intensity2_slope[i], 3);
+    Serial_Print("\"],\n");
+
+
+  // Serial_Print("\"colorcal_intensity2_yint\": [");
+  // for (i = 0; i < arraysize(eeprom->colorcal_intensity2_yint) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->colorcal_intensity2_yint[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity2_yint[i]);
+
+
+Serial_Print("\"colorcal_intensity2_yint\": [");
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity2_yint) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->colorcal_intensity2_yint[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->colorcal_intensity2_yint[i], 3);
+    Serial_Print("\"],\n");
+
+
+
+
+
+  // Serial_Print("\"colorcal_intensity3_slope\": [");
+  // for (i = 0; i < arraysize(eeprom->colorcal_intensity3_slope) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->colorcal_intensity3_slope[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity3_slope[i]);
+
+
+Serial_Print("\"colorcal_intensity3_slope\": [");
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity3_slope) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->colorcal_intensity3_slope[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->colorcal_intensity3_slope[i], 3);
+    Serial_Print("\"],\n");
+
+
+  // Serial_Print("\"colorcal_intensity3_yint\": [");
+  // for (i = 0; i < arraysize(eeprom->colorcal_intensity3_yint) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->colorcal_intensity3_yint[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->colorcal_intensity3_yint[i]);
+
+
+Serial_Print("\"colorcal_intensity3_yint\": [");
+  for (i = 0; i < arraysize(eeprom->colorcal_intensity3_yint) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->colorcal_intensity3_yint[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->colorcal_intensity3_yint[i], 3);
+    Serial_Print("\"],\n");
+
+
+
+  // Serial_Print("\"colorcal_blank1\": [");
+  // for (i = 0; i < arraysize(eeprom->colorcal_blank1) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->colorcal_blank1[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank1[i]);
+
+
+Serial_Print("\"colorcal_blank1\": [");
+  for (i = 0; i < arraysize(eeprom->colorcal_blank1) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->colorcal_blank1[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->colorcal_blank1[i], 3);
+    Serial_Print("\"],\n");
+
+
+  // Serial_Print("\"colorcal_blank2\": [");
+  // for (i = 0; i < arraysize(eeprom->colorcal_blank2) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->colorcal_blank2[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank2[i]);
+
+Serial_Print("\"colorcal_blank2\": [");
+  for (i = 0; i < arraysize(eeprom->colorcal_blank2) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->colorcal_blank2[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->colorcal_blank2[i], 3);
+    Serial_Print("\"],\n");
+
+
+  // Serial_Print("\"colorcal_blank3\": [");
+  // for (i = 0; i < arraysize(eeprom->colorcal_blank3) - 1; i++)
+  //   Serial_Printf("\"%f\",", eeprom->colorcal_blank3[i]);
+  // Serial_Printf("\"%f\"],\n", eeprom->colorcal_blank3[i]);
+
+
+Serial_Print("\"colorcal_blank3\": [");
+  for (i = 0; i < arraysize(eeprom->colorcal_blank3) - 1; i++){
+    Serial_Print("\"");
+    Serial_Print(eeprom->colorcal_blank3[i], 3);
+    Serial_Print("\",");
+    
+  }
+    Serial_Print(eeprom->colorcal_blank2[i], 3);
+    Serial_Print("\"],\n");
+
+  //for (i = 0; i < NUM_USERDEFS - 1; i++)
+  //   Serial_Printf("\"userdef%d\": \"%f\",\n", i, eeprom->userdef[i]);
+  // Serial_Printf("\"userdef%d\": \"%f\"\n}", i, eeprom->userdef[i]);
+
+  for (i = 0; i < NUM_USERDEFS - 1; i++){
+    Serial_Printf("\"userdef%d\":", i);
+    Serial_Print("\"");
+    Serial_Print( eeprom->userdef[i], 3);
+    Serial_Print("\",\n");
+  }
+  Serial_Printf("\"userdef%d\":", i);
+  Serial_Print("\"");
+  Serial_Print( eeprom->userdef[i], 3);
+  Serial_Print("\"\n");
+  
+
 
   Serial_Print_CRC();
 }
+
 
 theReadings getReadings (const char* _thisSensor) {                       // get the actual sensor readings associated with each environmental call (so compass and angle when you call compass_and_angle, etc.)
   theReadings _theReadings;
@@ -3439,3 +4114,296 @@ void get_set_device_info(const int _set) {
 
 // ======================================
 
+
+
+void perform_auto_blank(JsonArray auto_blank){
+  if (auto_blank.getLength()>0){
+        int ix;
+        int auto_gain_set=0;
+        float temp_dr=0;
+
+        Serial_Print("\"auto_blank\": [");
+        this_pulsesize=0;
+        auto_gain_set=0;
+        
+        int lb=auto_blank.getLength();
+          for (uint16_t i = 0; i < lb; i++) {                                                 
+
+                  
+            this_gain_index = auto_blank.getArray(i).getLong(0); ///hat index to store gain settings
+            this_light = auto_blank.getArray(i).getLong(1); //what LED to test
+            this_detector = auto_blank.getArray(i).getLong(2); // what detector to use
+            this_pulsesize = auto_blank.getArray(i).getLong(3); // what pulse size to use
+            this_target = auto_blank.getArray(i).getLong(4); //what target value to use
+            //int this_index = auto_blank.getArray(i).getLong(5); // what detector to use
+
+
+            // float signal_amplitudes[20];
+            // float output_voltages[20];
+            
+            auto_gain_set=100; //set up the output variable and give it an initial value
+            
+            for (ix = 0; ix < 12; ix ++) {  //cycle through the range of voltages, using arithmetic progression 
+              int this_intensity = (1 << ix) - 1; //start at 1.0 
+              output_voltages[ix]=float(this_intensity);
+              detector_read1_averaged=0;  
+              get_detector_value (1, this_light, this_intensity, this_detector, this_pulsesize, 1);     // save as "detector_read1" from get_detector_value function
+              signal_amplitudes[ix]=detector_read1_averaged;                
+            
+              if (detector_read1_averaged > this_target) {  //if the value exceeds the target stop the loop
+                break;
+              } // end break conditional on the value exceeds the target stop the loop              
+              } //end cycle through the range of voltages, using arithmetic progression 
+
+              unsigned int exceeded_target=ix;  //record the index when the target amplitude was exceeded
+              //assume that the two signal_amplitudes before exceeding the target are linear with voltage
+              if (exceeded_target > 2){ //to do a linear approximation we need to have at least two points. 
+                  float slope_denom = output_voltages[exceeded_target-1] - output_voltages[exceeded_target-2];
+                  float slope_num=(signal_amplitudes[exceeded_target-1] - signal_amplitudes[exceeded_target-2]);
+                  
+                  float gain_slope=slope_num/slope_denom;
+                  
+                  //Serial_Printf("slope:%f \r\n", gain_slope);
+                  auto_gain_set = int(output_voltages[exceeded_target-2] + (this_target-signal_amplitudes[exceeded_target-2])/gain_slope);
+
+                  } // end conditional on exceed-target
+            else
+              { //if there are fewer than 2 points, use the one before the exceeded_target index
+                auto_gain_set=int(output_voltages[exceeded_target-1]);
+              }
+                    auto_bright[this_gain_index]=auto_gain_set;
+                    auto_duration[this_gain_index]=this_pulsesize;
+          //end code for autogain part of auto_blank function
+          // now, take a measurement using the values output by autogain
+
+              detector_read1_averaged=0;  
+              get_detector_value (1, this_light, auto_gain_set, this_detector, this_pulsesize, 1);     // save as "detector_read1" from get_detector_value function
+              temp_dr=detector_read1_averaged;
+
+              Serial_Print("[");
+              Serial_Print(this_gain_index);
+              Serial_Print(",");            
+              Serial_Print(this_pulsesize);
+              Serial_Print(",");            
+              Serial_Print(auto_gain_set);
+              Serial_Print(",");            
+              Serial_Print(temp_dr, 1);
+              Serial_Print("]");            
+              
+              if (i+1<lb){
+                Serial_Print(","); 
+              }
+
+      store(auto_blank_light[this_gain_index], this_light);
+      store(auto_blank_detector[this_gain_index], this_detector);
+      store(auto_blank_pulse_size[this_gain_index], this_pulsesize);
+      store(auto_blank_gain_set[this_gain_index], auto_gain_set);
+      store(auto_blank_amplitude[this_gain_index], temp_dr);
+      
+      }
+              Serial_Print("],");   //close the square bracket
+
+      }
+}
+//******************************************************************************************
+
+
+void perform_auto_zero(JsonArray auto_zero){
+    if (auto_zero.getLength()>0){
+      int ix;
+      int lenb=auto_zero.getLength();
+      //float this_scale = 1.0;
+      //int this_verbose = 0;
+    Serial_Print("\"auto_zero\": [");
+        for (uint16_t i = 0; i < lenb; i++) {   // cycle through the range of absorbance measurements requested                                              
+
+          int this_zero_index = auto_zero.getArray(i).getLong(0); ///which index to retrieve gain settings
+
+          int this_pulsesizeb=eeprom->auto_blank_pulse_size[this_zero_index];
+
+          int auto_gain_set= eeprom->auto_blank_gain_set[this_zero_index];
+          float blank_amplitude=eeprom->auto_blank_amplitude[this_zero_index];
+          int this_lightb = eeprom->auto_blank_light[this_zero_index];
+          int this_detectorb=eeprom->auto_blank_detector[this_zero_index];
+            detector_read1_averaged=0;  
+            
+            get_detector_value (1, this_lightb, auto_gain_set, this_detectorb, this_pulsesizeb, 1);     // save as "detector_read1" from get_detector_value function
+            float sample_amplitude = detector_read1_averaged;
+
+            Serial_Print("[");
+            Serial_Print(this_zero_index);
+            Serial_Print(",");            
+            Serial_Print(sample_amplitude, 3);
+            Serial_Print("]");            
+
+            if (i+1<lenb){
+              Serial_Print(","); 
+            }
+        store(auto_zero_amplitude[this_zero_index], sample_amplitude);
+
+        }
+        Serial_Print("],");   //close the square bracket
+    
+    }
+    }
+
+
+
+void perform_absorbance(JsonArray absorbance, String abs_name, float scale, int details){
+    delay(300); //giv a bit of time for the clamp to settle
+    if (absorbance.getLength()>0){
+      int ix;
+      int lenb=absorbance.getLength();
+      //float this_scale = 1.0;
+      //int this_verbose = 0;
+
+      Serial_Print("\"");
+      Serial_Print(abs_name);
+      //Serial_Print(lenb);
+      Serial_Print("\":[");
+      
+        for (uint16_t i = 0; i < lenb; i++) {   // cycle through the range of absorbance measurements requested                                              
+
+          int this_blank_index = absorbance.getArray(i).getLong(0); ///which index to retrieve gain settings
+
+          if (absorbance.getArray(i).getLength()>1){  //if there is a scale, then use it
+             scale = absorbance.getArray(i).getLong(1); ///which index to retrieve gain settings
+          }
+
+
+          if (absorbance.getArray(i).getLength()>2){  //if there is a scale, then use it
+            details = absorbance.getArray(i).getLong(1); ///which index to retrieve gain settings
+          }
+
+          int this_pulsesizeb=eeprom->auto_blank_pulse_size[this_blank_index];
+
+          int auto_gain_set= eeprom->auto_blank_gain_set[this_blank_index];
+          float blank_amplitude=eeprom->auto_blank_amplitude[this_blank_index];
+          int this_lightb = eeprom->auto_blank_light[this_blank_index];
+          int this_detectorb=eeprom->auto_blank_detector[this_blank_index];
+          float offset = eeprom->auto_zero_amplitude[this_blank_index];
+
+            detector_read1_averaged=0;  
+            
+            get_detector_value (1, this_lightb, auto_gain_set, this_detectorb, this_pulsesizeb, 1);     // save as "detector_read1" from get_detector_value function
+            float sample_amplitude = detector_read1_averaged;
+            float absorbance_value = log10(blank_amplitude-offset) - log10(sample_amplitude-offset);
+            
+            Serial_Print("[");
+            if (isnan(absorbance_value)){ //catch errors that result in NAN. 
+              Serial_Print("null");
+            }
+            else {
+              Serial_Print(absorbance_value*scale, 6);
+            }
+
+            if (details>0){
+              Serial_Print(",");            
+              Serial_Print(this_blank_index);
+              Serial_Print(",");            
+              Serial_Print(this_lightb);
+              Serial_Print(",");            
+              Serial_Print(this_detectorb);
+              Serial_Print(",");            
+              Serial_Print(this_pulsesizeb);
+              Serial_Print(",");            
+              Serial_Print(auto_gain_set);
+              Serial_Print(",");            
+              Serial_Print(blank_amplitude, 3);
+              Serial_Print(",");            
+              Serial_Print(sample_amplitude, 3);
+            }
+
+            Serial_Print("]");            
+
+            if (i+1<lenb){
+              Serial_Print(","); 
+            }
+        }
+        Serial_Print("],");   //close the square bracket
+    
+    }
+    
+    }
+
+
+void perform_autogain(JsonArray autogain){
+    if (autogain.getLength()>0){
+        for (uint16_t i = 0; i < autogain.getLength(); i++) {                                                 
+
+                 
+          // int this_gain_index = autogain.getArray(i).getLong(0); ///hat index to store gain settings
+          // int this_light = autogain.getArray(i).getLong(1); //what LED to test
+          // int this_detector = autogain.getArray(i).getLong(2); // what detector to use
+          // int this_pulsesize = autogain.getArray(i).getLong(3); // what pulse size to use
+          // float this_target = autogain.getArray(i).getLong(4); //what target value to use
+
+                 
+          this_gain_index = autogain.getArray(i).getLong(0); ///hat index to store gain settings
+          this_light = autogain.getArray(i).getLong(1); //what LED to test
+          this_detector = autogain.getArray(i).getLong(2); // what detector to use
+          this_pulsesize = autogain.getArray(i).getLong(3); // what pulse size to use
+          this_target = autogain.getArray(i).getLong(4); //what target value to use
+
+//           Serial_Print("\"i\":");
+//           Serial_Print(this_gain_index);
+//           Serial_Print(", \"l\":");
+//           Serial_Print(this_light);
+//           Serial_Print(", \"d\":");
+//           Serial_Print(this_detector);
+//           Serial_Print(", \"p\":");
+//           Serial_Print(this_pulsesize);
+//           Serial_Print(", \"t\":");
+//           Serial_Print(this_target);
+          
+          // float signal_amplitudes[20];
+          // float output_voltages[20];
+          //int gain_set=100; //set up the output variable and give it an initial value
+          gain_set=100; //set up the output variable and give it an initial value
+          int ix;
+          for (ix = 0; ix < 12; ix ++) {  //cycle through the range of voltages, using arithmetic progression 
+            int this_intensity = (1 << ix) - 1; //start at 1.0 
+            output_voltages[ix]=float(this_intensity);
+            detector_read1_averaged=0;  
+            get_detector_value (1, this_light, this_intensity, this_detector, this_pulsesize, 1);     // save as "detector_read1" from get_detector_value function
+            signal_amplitudes[ix]=detector_read1_averaged;                
+          
+//          Serial_Print(", \"intensity\":");
+//            Serial_Print(this_intensity);
+//            Serial_Print(", \"detector_read\":");          
+//            Serial_Print(detector_read1_averaged);
+            
+            if (detector_read1_averaged > this_target) {  //if the value exceeds the target stop the loop
+              break;
+            } // end break conditional on the value exceeds the target stop the loop              
+            } //end cycle through the range of voltages, using arithmetic progression 
+            unsigned int exceeded_target=ix;  //record the index when the target amplitude was exceeded
+
+//            Serial_Print(", \"exceeded value\":");
+//            Serial_Print(output_voltages[i]);
+            
+            //assume that the two signal_amplitudes before exceeding the target are linear with voltage
+            if (exceeded_target > 2){ //to do a linear approximation we need to have at least two points. 
+                float slope_denom = output_voltages[exceeded_target-1] - output_voltages[exceeded_target-2];
+                float slope_num=(signal_amplitudes[exceeded_target-1] - signal_amplitudes[exceeded_target-2]);
+                
+                float gain_slope=slope_num/slope_denom;
+                
+                //Serial_Printf("slope:%f \r\n", gain_slope);
+                gain_set = int(output_voltages[exceeded_target-2] + (this_target-signal_amplitudes[exceeded_target-2])/gain_slope);
+
+//                Serial_Print(", \"gain_set\":");                
+//                Serial_Print(gain_set);
+//                Serial_Print(",");
+                
+                } // end conditional on exceed-target
+          else
+            { //if there are fewer than 2 points, use the one before the exceeded_target index
+              gain_set=int(output_voltages[exceeded_target-1]);
+            }
+                  auto_bright[this_gain_index]=gain_set;
+                  auto_duration[this_gain_index]=this_pulsesize;
+        } //end code for autogain function
+    }
+}
+//******************************************************************************************

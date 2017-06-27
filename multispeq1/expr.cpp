@@ -27,6 +27,11 @@
 
 // return value of a variable by name
 
+//float variable(const char *name)
+//{
+//  return(1.0);
+//}
+
 float variable(const char *name)
 {
   //Serial_Printf("\nvar = |%s|\n",name);
@@ -290,9 +295,6 @@ float variable(const char *name)
 //      Serial_Printf("DMK: variable %s=%g \n\r",name,value);
 //      delay(10000);
 
-/* Values saved to EEPROM
- * 
- */
 
   } else  if (strncmp( name, "detector_offset_slope[", 22) == 0 ) {
     unsigned index = atoi(name + 22);
@@ -399,6 +401,7 @@ float variable(const char *name)
   //Serial_Printf("variable %s=%g\n",name,value);
   return value;
 }
+
 
 // ====================================
 

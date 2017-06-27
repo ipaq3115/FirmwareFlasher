@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 
-const int NUM_USERDEFS = 135;
+const int NUM_USERDEFS = 100;
 
 class eeprom_class
 {
@@ -72,10 +72,22 @@ class eeprom_class
     volatile float colorcal_intensity3_slope[NUM_LEDS + 1]; // slope from calibration to Minolta SPAD at intensity 3 (use colorcal_blank1 as blank)
     volatile float colorcal_intensity3_yint[NUM_LEDS + 1]; // y intercept from calibration to Minolta SPAD at intensity 3 (use colorcal_blank1 as blank)
 
+    
+
     // user set values
     volatile float userdef[NUM_USERDEFS + 1];
 
+
     volatile char sleep;     // TODO set to 1 to sleep on boot
+    
+    volatile float auto_blank_pulse_size[NUM_LEDS + 1];  // Holds the length of the pulses as set by auto_blank
+    volatile float auto_blank_gain_set[NUM_LEDS + 1];    // holds the voltage to be applied to the LED as set by auto_blank
+    volatile float auto_blank_light[NUM_LEDS + 1];   // holds the amplitude read from a trial (baseline or blank) pulse as set by auto_blank
+    volatile float auto_blank_detector[NUM_LEDS + 1];   // holds the amplitude read from a trial (baseline or blank) pulse as set by auto_blank
+    volatile float auto_blank_amplitude[NUM_LEDS + 1];   // holds the amplitude read from a trial (baseline or blank) pulse as set by auto_blank
+    volatile float auto_zero_amplitude[NUM_LEDS + 1];  // Holds the length of the pulses as set by auto_blank
+
+
 };
 
 // where to store permanent data (teensy 3 specific)
