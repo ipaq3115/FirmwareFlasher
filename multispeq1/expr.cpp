@@ -27,11 +27,6 @@
 
 // return value of a variable by name
 
-//float variable(const char *name)
-//{
-//  return(1.0);
-//}
-
 float variable(const char *name)
 {
   //Serial_Printf("\nvar = |%s|\n",name);
@@ -48,11 +43,9 @@ float variable(const char *name)
 
   } else if (strcmp( name, "light_intensity" ) == 0 ) {
     value = light_intensity;
-    //Serial_Printf("XXX light_intensity: %f,", light_intensity);
 
   } else if (strcmp( name, "previous_light_intensity" ) == 0 ) {
     value = previous_light_intensity;
-    //Serial_Printf("XXX previous_light_intensity: %f,", value);
 
   } else if (strcmp( name, "light_intensity_averaged" ) == 0 ) {
     value = light_intensity_averaged;
@@ -484,7 +477,5 @@ static float expression() {
 // given a string, evaluate it.   Example "2*(userdef[49]+2)"
 float expr(const char *s) { 
   ptr = s;
-  float test=expression();
-  //Serial_Printf("DMK: value--> %f \n\r",test);
-  return test;
+  return expression();
 }

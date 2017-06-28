@@ -203,6 +203,7 @@ set #define BLE_DELAY  to 0 (no delay between packets)
 #include <SPI.h>              
 #include "util.h"
 #include <TimeLib.h>
+#include "src/AD7689.h"    // spec video now on external ADC SPI CZ
 
 void setup_pins(void);          // initialize pins
 
@@ -255,7 +256,7 @@ activity();
   eeprom_initialize();      // eeprom
   assert(sizeof(eeprom_class) < 2048);      // check that we haven't exceeded eeprom space
 
-#if CORALSPEQ == 1
+#if CORAL_SPEQ == 1
   // Set pinmodes for the coralspeq
   //pinMode(SPEC_EOS, INPUT);
   pinMode(SPEC_GAIN, OUTPUT);
@@ -383,6 +384,7 @@ void readSpectrometer(int intTime, int delay_time, int read_time, int accumulate
   delayMicroseconds(delay_time);
 
   // Step 5: Read Data 2 (this is the actual read, since the spectrometer has now sampled data)
+  AD7689_set( SPEC_ADC_CHANNEL );
   idx = 0;
   for (int i = 0; i < SPEC_CHANNELS; i++) {
     // Four clocks per pixel
@@ -395,10 +397,12 @@ void readSpectrometer(int intTime, int delay_time, int read_time, int accumulate
 
     // Analog value is valid on low transition
     if (accumulateMode == false) {
-      spec_data[idx] = analogRead(SPEC_VIDEO);
+      AD7689_sample();
+      spec_data[idx] = AD7689_read_sample();
       spec_data_average[idx] += spec_data[idx];
     } else {
-      spec_data[idx] += analogRead(SPEC_VIDEO);
+      AD7689_sample();
+      spec_data[idx] += AD7689_read_sample();
     }
     idx += 1;
     if (delay_time > read_time) delayMicroseconds(delay_time - read_time);   // Read takes about 135uSec

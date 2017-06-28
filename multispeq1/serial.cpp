@@ -60,10 +60,7 @@ void Serial_Set(int s)
 // Do a printf to either port
 // CAUTION: only 200 bytes
 
-//        Serial_Printf("integer: %d",test_int);
-
-
-#define SIZE 200  //DMK 
+#define SIZE 200
 
 void Serial_Printf(const char * format, ... )
 {
