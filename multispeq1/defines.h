@@ -10,7 +10,7 @@ const int DEBUGSIMPLE= 0;   // uncomment to add partial debug features
 //#define DAC 1           // uncomment for boards which do not use DAC for light intensity control
 const int PULSERDEBUG=0;   // uncomment to debug the pulser and detector
 //#define NO_ADDON        // uncomment if add-on board isn't present (one missing DAC, etc)
-#define CORAL_SPEQ 1
+#define CORAL_SPEQ 0
 
 
 // FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
