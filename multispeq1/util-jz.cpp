@@ -423,9 +423,8 @@ int accel_changed()
   return changed;
 }  // accel_changed()
 
-const unsigned long SHUTDOWN = (3 * 60 * 60 * 1000);   // power down after 3 hours of inactivity (in msec)
+//const unsigned long SHUTDOWN = (3 * 60 * 60 * 1000);   // power down after 3 hours of inactivity (in msec)
 //const unsigned long SHUTDOWN = (30 * 1000);     // quick powerdown, used for testing
-
 
 
 // record that we have seen serial port activity (used with powerdown())
@@ -478,6 +477,8 @@ void energySave() {
 void powerdown() {
 
   if ((millis() - last_activity) > SHUTDOWN || battery_low(0)) {  // idle?
+    //Serial_Print("shutting down");
+
     MMA8653FC_standby();                            // sleep accelerometer
     shutoff();                                      // save power, leave 3V3 on
     deep_sleep();                                   // TODO switch to set eeprom value then reboot (will get even lower power draw)

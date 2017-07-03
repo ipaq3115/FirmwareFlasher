@@ -204,6 +204,7 @@ set #define BLE_DELAY  to 0 (no delay between packets)
 #include "util.h"
 #include <TimeLib.h>
 #include "src/AD7689.h"    // spec video now on external ADC SPI CZ
+#include <Adafruit_NeoPixel.h>
 
 void setup_pins(void);          // initialize pins
 
@@ -215,7 +216,7 @@ void setup()
 {
 energy_save_timeout=120000;
 energy_min_wake_time=10000;
-
+SHUTDOWN = (3 * 60 * 60 * 1000); 
 activity();
 //  for(int i=0; i <= 9; i++){
 //    auto_bright[i]=i;
@@ -285,6 +286,7 @@ activity();
 
   Serial_Print(DEVICE_NAME);                // note: this may not display because Serial isn't ready
   Serial_Print_Line(" Ready");
+
 
 }  // setup() - now execute loop()
 

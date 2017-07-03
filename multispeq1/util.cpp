@@ -8,6 +8,11 @@
 #include "DAC.h"
 #include "util.h"
 #include "serial.h"
+#include <Adafruit_NeoPixel.h>
+
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIX_PIN, NEO_GRB + NEO_KHZ800); 
+
+
 
 int get_light_intensity(int x);
 uint16_t par_to_dac (float _par, uint16_t _pin);
@@ -304,6 +309,12 @@ void start_on_pin_high(int pin) {
 //  }
 //}
 //
+
+void setNeoPixel(){
+  pixels.begin(); // This initializes the NeoPixel library.
+  pixels.setPixelColor(0, r_v, g_v, b_v);
+  pixels.show(); // This sends the updated pixel color to the hardware.  
+}
 
 
 float check_thickness(void) { //DMK added this version of thickness guage for the following seris of 
@@ -651,7 +662,7 @@ int bb=Wire1.requestFrom(0x01, 0);
 void reset_flow_calibration(void) {
   int returned_value=0;
     Wire1.beginTransmission(0x01); //pumop is on address 01
-    Wire1.write(9);  // send command 2, program flow
+    Wire1.write(9);  // send command 9 
     Wire1.write(9);  // send two bytes for the flow value 
     Wire1.write(9);
     Wire1.endTransmission();

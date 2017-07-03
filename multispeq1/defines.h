@@ -136,6 +136,13 @@ const uint8_t LED_to_pin[NUM_LEDS + 1] = {0, PULSE1, PULSE2, PULSE3, PULSE4, PUL
 // blank pin (used when no other pin is selected - probably should change this later
 //#define BLANK    32   // error - same as IOEXT2
 
+// Which pin on the teensy is connected to the NeoPixels?
+#define PIX_PIN            8
+
+// How many NeoPixels are attached to the Arduino?
+#define NUMPIXELS      1
+
+
 
 //struct to hold tilt information
 struct Tilt {
@@ -246,6 +253,11 @@ EXTERN float analog_read_averaged, digital_read_averaged, adc_read_averaged, adc
 EXTERN Adafruit_BME280 bme1;        // I2C sensor
 EXTERN Adafruit_BME280 bme2;
 
+EXTERN int r_v; //neopixel indicator red value
+EXTERN int b_v; //neopixel indicator blued value
+EXTERN int g_v; //neopixel indicator green value
+
+EXTERN unsigned long SHUTDOWN; // = (3 * 60 * 60 * 1000);   // power down after 3 hours of inactivity (in msec)
 // Coral SpeQ
 //////////////////////PIN DEFINITIONS FOR CORALSPEQ////////////////////////
 #define SPEC_GAIN      21    // was 28 now 21 CZ

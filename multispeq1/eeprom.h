@@ -71,6 +71,8 @@ class eeprom_class
     volatile float colorcal_intensity2_yint[NUM_LEDS + 1]; // y intercept from calibration to Minolta SPAD at intensity 2 (use colorcal_blank1 as blank)
     volatile float colorcal_intensity3_slope[NUM_LEDS + 1]; // slope from calibration to Minolta SPAD at intensity 3 (use colorcal_blank1 as blank)
     volatile float colorcal_intensity3_yint[NUM_LEDS + 1]; // y intercept from calibration to Minolta SPAD at intensity 3 (use colorcal_blank1 as blank)
+    volatile float auto_zero_amplitude[NUM_LEDS + 1];  // Holds the length of the pulses as set by auto_blank
+    
 
     // user set values
     volatile float userdef[NUM_USERDEFS + 1];
@@ -82,7 +84,6 @@ class eeprom_class
     volatile float auto_blank_light[NUM_LEDS + 1];   // holds the amplitude read from a trial (baseline or blank) pulse as set by auto_blank
     volatile float auto_blank_detector[NUM_LEDS + 1];   // holds the amplitude read from a trial (baseline or blank) pulse as set by auto_blank
     volatile float auto_blank_amplitude[NUM_LEDS + 1];   // holds the amplitude read from a trial (baseline or blank) pulse as set by auto_blank
-    volatile float auto_zero_amplitude[NUM_LEDS + 1];  // Holds the length of the pulses as set by auto_blank
 
 
 };

@@ -30,7 +30,7 @@ void perform_auto_blank(JsonArray auto_blank);
 void perform_autogain(JsonArray autogain);
 void perform_auto_zero(JsonArray auto_zero);
 void perform_absorbance(JsonArray absorbance, String title, float scale, int details);
-
+void setNeoPixel(void);
 void temp_get_set_device_info();
 int abort_cmd(void);
 static void environmentals(JsonArray a, const int _averages, const int x, int oneOrArray);
@@ -139,9 +139,9 @@ void loop() {
     if (c != -1){            // received something
 
       break;  
-    powerdown();            // if no activity for x second do major shutdown
-    energySave();             //if no activity fo120 15 s power down 5V
-    sleep_cpu();         // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
+    //powerdown();            // if no activity for x second do major shutdown
+    //energySave();             //if no activity fo120 15 s power down 5V
+    //sleep_cpu();         // save power - low impact since cpu stays on - this causes an issue an intermittent problem with serial communcation, leave off for now.
 
 
     }
@@ -279,6 +279,7 @@ void do_command()
       Serial_Print("Starting constant light source");
       constant_light();
       break;
+
 
     // case hash("cycle5v"):
     //   Serial_Print_Line("turning off 5v in 3 seconds...");
@@ -432,8 +433,61 @@ void do_command()
       }
       break;
 
+    case hash("indicate"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        Serial_Print_Line("\"message\": \"Enter red value for led setting (0-255) +: \"}");
+        r_v =  Serial_Input_Double("+", 0);
+        Serial_Print_Line("\"message\": \"Enter green  value for led setting (0-255) +: \"}");
+        g_v =  Serial_Input_Double("+", 0);
+        Serial_Print_Line("\"message\": \"Enter blue value for led setting (0-255) +: \"}");        
+        b_v =  Serial_Input_Double("+", 0);
+        setNeoPixel();
+      }
+      break;
 
-    case hash("PAR_LED"):
+    case hash("wink"):
+      {
+       int tem_r_v=r_v;
+       int tem_g_v=g_v;
+       int tem_b_v=b_v;
+       r_v=b_v=g_v=0;
+        setNeoPixel();
+        delay(30);
+       r_v=tem_r_v;
+       g_v=tem_g_v;
+       b_v=tem_b_v;
+      setNeoPixel(); 
+      }
+      break;
+
+    case hash("indicate_off"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        r_v=b_v=g_v=0;
+        setNeoPixel();
+      }
+      break;
+
+
+    case hash("digital_write"):
+      {
+        turn_on_5V();                  // turn on 5V to turn on the lights
+        Serial_Print_Line("\"message\": \"Enter pin # setting followed by +: \"}");
+        int set_pin =  Serial_Input_Double("+", 0);
+        Serial_Print_Line("\"message\": \"Enter digital setting  followed by +:  \"}");
+        int setting =  Serial_Input_Double("+", 0);
+        pinMode(set_pin, OUTPUT);
+        if (setting>0){
+        digitalWrite(set_pin, HIGH);
+        }
+        else{
+                  digitalWrite(set_pin, LOW);
+        }
+      }
+      break;
+
+    case hash("par_led"):
       {
         turn_on_5V();                  // turn on 5V to turn on the lights
         float par = get_light_intensity(1);
@@ -478,7 +532,7 @@ void do_command()
         Serial_Print_Line("\"message\": \"Enter desired air flow (0-80 cc per min) followed by +: \"}");
         int setting =  Serial_Input_Double("+", 0);
         //code to send information to pump conmtroller
-          Wire1.beginTransmission(0x01); //pumop is on address 01
+          Wire1.beginTransmission(0x01); //pump is on address 01
           Wire1.write(2);  // send command 2, program flow
           Wire1.write(highByte(setting));  // send two bytes for the flow value 
           Wire1.write(lowByte(setting));
@@ -1779,6 +1833,36 @@ if (protocol_set_mode==1) {
         analog_read = digital_read = adc_read = adc_read2 = adc_read3 = 0;
         analog_read_averaged = digital_read_averaged = adc_read_averaged = adc_read2_averaged = adc_read3_averaged = 0;
 
+
+       if (hashTable.getLong("indicate_green") != 0) {
+          g_v=hashTable.getLong("indicate_green");
+          r_v=0;
+          b_v=0;
+          setNeoPixel();
+      }
+
+       if (hashTable.getLong("indicate_red") != 0) {
+          r_v=hashTable.getLong("indicate_red");
+          g_v=0;
+          b_v=0;
+          setNeoPixel();
+      }
+
+       if (hashTable.getLong("indicate_blue") != 0) {
+          b_v=hashTable.getLong("indicate_blue");
+          r_v=0;
+          g_v=0;
+          setNeoPixel();
+      }
+
+
+       if (hashTable.getLong("indicate_off") != 0) {
+          r_v=0;
+          b_v=0;
+          g_v=0;
+          setNeoPixel();
+      }
+
         if (hashTable.getLong("open_close_start") != 0) {                                     // wait for device to open (read hall sensor), then close before proceeding with protocol
             start_on_open(max_hold_time);
             start_on_close(max_hold_time); 
@@ -1786,6 +1870,10 @@ if (protocol_set_mode==1) {
         if (hashTable.getLong("energy_save_timeout") != 0) {
           
           energy_save_timeout=hashTable.getLong("energy_save_timeout"); 
+        }
+        if (hashTable.getLong("shut_down_time") != 0) {
+          
+          SHUTDOWN=hashTable.getLong("shut_down_time"); 
         }
 
         if (hashTable.getLong("energy_min_wake_time") != 0) {
@@ -1838,15 +1926,16 @@ if (protocol_set_mode==1) {
           
         }
 
+
         if (hashTable.getLong("set_air_flow") != 0) {
           int setting=hashTable.getLong("set_air_flow");  // obtain the desired flow rate
               //code to send information to pump conmtroller
-                Wire1.beginTransmission(0x01); //pumop is on address 01
-                Wire1.write(2);  // send command 2, program flow
-                Wire1.write(highByte(setting));  // send two bytes for the flow value 
-                Wire1.write(lowByte(setting));
-                Wire1.endTransmission();
-                delay(100);          
+          Wire1.beginTransmission(0x01); //pumop is on address 01
+          Wire1.write(2);  // send command 2, program flow
+          Wire1.write(highByte(setting));  // send two bytes for the flow value 
+          Wire1.write(lowByte(setting));
+          Wire1.endTransmission();
+          delay(100);          
         }
 
 
