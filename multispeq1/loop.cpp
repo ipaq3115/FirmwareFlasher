@@ -173,6 +173,10 @@ void loop() {
 
 // globals - try to avoid
 static uint8_t _meas_light;         // measuring light to be used during the interrupt
+
+static uint8_t _WASP_light;         // weak actinic light to be used during the interrupt
+static uint8_t _suppress_m_pulse;         // Used to suppress a measuring pulse, but keep everything else working
+
 static uint16_t _pulsesize;     // pulse width in usec
 static volatile int pulse_done = 0; // set by ISR
 
@@ -268,6 +272,48 @@ void do_command()
 //      //Serial_Print("flow zero point reset");
 
    break;
+
+ case hash("set_closed_position"):
+ {
+      turn_on_5V();
+      Serial_Print_Line("\"message\": \"Set clamp so the position BELOW whcih will be detected as CLOSED, then enter +: \"}");
+      setting =  Serial_Input_Double("+", 0);
+      float set_thickness = get_thickness(0, 1);
+      if (set_thickness > 0) {
+        Serial_Print("\"The thickness Hall Effect reading  BELOW which the clamp is CLOSED is now set to\":");
+        Serial_Print(set_thickness, 2);
+        Serial_Print(",");
+        //Serial_Printf("\"thickness\":%.2f,", thickness_averaged);
+          store(closed_thickness, set_thickness);
+
+      }
+      else{
+        Serial_Print("\"Error: thickness setting is at or below 0\"");
+      }
+ }
+
+   break;
+
+ case hash("set_open_position"):
+ {
+      turn_on_5V();
+      Serial_Print_Line("\"message\": \"Set clamp so the position ABOVE which will be detected as OPEN, then enter +: \"}");
+      setting =  Serial_Input_Double("+", 0);
+      float set_thickness = get_thickness(0, 1);
+      if (set_thickness > 0) {
+        Serial_Print("\"The thickness Hall Effect reading ABOVE which the clamp is OPEN is now set to\":");
+        Serial_Print(set_thickness, 2);
+        Serial_Print(",");
+        //Serial_Printf("\"thickness\":%.2f,", thickness_averaged);
+          store(open_thickness, set_thickness);
+      }
+      else{
+        Serial_Print("\"Error: thickness setting is at or below 0\"");
+      }
+
+ }
+   break;
+
 
  case hash("reset_flow_calibration"):
       reset_flow_calibration();
@@ -508,6 +554,9 @@ void do_command()
       break;
       
     case hash("print_memory"):
+      print_calibrations();
+      break;
+    case hash("print_calibrations"):
       print_calibrations();
       break;
 
@@ -1536,13 +1585,21 @@ Serial_Print(",\"sample\":[");
 
 if (protocol_set_mode==1) {
 
-  Serial_Print("{\"light_intensity_raw\":0,\"data_raw\":[],"); //This is a hack to get around the insertion of the time zone information
+  //Serial_Print("{\"light_intensity_raw\":0,\"data_raw\":[],"); //This is a hack to get around the insertion of the time zone information
   
-  Serial_Print("\"protocol_id\":\"");
+  Serial_Print("{\"protocol_id\":\"");
   Serial_Print(protocol_id.c_str());
   Serial_Print("\",");
   
-  Serial_Print("\"set\": [{\"blank:\":\"blank\"},"); //if we are using protocol_set_mode then wrap the output data as a dictionary, called 
+  //the following code was for the version of Android and Desktop Apps that injected the following: "time": XXXXXX, after a '['. It was necessary to 
+  //add the dummy output {"blank:"blank"} to deal with the subsequent maformed JSON caused by the trailing comma.
+
+  //Serial_Print("\"set\": [{\"blank:\":\"blank\"},"); //if we are using protocol_set_mode then wrap the output data as a dictionary, called 
+
+  // the trailing comma is now eliminated during processing in the Apps.
+
+  Serial_Print("\"set\": ["); //if we are using protocol_set_mode then wrap the output data as dictionary with one element "set" 
+
 }
 
   // discharge sample and hold in case the cap is currently charged (on add on and main board)
@@ -1666,12 +1723,17 @@ if (protocol_set_mode==1) {
         JsonArray a_lights =        hashTable.getArray("nonpulsed_lights");
         JsonArray a_intensities =   hashTable.getArray("nonpulsed_lights_brightness");
         JsonArray m_intensities =   hashTable.getArray("pulsed_lights_brightness");
+        JsonArray WASP_intensities =   hashTable.getArray("wasp_lights_brightness");
 
         //        int get_offset =          hashTable.getLong("get_offset");                               // include detector offset information in the output
         // NOTE: it takes about 50us to set a DAC channel via I2C at 2.4Mz.
 
         JsonArray detectors =     hashTable.getArray("detectors");                               // the Teensy pin # of the detectors used during those pulses, as an array of array.  For example, if pulses = [5,2] and detectors = [[34,35],[34,35]] .
         JsonArray meas_lights =   hashTable.getArray("pulsed_lights");
+        JsonArray WASP_lights =   hashTable.getArray("wasp_lights");
+        JsonArray suppress_m_pulse =   hashTable.getArray("suppress_m_pulse");
+
+
         JsonArray message =       hashTable.getArray("message");                                // sends the user a message to which they must reply <answer>+ to continue
         //*/
         JsonArray environmental = hashTable.getArray("environmental");
@@ -2021,6 +2083,8 @@ if (protocol_set_mode==1) {
 
           environmentals(environmental, averages, x, 0);
 
+//************************************************************************* begin kinetic trace code **********************************
+
           for (int z = 0; z < total_pulses; z++) {                                      // cycle through all of the pulses from all cycles
             int first_flag = 0;                                                           // flag to note the first pulse of a cycle
             int _spec = 0;                                                              // create the spec flag for the coralspeq
@@ -2030,7 +2094,7 @@ if (protocol_set_mode==1) {
             int _read_time = 0;                                                         // create the _read_time flag for the coralspeq
             int _accumulateMode = 0;                                                    // create the _accumulateMode flag for the coralspeq
 
-            if (pulse == 0) {                                                                                     // if it's the first pulse of a cycle, we need to set up the new set of lights and intensities...
+            if (pulse == 0) {     // if it's the first pulse of a cycle, we need to set up the new set of lights and intensities...
               meas_array_size = meas_lights.getArray(cycle).getLength();                                          // get the number of measurement/detector subsets in the new cycle
 
               // if (PULSERDEBUG) {
@@ -2080,6 +2144,8 @@ if (protocol_set_mode==1) {
               if (cycle != 0) {
                 _pulsedistance_prev = _pulsedistance;
               }
+              // ************************************************** the following code sets up the delay before the measuring pulse, during which a set of actinic LEDs can be activatged ******************************
+
               String distanceString = pulsedistance.getString(cycle);                                           // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
               _pulsedistance = expr(distanceString.c_str());                                                    // initialize variables for pulsesize and pulsedistance (as well as the previous cycle's pulsesize and pulsedistance).  We define these only once per cycle so we're not constantly calling the JSON (which is slow)
               first_flag = 1;                                                                                   // flip flag indicating that it's the 0th pulse and a new cycle
@@ -2098,12 +2164,47 @@ if (protocol_set_mode==1) {
             //            assert(_number_samples >= 0 && _number_samples < 500);
 
             _meas_light = meas_lights.getArray(cycle).getLong(meas_number % meas_array_size);             // move to next measurement light
+            
+            if (suppress_m_pulse.getLength()>0){
+                if (suppress_m_pulse.getArray(cycle).getLong(meas_number % meas_array_size)>0) {
+                  _suppress_m_pulse=1;
+                }
+                else
+                {
+                  _suppress_m_pulse=0;
+                }
+            }
+            else
+            {
+              _suppress_m_pulse=0;
+            }
+
+            // Serial_Print("_suppress_m_pulse = ");
+            // Serial_Print_Line(_suppress_m_pulse);
+
+            if (WASP_lights.getLength()>0){
+                  _WASP_light = WASP_lights.getArray(cycle).getLong(meas_number % meas_array_size);             // move to next measurement light
+            
+            }
+            else
+            {
+              _WASP_light=0;
+            }
+
             String intensity_string = m_intensities.getArray(cycle).getString(meas_number % meas_array_size);          // evaluate input intensity to see if it was an expression
             uint16_t _m_intensity = expr(intensity_string.c_str());
             //            assert(_m_intensity >= 0 && _m_intensity <= 4095);
             //Serial_Printf("is: %s pli: %d\n", intensity_string, _m_intensity);
+            uint16_t _WASP_intensity = 0; //expr(w_intensity_string.c_str());
             
-
+            if (WASP_intensities.getLength()>0){ 
+              String w_intensity_string = WASP_intensities.getArray(cycle).getString(meas_number % meas_array_size);          // evaluate input intensity to see if it was an expression
+              _WASP_intensity = expr(w_intensity_string.c_str());
+            }
+            else
+            {
+              _WASP_intensity=0;
+            }
             uint16_t detector = detectors.getArray(cycle).getLong(meas_number % meas_array_size);          // move to next detector
             //            assert(detector >= 1 && detector <= 10);
 
@@ -2198,11 +2299,22 @@ if (protocol_set_mode==1) {
 
               //            Serial_Printf("_meas_light = %d, par_to_dac = %d, _m_intensity = %d, dac_lights = %d\n",_meas_light,par_to_dac(_m_intensity, _meas_light),_m_intensity,dac_lights);
 
-              if (!dac_lights)                                                     // evaluate as an expression...
+              if (!dac_lights) {                                                 // evaluate as an expression...
                 DAC_set(_meas_light, par_to_dac(_m_intensity, _meas_light));       // set the DAC, make sure to convert PAR intensity to DAC value
-              else                                                                 // otherwise evaluate directly as a number to enter into the DAC
+                //DAC_set(1, 1000);       // DMK test addition set the DAC, make sure to convert PAR intensity to DAC value
+            }
+              else {                                                    // otherwise evaluate directly as a number to enter into the DAC
                 DAC_set(_meas_light, _m_intensity);                                // set the DAC, make sure to convert PAR intensity to DAC value
+              }
 
+
+        if (WASP_intensities.getLength()>0){ //if a WASP esperiment is indicated, set the intensity of the WASP light pulse
+          
+            DAC_set(_WASP_light, par_to_dac(_WASP_intensity, _WASP_light));       // set the DAC, make sure to convert PAR intensity to DAC value
+         }
+         //Serial_Print("_WASP_intensity=");
+         //Serial_Print_Line(_WASP_intensity);
+         
               for (unsigned i = 0; i < NUM_LEDS; i++) {                         // set the DAC lights for actinic lights in the current pulse set
                 if (_a_lights[i] != 0) {                                        // if there's a light there, then change it, otherwise skip
                   if (!dac_lights) {                                                                            // evaluate as an expression...
@@ -2221,7 +2333,7 @@ if (protocol_set_mode==1) {
                   // } // PULSERDEBUG
                 }
               } // for
-
+              DAC_set(1, 200);       // DMK test addition set the DAC, make sure to convert PAR intensity to DAC value
               DAC_change();                                                        // send values to DAC
 
             }  // if (pulse < meas_array_size)
@@ -2830,10 +2942,20 @@ static void pulse3() {                      // ISR to turn on/off LED pulse - al
 
   const unsigned  STABILIZE = 10;                // this delay gives the LED current controller op amp the time needed to stabilize
   register int pin = LED_to_pin[_meas_light];
+  register int WASP_pin = LED_to_pin[_WASP_light]; 
   register int pulse_size = _pulsesize;
-
+  register int out_val=HIGH;
+  
   noInterrupts();
-  digitalWriteFast(pin, HIGH);           // turn on measuring light
+  if (_suppress_m_pulse==1) { //this option is added to get critical control data where the experiment is conducted 
+                              // normally except that the measuring pulse if not given. 
+    out_val=LOW;
+  } 
+  if (WASP_pin>0) {
+      digitalWriteFast(WASP_pin, HIGH);           // If a WASP experiment is indicated, switch on WASP light
+  }
+  digitalWriteFast(pin, out_val);           // turn on measuring light
+
   delayMicroseconds(STABILIZE);          // this delay gives the LED current controller op amp the time needed to turn
   // the light on completely + stabilize.
   // Very low intensity measuring pulses may require an even longer delay here.
@@ -2841,6 +2963,9 @@ static void pulse3() {                      // ISR to turn on/off LED pulse - al
   digitalWriteFast(HOLDM, LOW);          // turn off sample and hold discharge
   delayMicroseconds(pulse_size);         // pulse width
   digitalWriteFast(pin, LOW);            // turn off measuring light
+  if (WASP_pin>0) {
+    digitalWriteFast(WASP_pin, LOW);           // If a WASP experiment is indicated, switch off WASP light
+  }
   pulse_done = 1;                        // indicate that we are done
   // NOTE:  interrupts are left off and must be re-enabled
 }
@@ -3636,7 +3761,7 @@ void print_calibrations() {
                );
 //  %f\",\"%f\",\"%f\"],\n", , eeprom->mag_bias[1], eeprom->mag_bias[2]);
 
-  Serial_Print("\"mag_bias\": [\"");
+  Serial_Print("\"mag_bias\": [");
   Serial_Print(eeprom->mag_bias[0], 3),
   Serial_Print(",");
   Serial_Print(eeprom->mag_bias[1], 3),
@@ -3646,7 +3771,7 @@ void print_calibrations() {
 
     //Serial_Printf("\"mag_cal\": [[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"]],\n", eeprom->mag_cal[0][0], eeprom->mag_cal[0][1], eeprom->mag_cal[0][2], eeprom->mag_cal[1][0], eeprom->mag_cal[1][1], eeprom->mag_cal[1][2], eeprom->mag_cal[2][0], eeprom->mag_cal[2][1], eeprom->mag_cal[2][2]);
 
-  Serial_Print("\"mag_cal\": [[\"");
+  Serial_Print("\"mag_cal\": [");
   Serial_Print(eeprom->mag_cal[0][0], 3),
   Serial_Print(",");
   Serial_Print(eeprom->mag_cal[0][1], 3),
@@ -3669,7 +3794,7 @@ void print_calibrations() {
 
    // Serial_Printf("\"accel_bias\": [\"%f\",\"%f\",\"%f\"],\n", eeprom->accel_bias[0], eeprom->accel_bias[1], eeprom->accel_bias[2]);
 
-  Serial_Print("\"accel_bias\": [\"");
+  Serial_Print("\"accel_bias\": [");
   Serial_Print(eeprom->accel_bias[0], 3),
   Serial_Print(",");
   Serial_Print(eeprom->accel_bias[1], 3),
@@ -3681,25 +3806,25 @@ void print_calibrations() {
   
     //Serial_Printf("\"accel_cal\": [[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"],[\"%f\",\"%f\",\"%f\"]],\n", eeprom->accel_cal[0][0], eeprom->accel_cal[0][1], eeprom->accel_cal[0][2], eeprom->accel_cal[1][0], eeprom->accel_cal[1][1], eeprom->accel_cal[1][2], eeprom->accel_cal[2][0], eeprom->accel_cal[2][1], eeprom->accel_cal[2][2]);
 
-  Serial_Print("\"mag_cal\": [[\"");
-  Serial_Print(eeprom->accel_cal[0][0], 3),
-  Serial_Print(",");
-  Serial_Print(eeprom->accel_cal[0][1], 3),
-  Serial_Print(",");
-  Serial_Print(eeprom->accel_cal[0][2], 3),
-  Serial_Print(",");
-  Serial_Print(eeprom->accel_cal[1][0], 3),
-  Serial_Print(",");
-  Serial_Print(eeprom->accel_cal[1][1], 3),
-  Serial_Print(",");
-  Serial_Print(eeprom->accel_cal[1][2], 3),
-  Serial_Print(",");
-  Serial_Print(eeprom->accel_cal[2][0], 3),
-  Serial_Print(",");
-  Serial_Print(eeprom->accel_cal[2][1], 3),
-  Serial_Print(",");
-  Serial_Print(eeprom->accel_cal[2][2], 3),
-  Serial_Print("],\n");
+  // Serial_Print("\"mag_cal\": [[");
+  // Serial_Print(eeprom->accel_cal[0][0], 3),
+  // Serial_Print(",");
+  // Serial_Print(eeprom->accel_cal[0][1], 3),
+  // Serial_Print(",");
+  // Serial_Print(eeprom->accel_cal[0][2], 3),
+  // Serial_Print(",");
+  // Serial_Print(eeprom->accel_cal[1][0], 3),
+  // Serial_Print(",");
+  // Serial_Print(eeprom->accel_cal[1][1], 3),
+  // Serial_Print(",");
+  // Serial_Print(eeprom->accel_cal[1][2], 3),
+  // Serial_Print(",");
+  // Serial_Print(eeprom->accel_cal[2][0], 3),
+  // Serial_Print(",");
+  // Serial_Print(eeprom->accel_cal[2][1], 3),
+  // Serial_Print(",");
+  // Serial_Print(eeprom->accel_cal[2][2], 3),
+  // Serial_Print("],\n");
 
 
 
@@ -3709,24 +3834,24 @@ void print_calibrations() {
   
   Serial_Print("\"light_slope_all\": [\"");
   Serial_Print(eeprom->light_slope_all,3),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
 
 
 //  Serial_Printf("\"light_slope_r\": \"%f\",\n", eeprom->light_slope_r);
 
   Serial_Print("\"light_slope_r\": [\"");
   Serial_Print(eeprom->light_slope_r,3),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
   
 //  Serial_Printf("\"light_slope_g\": \"%f\",\n", eeprom->light_slope_g);
   Serial_Print("\"light_slope_g\": [\"");
   Serial_Print(eeprom->light_slope_g,3),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
  
  // Serial_Printf("\"light_slope_b\": \"%f\",\n", eeprom->light_slope_b);
   Serial_Print("\"light_slope_b\": [\"");
   Serial_Print(eeprom->light_slope_b,3),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
   
   
   
@@ -3734,63 +3859,73 @@ void print_calibrations() {
 
   Serial_Print("\"light_yint\": [\"");
   Serial_Print(eeprom->light_yint),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
 
 //  Serial_Printf("\"detector_offset_slope\": [\"%f\",\"%f\",\"%f\",\"%f\"],\n", eeprom->detector_offset_slope[0], eeprom->detector_offset_slope[1], eeprom->detector_offset_slope[2], eeprom->detector_offset_slope[3]);
   
-  Serial_Print("\"detector_offset_slope\": [[\"");
+  Serial_Print("\"detector_offset_slope\": [\"");
   Serial_Print(eeprom->detector_offset_slope[0], 3),
-  Serial_Print(",");
+  Serial_Print("\",\"");
   Serial_Print(eeprom->detector_offset_slope[1], 3),
-  Serial_Print(",");
+  Serial_Print("\",\"");
   Serial_Print(eeprom->detector_offset_slope[2], 3),
-  Serial_Print(",");
+  Serial_Print("\",\"");
   Serial_Print(eeprom->detector_offset_slope[3], 3),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
 
 
   
   
 //  Serial_Printf("\"detector_offset_yint\": [\"%f\",\"%f\",\"%f\",\"%f\"],\n", eeprom->detector_offset_yint[0], eeprom->detector_offset_yint[1], eeprom->detector_offset_yint[2], eeprom->detector_offset_yint[3]);
-  Serial_Print("\"detector_offset_yint\": [[\"");
+  Serial_Print("\"detector_offset_yint\": [\"");
   Serial_Print(eeprom->detector_offset_yint[0], 3),
-  Serial_Print(",");
+  Serial_Print("\",\"");
   Serial_Print(eeprom->detector_offset_yint[1], 3),
-  Serial_Print(",");
+  Serial_Print("\",\"");
   Serial_Print(eeprom->detector_offset_yint[2], 3),
-  Serial_Print(",");
+  Serial_Print("\",\"");
   Serial_Print(eeprom->detector_offset_yint[3], 3),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
 
 
 //  Serial_Printf("\"thickness_a\": \"%f\",\n", eeprom->thickness_a);
 
   Serial_Print("\"thickness_a\": [\"");
   Serial_Print(eeprom->thickness_a,3),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
 
 //  Serial_Printf("\"thickness_b\": \"%f\",\n", eeprom->thickness_b);
   Serial_Print("\"thickness_b\": [\"");
   Serial_Print(eeprom->thickness_b,3),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
  
  // Serial_Printf("\"thickness_c\": \"%f\",\n", eeprom->thickness_c);
   Serial_Print("\"thickness_c\": [\"");
   Serial_Print(eeprom->thickness_c, 3),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
   
+ // Serial_Printf("\"thickness_c\": \"%f\",\n", eeprom->thickness_c);
+  Serial_Print("\"open_position\": [\"");
+  Serial_Print(eeprom->open_thickness, 3),
+  Serial_Print("\"],\n");
+  
+ // Serial_Printf("\"thickness_c\": \"%f\",\n", eeprom->thickness_c);
+  Serial_Print("\"closed_position\": [\"");
+  Serial_Print(eeprom->closed_thickness, 3),
+  Serial_Print("\"],\n");
+
   
  // Serial_Printf("\"thickness_min\": \"%f\",\n", eeprom->thickness_min);
   
   Serial_Print("\"thickness_min\": [\"");
   Serial_Print(eeprom->thickness_min, 3),
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
 
  // Serial_Printf("\"thickness_max\": \"%f\",\n", eeprom->thickness_max);
 
   Serial_Print("\"thickness_max\": [\"");
   Serial_Print(eeprom->thickness_max, 3);
-  Serial_Print("],\n");
+  Serial_Print("\"],\n");
 
 
   Serial_Print("\"par_to_dac_slope1\": [");
@@ -3800,6 +3935,8 @@ void print_calibrations() {
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->par_to_dac_slope1[i], 3);
     Serial_Print("\"],\n");
 
@@ -3816,6 +3953,8 @@ void print_calibrations() {
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->par_to_dac_slope2[i], 3);
     Serial_Print("\"],\n");
 
@@ -3832,6 +3971,8 @@ Serial_Print("\"par_to_dac_slope3\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->par_to_dac_slope3[i], 3);
     Serial_Print("\"],\n");
 
@@ -3848,6 +3989,8 @@ Serial_Print("\"par_to_dac_slope4\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->par_to_dac_slope4[i], 3);
     Serial_Print("\"],\n");
 
@@ -3865,6 +4008,8 @@ Serial_Print("\"par_to_dac_yint\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->par_to_dac_yint[i], 3);
     Serial_Print("\"],\n");
 
@@ -3881,6 +4026,8 @@ Serial_Print("\"ir_baseline_slope\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->ir_baseline_slope[i], 3);
     Serial_Print("\"],\n");
 
@@ -3898,6 +4045,8 @@ Serial_Print("\"ir_baseline_yint\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->ir_baseline_yint[i], 3);
     Serial_Print("\"],\n");
 
@@ -3914,6 +4063,8 @@ Serial_Print("\"colorcal_intensity1_slope\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->colorcal_intensity1_slope[i], 3);
     Serial_Print("\"],\n");
 
@@ -3933,6 +4084,8 @@ Serial_Print("\"colorcal_intensity1_yint\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->colorcal_intensity1_yint[i], 3);
     Serial_Print("\"],\n");
 
@@ -3951,6 +4104,8 @@ Serial_Print("\"colorcal_intensity2_slope\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->colorcal_intensity2_slope[i], 3);
     Serial_Print("\"],\n");
 
@@ -3968,6 +4123,8 @@ Serial_Print("\"colorcal_intensity2_yint\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->colorcal_intensity2_yint[i], 3);
     Serial_Print("\"],\n");
 
@@ -3988,6 +4145,8 @@ Serial_Print("\"colorcal_intensity3_slope\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->colorcal_intensity3_slope[i], 3);
     Serial_Print("\"],\n");
 
@@ -4005,6 +4164,8 @@ Serial_Print("\"colorcal_intensity3_yint\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->colorcal_intensity3_yint[i], 3);
     Serial_Print("\"],\n");
 
@@ -4023,6 +4184,7 @@ Serial_Print("\"colorcal_blank1\": [");
     Serial_Print("\",");
     
   }
+   Serial_Print("\"");
     Serial_Print(eeprom->colorcal_blank1[i], 3);
     Serial_Print("\"],\n");
 
@@ -4039,6 +4201,8 @@ Serial_Print("\"colorcal_blank2\": [");
     Serial_Print("\",");
     
   }
+     Serial_Print("\"");
+
     Serial_Print(eeprom->colorcal_blank2[i], 3);
     Serial_Print("\"],\n");
 
@@ -4056,7 +4220,9 @@ Serial_Print("\"colorcal_blank3\": [");
     Serial_Print("\",");
     
   }
-    Serial_Print(eeprom->colorcal_blank2[i], 3);
+     Serial_Print("\"");
+
+    Serial_Print(eeprom->colorcal_blank3[i], 3);
     Serial_Print("\"],\n");
 
   //for (i = 0; i < NUM_USERDEFS - 1; i++)
@@ -4072,7 +4238,7 @@ Serial_Print("\"colorcal_blank3\": [");
   Serial_Printf("\"userdef%d\":", i);
   Serial_Print("\"");
   Serial_Print( eeprom->userdef[i], 3);
-  Serial_Print("\"\n");
+  Serial_Print("\"}\n");
   
 
 

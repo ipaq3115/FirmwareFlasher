@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 
-const int NUM_USERDEFS = 100;
+const int NUM_USERDEFS = 135;
 
 class eeprom_class
 {
@@ -45,6 +45,8 @@ class eeprom_class
     volatile float thickness_c;
     volatile float thickness_min;
     volatile float thickness_max;
+
+
     /*
        replace calibration_slope and all that just with par_to_dac (and create a simple function for conversion)...- if the relationships is more complicated than just mx+b then add more variables as needed
     */
@@ -84,6 +86,11 @@ class eeprom_class
     volatile float auto_blank_light[NUM_LEDS + 1];   // holds the amplitude read from a trial (baseline or blank) pulse as set by auto_blank
     volatile float auto_blank_detector[NUM_LEDS + 1];   // holds the amplitude read from a trial (baseline or blank) pulse as set by auto_blank
     volatile float auto_blank_amplitude[NUM_LEDS + 1];   // holds the amplitude read from a trial (baseline or blank) pulse as set by auto_blank
+
+    volatile float open_thickness;  //holds the value for the thickness guage above which the clamp should be OPEN
+    volatile float closed_thickness; //holds the value for the thickness guage below which the clamp should be CLOSED 
+    
+
 
 
 };

@@ -12,7 +12,7 @@
 #include "serial.h"
 #include <SPI.h>                    // include the new SPI library
 #include <i2c_t3.h>
-unsigned long last_activity;
+//unsigned long last_activity;
 //unsigned long energy_sleep_time;
 
 
@@ -468,7 +468,7 @@ void energySave() {
   if ((millis() - last_activity) > energy_save_timeout) {  // 
    //Serial.print("short energy save");
     turn_off_5V();                   
-    activity(); //reset activity to stop continuous triggering               
+    //activity(); //reset activity to stop continuous triggering               
   }
 }  // 
 

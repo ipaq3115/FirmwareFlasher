@@ -326,7 +326,7 @@ float check_thickness(void) { //DMK added this version of thickness guage for th
     thickness_raw = (sum / 1000);
     // dividing thickness_a by 1,000,000,000 to bring it back to it's actual value
     thickness = (eeprom->thickness_a * thickness_raw * thickness_raw / 1000000000 + eeprom->thickness_b * thickness_raw + eeprom->thickness_c) / 1000; // calibration information is saved in uM, so divide by 1000 to convert back to mm.
-    return thickness;
+    return thickness_raw;
 }
 
 
@@ -415,7 +415,7 @@ void par_led_start_on_open(int led, int max_hold_time){
         delay(delay_time);
         thickness=check_thickness();
         //Serial_Printf("\"t\":%.2f,", thickness);
-        if (thickness > 2.0){
+        if (thickness < eeprom->open_thickness){ 
            //Serial_Printf("\"reached threshold\":%.2f,", thickness);
            break;
      }
@@ -478,7 +478,7 @@ void par_led_start_on_close(int led, int max_hold_time) {
         delay(delay_time);
         thickness=check_thickness();
         //Serial_Printf("\"t\":%.2f,", thickness);
-        if (thickness < 1.0){
+        if (thickness > eeprom->closed_thickness){
            //Serial_Printf("\"reached threshold\":%.2f,", thickness);
            break;
         }
@@ -496,7 +496,7 @@ void start_on_close(int max_hold_time) {
     max_numer_of_loops=max_hold_time/delay_time;
     for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
         thickness=check_thickness();
-        if (thickness < 1.0){
+        if (thickness > eeprom->closed_thickness){
            break;
         }
 
@@ -517,7 +517,7 @@ void start_on_open(int max_hold_time) {
 
     for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
         thickness=check_thickness();
-        if (thickness > 2.0){
+        if (thickness < eeprom->open_thickness){
            break;
         }
 
@@ -537,7 +537,7 @@ void start_on_open_close(int max_hold_time) {
 
     for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
         thickness=check_thickness();
-        if (thickness > 2.0){
+        if (thickness < eeprom->open_thickness){
            break;
         }
         delay(delay_time);
@@ -545,7 +545,7 @@ void start_on_open_close(int max_hold_time) {
 
     for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
         thickness=check_thickness();
-        if (thickness < 1.0){
+        if (thickness > eeprom->closed_thickness){
            break;
         }
         delay(delay_time);

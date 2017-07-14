@@ -165,7 +165,6 @@ void deep_sleep(void);
 
 
 
-//unsigned long last_activity;
 //long unsigned int recent_activity;
 /*
  * Sensor-related variables which are accessed in loop
@@ -242,6 +241,8 @@ EXTERN float co2, co2_averaged;
 EXTERN float detector_read1, detector_read2, detector_read3;
 EXTERN float detector_read1_averaged, detector_read2_averaged,detector_read3_averaged;
 
+// EXTERN float open_thickness
+// EXTERN float close_thickness
 
 EXTERN int auto_bright[10];
 EXTERN int auto_duration[10];
@@ -258,6 +259,8 @@ EXTERN int b_v; //neopixel indicator blued value
 EXTERN int g_v; //neopixel indicator green value
 
 EXTERN unsigned long SHUTDOWN; // = (3 * 60 * 60 * 1000);   // power down after 3 hours of inactivity (in msec)
+EXTERN unsigned long last_activity;
+
 // Coral SpeQ
 //////////////////////PIN DEFINITIONS FOR CORALSPEQ////////////////////////
 #define SPEC_GAIN      21    // was 28 now 21 CZ

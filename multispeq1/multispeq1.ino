@@ -286,7 +286,15 @@ activity();
 
   Serial_Print(DEVICE_NAME);                // note: this may not display because Serial isn't ready
   Serial_Print_Line(" Ready");
+ if (isnan(eeprom->open_thickness)){  //if the falue of open_thickness is less than 100, it is not yet set correcetly
+                                      //in this case, set it to 80% of the max open position   
+   store(open_thickness, eeprom->thickness_min + 0.8*(eeprom->thickness_max-eeprom->thickness_min));
+ }
 
+ if (isnan(eeprom->closed_thickness)){  //if the falue of closed_thickness is less than 100, it is not yet set correcetly
+                                      //in this case, set it to 10% of the max open position   
+   store(closed_thickness, eeprom->thickness_min + 0.1*(eeprom->thickness_max-eeprom->thickness_min));
+ }
 
 }  // setup() - now execute loop()
 
