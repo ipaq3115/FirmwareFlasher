@@ -89,9 +89,8 @@ class eeprom_class
 
     volatile float open_thickness;  //holds the value for the thickness guage above which the clamp should be OPEN
     volatile float closed_thickness; //holds the value for the thickness guage below which the clamp should be CLOSED 
-    
-
-
+    volatile float mag_orientation;   // the magnets for the leaf thickness sensor can be in two orientations. This value stores a number that 
+                                      //indicates this orientation
 
 };
 

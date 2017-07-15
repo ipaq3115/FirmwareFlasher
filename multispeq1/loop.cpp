@@ -273,7 +273,7 @@ void do_command()
 
    break;
 
- case hash("set_closed_position"):
+ case hash("set_open_closed_positions"):
  {
       turn_on_5V();
       Serial_Print_Line("\"message\": \"Set clamp so the position BELOW whcih will be detected as CLOSED, then enter +: \"}");
@@ -290,16 +290,10 @@ void do_command()
       else{
         Serial_Print("\"Error: thickness setting is at or below 0\"");
       }
- }
 
-   break;
-
- case hash("set_open_position"):
- {
-      turn_on_5V();
       Serial_Print_Line("\"message\": \"Set clamp so the position ABOVE which will be detected as OPEN, then enter +: \"}");
       setting =  Serial_Input_Double("+", 0);
-      float set_thickness = get_thickness(0, 1);
+      set_thickness = get_thickness(0, 1);
       if (set_thickness > 0) {
         Serial_Print("\"The thickness Hall Effect reading ABOVE which the clamp is OPEN is now set to\":");
         Serial_Print(set_thickness, 2);
@@ -310,8 +304,16 @@ void do_command()
       else{
         Serial_Print("\"Error: thickness setting is at or below 0\"");
       }
+      //determine the orientation of the magnet:
+      // This is needed to decide if 
 
- }
+      if (eeprom->open_thickness > eeprom->closed_thickness){
+        store(mag_orientation, 1);
+      }
+      else {
+        store(mag_orientation, -1);
+      }
+ }  
    break;
 
 
@@ -1585,20 +1587,20 @@ Serial_Print(",\"sample\":[");
 
 if (protocol_set_mode==1) {
 
-  //Serial_Print("{\"light_intensity_raw\":0,\"data_raw\":[],"); //This is a hack to get around the insertion of the time zone information
+  Serial_Print("{\"light_intensity_raw\":0,\"data_raw\":[],"); //This is a hack to get around the insertion of the time zone information
   
-  Serial_Print("{\"protocol_id\":\"");
+  Serial_Print("\"protocol_id\":\"");
   Serial_Print(protocol_id.c_str());
   Serial_Print("\",");
   
   //the following code was for the version of Android and Desktop Apps that injected the following: "time": XXXXXX, after a '['. It was necessary to 
   //add the dummy output {"blank:"blank"} to deal with the subsequent maformed JSON caused by the trailing comma.
 
-  //Serial_Print("\"set\": [{\"blank:\":\"blank\"},"); //if we are using protocol_set_mode then wrap the output data as a dictionary, called 
+  Serial_Print("\"set\": [{\"blank:\":\"blank\"},"); //if we are using protocol_set_mode then wrap the output data as a dictionary, called 
 
   // the trailing comma is now eliminated during processing in the Apps.
 
-  Serial_Print("\"set\": ["); //if we are using protocol_set_mode then wrap the output data as dictionary with one element "set" 
+  //Serial_Print("\"set\": ["); //if we are using protocol_set_mode then wrap the output data as dictionary with one element "set" 
 
 }
 

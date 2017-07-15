@@ -286,15 +286,28 @@ activity();
 
   Serial_Print(DEVICE_NAME);                // note: this may not display because Serial isn't ready
   Serial_Print_Line(" Ready");
- if (isnan(eeprom->open_thickness)){  //if the falue of open_thickness is less than 100, it is not yet set correcetly
+ if (isnan(eeprom->open_thickness) || isnan(eeprom->closed_thickness)){  //if the falue of open_thickness is less than 100, it is not yet set correcetly
                                       //in this case, set it to 80% of the max open position   
-   store(open_thickness, eeprom->thickness_min + 0.8*(eeprom->thickness_max-eeprom->thickness_min));
+     store(open_thickness, eeprom->thickness_min + 0.8*(eeprom->thickness_max-eeprom->thickness_min));  //80% of the closed to fully open
+     store(closed_thickness, eeprom->closed_thickness + 0.1*(eeprom->thickness_max-eeprom->thickness_min));  //10% from closed to fully open
+
+   if (eeprom->open_thickness > eeprom->thickness_min){  //first, determine the orientation of the magnet
+      store(mag_orientation, 1);  // In one orientation, the HJall sensor value INCREASED with  INCREASING thickness
+   }
+   else{
+     store(mag_orientation, -1); // In the other orientation, the HJall sensor value DECREASES  with INCREASING  thickness
+   }
+
  }
 
- if (isnan(eeprom->closed_thickness)){  //if the falue of closed_thickness is less than 100, it is not yet set correcetly
-                                      //in this case, set it to 10% of the max open position   
-   store(closed_thickness, eeprom->thickness_min + 0.1*(eeprom->thickness_max-eeprom->thickness_min));
- }
+if (isnan(eeprom->mag_orientation)){
+  if (eeprom->open_thickness > eeprom->thickness_min){  //first, determine the orientation of the magnet
+      store(mag_orientation, 1);  // In one orientation, the HJall sensor value INCREASED with  INCREASING thickness
+   }
+   else{
+     store(mag_orientation, -1); // In the other orientation, the HJall sensor value DECREASES  with INCREASING  thickness
+   }
+}
 
 }  // setup() - now execute loop()
 

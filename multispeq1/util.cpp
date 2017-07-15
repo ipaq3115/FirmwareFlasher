@@ -415,7 +415,8 @@ void par_led_start_on_open(int led, int max_hold_time){
         delay(delay_time);
         thickness=check_thickness();
         //Serial_Printf("\"t\":%.2f,", thickness);
-        if (thickness < eeprom->open_thickness){ 
+        if (eeprom->mag_orientation*(thickness - eeprom->open_thickness) >0){
+        //if (thickness < eeprom->open_thickness){ 
            //Serial_Printf("\"reached threshold\":%.2f,", thickness);
            break;
      }
@@ -478,7 +479,8 @@ void par_led_start_on_close(int led, int max_hold_time) {
         delay(delay_time);
         thickness=check_thickness();
         //Serial_Printf("\"t\":%.2f,", thickness);
-        if (thickness > eeprom->closed_thickness){
+        if (eeprom->mag_orientation*(thickness - eeprom->closed_thickness) < 0){
+        //if (thickness > eeprom->closed_thickness){
            //Serial_Printf("\"reached threshold\":%.2f,", thickness);
            break;
         }
@@ -496,10 +498,15 @@ void start_on_close(int max_hold_time) {
     max_numer_of_loops=max_hold_time/delay_time;
     for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
         thickness=check_thickness();
-        if (thickness > eeprom->closed_thickness){
+        
+        // if (thickness > eeprom->closed_thickness){
+        //    break;
+        // }
+  if (eeprom->mag_orientation*(thickness - eeprom->closed_thickness) < 0){
+        //if (thickness > eeprom->closed_thickness){
+           //Serial_Printf("\"reached threshold\":%.2f,", thickness);
            break;
         }
-
         delay(delay_time);
     }
 }
@@ -517,9 +524,15 @@ void start_on_open(int max_hold_time) {
 
     for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
         thickness=check_thickness();
-        if (thickness < eeprom->open_thickness){
+
+        // if (thickness < eeprom->open_thickness){
+        //    break;
+        // }
+        if (eeprom->mag_orientation*(thickness - eeprom->open_thickness) >0){
+        //if (thickness < eeprom->open_thickness){ 
+           //Serial_Printf("\"reached threshold\":%.2f,", thickness);
            break;
-        }
+     }
 
         delay(delay_time);
     }
@@ -537,17 +550,27 @@ void start_on_open_close(int max_hold_time) {
 
     for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
         thickness=check_thickness();
-        if (thickness < eeprom->open_thickness){
+        // if (thickness < eeprom->open_thickness){
+        //    break;
+        // }
+        if (eeprom->mag_orientation*(thickness - eeprom->open_thickness) >0){
+        //if (thickness < eeprom->open_thickness){ 
+           //Serial_Printf("\"reached threshold\":%.2f,", thickness);
            break;
-        }
+     }
         delay(delay_time);
     }
 
     for (uint16_t i = 0; i < max_numer_of_loops; i++) { 
         thickness=check_thickness();
-        if (thickness > eeprom->closed_thickness){
+      if (eeprom->mag_orientation*(thickness - eeprom->closed_thickness) < 0){
+        //if (thickness > eeprom->closed_thickness){
+           //Serial_Printf("\"reached threshold\":%.2f,", thickness);
            break;
         }
+        // if (thickness > eeprom->closed_thickness){
+        //    break;
+        // }
         delay(delay_time);
     }
 }

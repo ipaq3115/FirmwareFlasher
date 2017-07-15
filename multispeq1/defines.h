@@ -260,6 +260,7 @@ EXTERN int g_v; //neopixel indicator green value
 
 EXTERN unsigned long SHUTDOWN; // = (3 * 60 * 60 * 1000);   // power down after 3 hours of inactivity (in msec)
 EXTERN unsigned long last_activity;
+EXTERN int mag_oeientation; //holds the value for the magnet in the leaf thickness guage
 
 // Coral SpeQ
 //////////////////////PIN DEFINITIONS FOR CORALSPEQ////////////////////////

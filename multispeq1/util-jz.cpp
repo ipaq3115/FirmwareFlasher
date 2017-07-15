@@ -366,7 +366,9 @@ int battery_level(int load)
     digitalWriteFast(PULSE9, 0);
     digitalWriteFast(PULSE10, 0);
 
-    //Serial_Printf("loaded bat = %d counts %fV\n", value, value * (REF_VOLTAGE / 65536));
+    //Serial_Print("\"loaded_bat\":");
+    //Serial_Print(value);
+    //Serial_Print(",");
   }  // if
 
   // set Bat_meas pin to high impedance
