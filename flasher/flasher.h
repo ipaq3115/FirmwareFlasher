@@ -17,6 +17,11 @@
 #error NOT SUPPORTED
 #endif
 
+// FIRMWARE VERSION OF THIS FILE (SAVED TO EEPROM ON FIRMWARE FLASH)
+#define DEVICE_FIRMWARE "1.17"
+#define DEVICE_NAME "MultispeQ"
+#define DEVICE_VERSION "1"
+
 // apparently better - thanks to Frank Boesing
 #define RAMFUNC  __attribute__ ((section(".fastrun"), noinline, noclone, optimize("Os") ))
 
@@ -24,4 +29,3 @@ void upgrade_firmware(void);
 void boot_check(void);
 uint32_t  read_once(unsigned char address);
 void program_once(unsigned char address, uint32_t value);
-
