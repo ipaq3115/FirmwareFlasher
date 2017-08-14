@@ -18,9 +18,9 @@ static int flash_block(uint32_t address, uint32_t *bytes, int count);
 
 // You probably need these, customized for your serial port (ie, Serial, Serial1, etc)
 // For use with other communication links (eg, packet radio, CAN, etc), you need to supply your own versions.
-#define Serial_Available()  Serial.available()
-#define Serial_Read()       Serial.read()
-#define Serial_Printf       Serial.printf()
+// #define Serial_Available()  Serial.available()
+// #define Serial_Read()       Serial.read()
+// #define Serial_Printf       Serial.printf()
 
 const int ledPin = 13;
 
@@ -111,12 +111,12 @@ void Serial_Printf(const char * format, ... )
 
 void upgrade_firmware(void)   // main entry point
 {
-  Serial_Printf("%s flash size = %dK in %dK sectors\n", FLASH_ID, FLASH_SIZE / 1024, FLASH_SECTOR_SIZE / 1024);
+  Serial.printf("%s flash size = %dK in %dK sectors\n", FLASH_ID, FLASH_SIZE / 1024, FLASH_SECTOR_SIZE / 1024);
 
   flash_erase_upper ();   // erase upper half of flash
 
   if ((uint32_t)flash_word < FLASH_SIZE || (uint32_t)flash_erase_sector < FLASH_SIZE || (uint32_t)flash_move < FLASH_SIZE) {
-    Serial_Printf("routines not in ram\n");
+    Serial.printf("routines not in ram\n");
     return;
   }
 
@@ -124,15 +124,15 @@ void upgrade_firmware(void)   // main entry point
   int32_t addr = FLASH_SIZE / 2;
   while (addr > 0 && *((uint32_t *)addr) == 0xFFFFFFFF)
     addr -= 4;
-  Serial_Printf("current firmware 0:%x\n", addr + 4);
+  Serial.printf("current firmware 0:%x\n", addr + 4);
 
   if (addr > FLASH_SIZE / 2 - RESERVE_FLASH) {
-    Serial_Printf("firmware is too large\n");
+    Serial.printf("firmware is too large\n");
     return;
   }
 
-  Serial_Printf("WARNING: this can ruin your device\n");
-  Serial_Printf("waiting for intel hex lines\n");
+  Serial.printf("WARNING: this can ruin your device\n");
+  Serial.printf("waiting for intel hex lines\n");
 
   char line[200];
   int count = 0;
@@ -142,8 +142,8 @@ void upgrade_firmware(void)   // main entry point
   for (;;)  {
     int c;
 
-    while (!Serial_Available()) {}
-    c = Serial_Read();
+    while (!Serial.available()) {}
+    c = Serial.read();
 
     if (c == '\n' || c == '\r') {
       line[count] = 0;          // terminate string
@@ -166,9 +166,9 @@ void upgrade_firmware(void)   // main entry point
 void boot_check(void)
 {
   delay(1000);
-  Serial_Printf("@");
+  Serial.printf("@");
   delay(500);
-  if (Serial_Available() && Serial_Read() == '@')
+  if (Serial.available() && Serial.read() == '@')
     upgrade_firmware();
 
   return;
@@ -387,12 +387,12 @@ flash_hex_line (const char *line)
   int lines;
   if (sscanf(line, ":flash %d", &lines) == 1) {
     if (lines == line_count && done) {
-      Serial_Printf("flash %x:%x begins...\n", min_address, max_address);
+      Serial.printf("flash %x:%x begins...\n", min_address, max_address);
       delay(100);
       flash_move (min_address, max_address);
       // should never get here
     } else {
-      Serial_Printf ("bad line count %d vs %d or not done\n", lines, line_count);
+      Serial.printf ("bad line count %d vs %d or not done\n", lines, line_count);
       return -7;
     }
   } // if
@@ -404,14 +404,14 @@ flash_hex_line (const char *line)
   // must be a hex data line
   if (! parse_hex_line ((const char *)line, (char *)data, (unsigned int *) &address, (unsigned int*) &byte_count, (unsigned int*) &code))
   {
-    Serial_Printf ("bad hex line %s\n", line);
+    Serial.printf ("bad hex line %s\n", line);
     error = 1;
     return -1;
   }
 
   // address sanity check
   if (base_address + address + byte_count > FLASH_SIZE / 2 - RESERVE_FLASH) {
-    Serial_Printf("address too large\n");
+    Serial.printf("address too large\n");
     error = 2;
     return -4;
   }
@@ -423,11 +423,11 @@ flash_hex_line (const char *line)
       break;
     case 1:             // EOF
       delay(1000);
-      Serial_Printf ("done, %d hex lines, address range %x:%x, waiting for :flash %d\n", line_count, min_address, max_address, line_count);
+      Serial.printf ("done, %d hex lines, address range %x:%x, waiting for :flash %d\n", line_count, min_address, max_address, line_count);
       if (check_compatible(min_address + FLASH_SIZE / 2, max_address + FLASH_SIZE / 2))
         done = 1;
       else
-        Serial_Printf ("new firmware not compatible\n");
+        Serial.printf ("new firmware not compatible\n");
       return 0;
     case 2:
       base_address = ((data[0] << 8) | data[1]) << 4;   // extended segment address
@@ -436,7 +436,7 @@ flash_hex_line (const char *line)
       base_address = ((data[0] << 8) | data[1]) << 16;  // extended linear address
       return 0;
     default:
-      Serial_Printf ("err code = %d, line = %s\n", code, line);
+      Serial.printf ("err code = %d, line = %s\n", code, line);
       error = 3;
       return -3;
   }				// switch
@@ -444,7 +444,7 @@ flash_hex_line (const char *line)
   // write hex line to upper flash - note, cast assumes little endian and alignment
   if (flash_block (base_address + address + (FLASH_SIZE / 2), (uint32_t *)data, byte_count))  // offset to upper 128K
   {
-    Serial_Printf ("can't flash %d bytes to %x\n", byte_count, address);
+    Serial.printf ("can't flash %d bytes to %x\n", byte_count, address);
     error = 4;
     return -2;
   }
@@ -483,9 +483,9 @@ void flash_erase_upper()
   // erase each block
   for (address = FLASH_SIZE / 2; address < (FLASH_SIZE - RESERVE_FLASH); address += FLASH_SECTOR_SIZE) {
     if (!flash_sector_erased(address)) {
-      //Serial_Printf("erase sector %x\n", address);
+      //Serial.printf("erase sector %x\n", address);
       if ((ret = flash_erase_sector(address, 0)) != 0)
-        Serial_Printf("flash erase error %d\n", ret);
+        Serial.printf("flash erase error %d\n", ret);
     }
   } // for
 } // flash_erase_upper()
@@ -499,7 +499,7 @@ flash_block (uint32_t address, uint32_t * bytes, int count)
 
   if ((address % 4) != 0 || (count % 4 != 0))  // sanity checks
   {
-    Serial_Printf ("flash_block align error\n");
+    Serial.printf ("flash_block align error\n");
     return -1;
   }
 
@@ -507,7 +507,7 @@ flash_block (uint32_t address, uint32_t * bytes, int count)
   {
     if ((ret = flash_word(address, *bytes)) != 0)
     {
-      Serial_Printf ("flash_block write error %d\n", ret);
+      Serial.printf ("flash_block write error %d\n", ret);
       return -2;
     }
     address += 4;
@@ -624,7 +624,7 @@ parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned i
   if (!sscanf (ptr, "%04x", (unsigned int *)addr))
     return 0;
   ptr += 4;
-  /* Serial_Printf("Line: length=%d Addr=%d\n", len, *addr); */
+  /* Serial.printf("Line: length=%d Addr=%d\n", len, *addr); */
   if (!sscanf (ptr, "%02x", code))
     return 0;
   ptr += 2;
