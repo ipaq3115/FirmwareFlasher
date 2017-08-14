@@ -1,12 +1,12 @@
-
 // Simple test program for OTA firmware updates on teensy 3.x using the USB virtual serial link.
 
 // hint:  on Linux, exit the serial console and do "dd if=blink.hex of=/dev/ttyACM0", then restart the Serial console and
 // enter the ":flash xxx" command.
 
-#include <Arduino.h>
+// #include <Arduino.h>
 #include "flasher.h"
-#include "serial.h"          // you probably don't want this, comment it out
+#include <stdio.h>
+// #include "serial.h"          // you probably don't want this, comment it out
 
 void flash_erase_upper();
 RAMFUNC static int flash_word (uint32_t address, uint32_t word_value);
@@ -16,18 +16,17 @@ static int flash_hex_line(const char *line);
 int parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned int *num, unsigned int *code);
 static int flash_block(uint32_t address, uint32_t *bytes, int count);
 
-#if 0
-
 // You probably need these, customized for your serial port (ie, Serial, Serial1, etc)
 // For use with other communication links (eg, packet radio, CAN, etc), you need to supply your own versions.
 #define Serial_Available()  Serial.available()
 #define Serial_Read()       Serial.read()
-#define Serial_Printf       Serial.printf
+#define Serial_Printf       Serial.printf()
 
 const int ledPin = 13;
 
 void setup ()
 {
+  Serial.begin(115200);
   // put your setup code here, to run once:
   boot_check();             // check if we need to upgrade firmware before running loop()
 
@@ -39,8 +38,8 @@ void setup ()
 
 void loop ()
 {
-#if 0
   //simple example of writing to flash
+  /*
   int ret;
   uint32_t addr = FLASH_SIZE / 2;
   ret = flash_word (addr, 0x123);
@@ -50,7 +49,7 @@ void loop ()
   flash_erase_sector (addr, 0);
   ret = flash_word (addr, 0x456);
   Serial.printf ("%x:%x  %d\n", addr, *(volatile unsigned int *) addr, ret);
-#endif
+  */
 
   upgrade_firmware();
 
@@ -59,9 +58,8 @@ void loop ()
 }  // loop()
 
 
-#if 0
 // Example Serial_Printf() if needed as a reference.  With this, you need to write Serial_Print() (probably easier).
-#define SIZE 200
+/*#define SIZE 200
 
 void Serial_Printf(const char * format, ... )
 {
@@ -75,14 +73,11 @@ void Serial_Printf(const char * format, ... )
   string[SIZE] = 0;
   Serial_Print(string);
   va_end( v_List );
-}
-#endif
-
-#endif
+}*/
 
 // ********************************************************************************************
 
-// Version 1.3
+// Version 1.3B
 
 // code to allow firmware update over any byte stream (serial port, radio link, etc)
 // for teensy 3.x.  It is intended that this code always be included in your application.
@@ -147,8 +142,8 @@ void upgrade_firmware(void)   // main entry point
   for (;;)  {
     int c;
 
-    while (!Serial.available()) {}
-    c = Serial.read();
+    while (!Serial_Available()) {}
+    c = Serial_Read();
 
     if (c == '\n' || c == '\r') {
       line[count] = 0;          // terminate string
@@ -427,6 +422,7 @@ flash_hex_line (const char *line)
     case 0:             // normal data
       break;
     case 1:             // EOF
+      delay(1000);
       Serial_Printf ("done, %d hex lines, address range %x:%x, waiting for :flash %d\n", line_count, min_address, max_address, line_count);
       if (check_compatible(min_address + FLASH_SIZE / 2, max_address + FLASH_SIZE / 2))
         done = 1;
@@ -487,7 +483,7 @@ void flash_erase_upper()
   // erase each block
   for (address = FLASH_SIZE / 2; address < (FLASH_SIZE - RESERVE_FLASH); address += FLASH_SECTOR_SIZE) {
     if (!flash_sector_erased(address)) {
-      Serial_Printf("erase sector %x\n", address);
+      //Serial_Printf("erase sector %x\n", address);
       if ((ret = flash_erase_sector(address, 0)) != 0)
         Serial_Printf("flash erase error %d\n", ret);
     }
@@ -533,7 +529,7 @@ flash_block (uint32_t address, uint32_t * bytes, int count)
 RAMFUNC uint32_t read_once(unsigned char address)
 {
   __disable_irq ();
-  
+
   // read long word
   FTFL_FCCOB0 = 0x41;   // RDONCE
   FTFL_FCCOB1 = address;
@@ -552,7 +548,7 @@ RAMFUNC uint32_t read_once(unsigned char address)
 RAMFUNC void program_once(unsigned char address, uint32_t word_value)
 {
   __disable_irq ();
-  
+
   // program long word
   FTFL_FCCOB0 = 0x43;   // PGMONCE
   FTFL_FCCOB1 = address;
@@ -651,4 +647,3 @@ parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned i
     return 0;			/* checksum error */
   return 1;
 }
-
