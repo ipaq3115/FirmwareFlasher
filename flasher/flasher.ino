@@ -27,12 +27,12 @@ const int ledPin = 13;
 void setup ()
 {
   Serial.begin(115200);
-  // put your setup code here, to run once:
-  boot_check();             // check if we need to upgrade firmware before running loop()
-
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH);    // set the LED on
-  delay(1000);
+  delay(2000);
+  Serial.println("hey!!!!!!!");
+  // put your setup code here, to run once:
+  boot_check();             // check if we need to upgrade firmware before running loop()
   digitalWrite(ledPin, LOW);     // set the LED off
 }
 
@@ -51,9 +51,14 @@ void loop ()
   Serial.printf ("%x:%x  %d\n", addr, *(volatile unsigned int *) addr, ret);
   */
 
-  upgrade_firmware();
+  // upgrade_firmware();
 
-  for (;;) {}
+  // for (;;) {}
+
+  digitalWrite(ledPin, HIGH);    // set the LED on
+  delay(100);
+  digitalWrite(ledPin, LOW);     // set the LED off
+  delay(100);
 
 }  // loop()
 
@@ -132,13 +137,13 @@ void upgrade_firmware(void)   // main entry point
   }
 
   Serial.printf("WARNING: this can ruin your device\n");
-  Serial.printf("waiting for intel hex lines\n");
+  Serial.printf("waiting for intel hex lines ¤\n ");
 
   char line[200];
   int count = 0;
 
   // read in hex lines
-
+  Serial.printf("Y\n");
   for (;;)  {
     int c;
 
@@ -148,6 +153,7 @@ void upgrade_firmware(void)   // main entry point
     if (c == '\n' || c == '\r') {
       line[count] = 0;          // terminate string
       flash_hex_line(line);
+      Serial.printf("Y\n");
       count = 0;
     } else
       line[count++] = c;        // add to string
@@ -166,7 +172,7 @@ void upgrade_firmware(void)   // main entry point
 void boot_check(void)
 {
   delay(1000);
-  Serial.printf("@");
+  Serial.printf("@\n");
   delay(500);
   if (Serial.available() && Serial.read() == '@')
     upgrade_firmware();
