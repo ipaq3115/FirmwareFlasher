@@ -1,4 +1,4 @@
-// #include <Arduino.h>
+#include <Arduino.h>
 #include "FirmwareFlasher.h"
 #include <stdio.h>
 // #include "serial.h"          // you probably don't want this, comment it out
