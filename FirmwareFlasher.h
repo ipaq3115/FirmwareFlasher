@@ -32,4 +32,12 @@ void boot_check(void);
 uint32_t  read_once(unsigned char address);
 void program_once(unsigned char address, uint32_t value);
 
+void flash_erase_upper();
+RAMFUNC static int flash_word (uint32_t address, uint32_t word_value);
+RAMFUNC static int flash_erase_sector (uint32_t address, int unsafe);
+RAMFUNC static void flash_move (uint32_t min_address, uint32_t max_address);
+static int flash_hex_line(const char *line);
+int parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned int *num, unsigned int *code);
+static int flash_block(uint32_t address, uint32_t *bytes, int count);
+
 #endif
