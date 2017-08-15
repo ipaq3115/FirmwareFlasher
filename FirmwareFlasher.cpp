@@ -351,7 +351,7 @@ int FirmwareFlasherClass::flash_hex_line (const char *line)
   //int parse_hex_line(const char *theline, char bytes, unsigned int *addr, unsigned int *num, unsigned int *code);
 
   // must be a hex data line
-  if (! parse_hex_line ((const char *)line, (char *)data, (unsigned int *) &address, (unsigned int*) &byte_count, (unsigned int*) &code))
+  if (! FirmwareFlasher.parse_hex_line((const char *)line, (char *)data, (unsigned int *) &address, (unsigned int*) &byte_count, (unsigned int*) &code))
   {
     Serial.printf ("bad hex line %s\n", line);
     error = 1;
