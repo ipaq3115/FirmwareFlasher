@@ -61,11 +61,11 @@ void Serial_Printf(const char * format, ... )
 
 // TODO - only copy RAMFUNC functions to ram just before they are used
 
-void upgrade_firmware(void)   // main entry point
+void FirmwareFlasherClass::upgrade_firmware(void)   // main entry point
 {
   Serial.printf("%s flash size = %dK in %dK sectors\n", FLASH_ID, FLASH_SIZE / 1024, FLASH_SECTOR_SIZE / 1024);
 
-  flash_erase_upper ();   // erase upper half of flash
+  flash_erase_upper();   // erase upper half of flash
 
   if ((uint32_t)flash_word < FLASH_SIZE || (uint32_t)flash_erase_sector < FLASH_SIZE || (uint32_t)flash_move < FLASH_SIZE) {
     Serial.printf("routines not in ram\n");
@@ -116,7 +116,7 @@ void upgrade_firmware(void)   // main entry point
 
 // This routine is optional and can be removed.
 
-void boot_check(void)
+void FirmwareFlasherClass::boot_check(void)
 {
   delay(1000);
   Serial.printf("@\n");
@@ -129,7 +129,7 @@ void boot_check(void)
 
 
 // check that the uploaded firmware contains a string that indicates that it will run on this MCU
-static int check_compatible(uint32_t min, uint32_t max)
+int FirmwareFlasherClass::check_compatible(uint32_t min, uint32_t max)
 {
   uint32_t i;
 
@@ -160,8 +160,7 @@ static int leave_interrupts_disabled = 0;
 // actual flash operation occurs here - must run from ram
 // flash a 4 byte word
 
-RAMFUNC static int
-flash_word (uint32_t address, uint32_t word_value)
+RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_value)
 {
   if (address >= FLASH_SIZE || (address & 0B11) != 0) // basic checks
     return 1;
@@ -220,8 +219,7 @@ int erase_count = 0;
 
 // *************************************
 
-RAMFUNC static int
-flash_erase_sector (uint32_t address, int unsafe)
+RAMFUNC int FirmwareFlasherClass::flash_erase_sector (uint32_t address, int unsafe)
 {
   if (address > FLASH_SIZE || (address & (FLASH_SECTOR_SIZE - 1)) != 0) // basic checks
     return 1;
@@ -264,8 +262,7 @@ flash_erase_sector (uint32_t address, int unsafe)
 // move upper half down to lower half
 // DANGER: if this is interrupted, the teensy could be permanently destroyed
 
-RAMFUNC static void
-flash_move (uint32_t min_address, uint32_t max_address)
+RAMFUNC void FirmwareFlasherClass::flash_move (uint32_t min_address, uint32_t max_address)
 {
   leave_interrupts_disabled = 1;
 
@@ -313,8 +310,7 @@ flash_move (uint32_t min_address, uint32_t max_address)
 // Note:  hex records must be 32 bit word aligned!
 // TODO: use a CRC value instead of line count
 
-static int
-flash_hex_line (const char *line)
+int FirmwareFlasherClass::flash_hex_line (const char *line)
 {
   // hex records info
   unsigned int byte_count;
@@ -413,8 +409,7 @@ flash_hex_line (const char *line)
 
 // ****************************
 // check if sector is all 0xFF
-static int
-flash_sector_erased(uint32_t address)
+int FirmwareFlasherClass::flash_sector_erased(uint32_t address)
 {
   uint32_t *ptr;
 
@@ -428,7 +423,7 @@ flash_sector_erased(uint32_t address)
 // ***************************
 // erase the entire upper half
 // Note: highest sectors of flash are used for other things - don't erase them
-void flash_erase_upper()
+void FirmwareFlasherClass::flash_erase_upper()
 {
   uint32_t address;
   int ret;
@@ -445,8 +440,7 @@ void flash_erase_upper()
 
 // **************************
 // take a word aligned array of words and write it to upper memory flash
-static int
-flash_block (uint32_t address, uint32_t * bytes, int count)
+int FirmwareFlasherClass::flash_block (uint32_t address, uint32_t * bytes, int count)
 {
   int ret;
 
@@ -479,7 +473,7 @@ flash_block (uint32_t address, uint32_t * bytes, int count)
 // read a WORD from the write once flash area
 // address is 0 to 0xF
 
-RAMFUNC uint32_t read_once(unsigned char address)
+RAMFUNC uint32_t FirmwareFlasherClass::read_once(unsigned char address)
 {
   __disable_irq ();
 
@@ -498,7 +492,7 @@ RAMFUNC uint32_t read_once(unsigned char address)
 // write a 4 byte WORD to the write once flash area
 // address is 0 to 0xF
 
-RAMFUNC void program_once(unsigned char address, uint32_t word_value)
+RAMFUNC void FirmwareFlasherClass::program_once(unsigned char address, uint32_t word_value)
 {
   __disable_irq ();
 
@@ -556,8 +550,7 @@ RAMFUNC void program_once(unsigned char address, uint32_t word_value)
 /* line was valid, or a 0 if an error occured.  The variable */
 /* num gets the number of bytes that were stored into bytes[] */
 
-int
-parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned int *num, unsigned int *code)
+int FirmwareFlasherClass::parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned int *num, unsigned int *code)
 {
   unsigned sum, len, cksum;
   const char *ptr;
