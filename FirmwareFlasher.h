@@ -1,3 +1,5 @@
+#ifndef FirmwareFlasher_h_
+#define FirmwareFlasher_h_
 
 #include <stdint.h>
 #include <kinetis.h>
@@ -29,3 +31,5 @@ void upgrade_firmware(void);
 void boot_check(void);
 uint32_t  read_once(unsigned char address);
 void program_once(unsigned char address, uint32_t value);
+
+#endif
