@@ -19,10 +19,6 @@
 #error NOT SUPPORTED
 #endif
 
-#ifndef DEVICE_FIRMWARE
-#error DEVICE_FIRMWARE must be defined befor #include "FirmwareFlasher.h"
-#endif
-
 // apparently better - thanks to Frank Boesing
 #define RAMFUNC  __attribute__ ((section(".fastrun"), noinline, noclone, optimize("Os") ))
 

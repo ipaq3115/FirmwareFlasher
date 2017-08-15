@@ -1,6 +1,3 @@
-// FIRMWARE VERSION OF THIS FILE (FIRMWARE FLASH)
-#define DEVICE_FIRMWARE "1.17"
-
 #include "FirmwareFlasher.h"
 const int ledPin = 13;
 
