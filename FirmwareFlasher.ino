@@ -1,8 +1,3 @@
-// Simple test program for OTA firmware updates on teensy 3.x using the USB virtual serial link.
-
-// hint:  on Linux, exit the serial console and do "dd if=blink.hex of=/dev/ttyACM0", then restart the Serial console and
-// enter the ":flash xxx" command.
-
 // #include <Arduino.h>
 #include "flasher.h"
 #include <stdio.h>
