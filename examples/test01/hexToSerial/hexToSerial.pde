@@ -15,10 +15,6 @@ String[] lines;
 int index = 0;
 boolean req = false;
 
-String boot = "@\n";
-String request = "¤\n";
-String next = "Y\n";
-
 void setup() 
 {
   size(200, 200);
@@ -26,12 +22,12 @@ void setup()
   // is always my  FTDI adaptor, so I open Serial.list()[0].
   // On Windows machines, this generally opens COM1.
   // Open whatever port is the one you're using.
-  print(boot);
+
   println(Serial.list()[0]);
   
   String portName = Serial.list()[0];
   myPort = new Serial(this, portName, 115200);
-  lines = loadStrings("minimumAndTypeID.ino.hex");
+  lines = loadStrings("fromProcessing.ino.TEENSY31.hex");
 }
 
 void draw()
