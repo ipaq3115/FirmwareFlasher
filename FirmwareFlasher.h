@@ -33,6 +33,7 @@ public:
   void boot_check(void);
 
 private:
+  static int check_compatible(uint32_t min, uint32_t max);
   uint32_t  read_once(unsigned char address);
   void program_once(unsigned char address, uint32_t value);
 
