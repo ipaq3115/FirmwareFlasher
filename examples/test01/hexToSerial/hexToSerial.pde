@@ -70,11 +70,11 @@ void draw()
       }
     }else if (val.contains("waiting for :flash") == true) {
         //myPort.write("\n");
-        myPort.write(":flash276");
-
+        myPort.write(":flash");
+        myPort.write(str(lines.length));
         myPort.write("\n");
         print(":flash");
-        print(lines.length);
+        print(str(lines.length));
         print("\n");
         index = index + 1;
       }
