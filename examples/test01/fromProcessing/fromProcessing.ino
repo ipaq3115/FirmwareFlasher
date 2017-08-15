@@ -11,6 +11,7 @@ void setup ()
   digitalWrite(ledPin, HIGH);    // set the LED on
   delay(2000);
   Serial.println("hey!!!!!!!");
+  Serial.println(FLASH_ID);          // TODO: find a way to force the compiler to not optimize FLASH_ID out
   // put your setup code here, to run once:
   // FirmwareFlasher.boot_check();             // dont check it will start an infinet loop of flashing
   digitalWrite(ledPin, LOW);     // set the LED off

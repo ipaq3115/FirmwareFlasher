@@ -9,6 +9,7 @@
 #define FLASH_SIZE              0x20000
 #define FLASH_SECTOR_SIZE       0x400
 #define FLASH_ID                "fw_teensy3.0"
+// TODO: find a way to force the compiler to not optimize FLASH_ID out
 #define RESERVE_FLASH (2 * FLASH_SECTOR_SIZE)
 #elif defined(__MK20DX256__)
 #define FLASH_SIZE              0x40000
