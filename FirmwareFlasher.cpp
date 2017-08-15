@@ -593,3 +593,7 @@ int FirmwareFlasherClass::parse_hex_line (const char *theline, char *bytes, unsi
     return 0;			/* checksum error */
   return 1;
 }
+
+
+
+FirmwareFlasherClass FirmwareFlasher;
