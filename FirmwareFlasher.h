@@ -27,7 +27,7 @@
 // apparently better - thanks to Frank Boesing
 #define RAMFUNC  __attribute__ ((section(".fastrun"), noinline, noclone, optimize("Os") ))
 
-class FirmwareFlasher {
+class FirmwareFlasherClass {
 public:
   void upgrade_firmware(void);
   void boot_check(void);
@@ -44,5 +44,7 @@ private:
   int parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned int *num, unsigned int *code);
   static int flash_block(uint32_t address, uint32_t *bytes, int count);
 };
+
+extern FirmwareFlasherClass FirmwareFlasher;
 
 #endif
