@@ -9,7 +9,7 @@ void setup ()
   delay(2000);
   Serial.println("hey!!!!!!!");
   // put your setup code here, to run once:
-  boot_check();             // check if we need to upgrade firmware before running loop()
+  FirmwareFlasher.boot_check();             // check if we need to upgrade firmware before running loop()
   digitalWrite(ledPin, LOW);     // set the LED off
 }
 
