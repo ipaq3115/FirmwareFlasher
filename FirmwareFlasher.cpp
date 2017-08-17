@@ -162,6 +162,8 @@ static int leave_interrupts_disabled = 0;
 
 RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_value)
 {
+  Serial.printf("befor: %X\n", *(volatile uint32_t *) address);
+  Serial.printf("writing: %X\n", word_value);
   if (address >= FLASH_SIZE || (address & 0B11) != 0) // basic checks
     return 1;
 
@@ -208,9 +210,106 @@ RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_va
   if (!leave_interrupts_disabled)
     __enable_irq ();
 
+  Serial.printf("after: %X\n", *(volatile uint32_t *) address);
   // check if done OK
-  if (*(volatile uint32_t *) address != word_value)
+  if (*(volatile uint32_t *) address != word_value) {
+    Serial.printf("should be: %X but is: %X\n", word_value, (volatile uint32_t *) address);
+    Serial.printf("FTFL_FSTAT: %X\n", FTFL_FSTAT);
     return 8;
+  }
+
+  return FTFL_FSTAT & (FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0);
+}
+
+// *********************************
+// actual flash operation occurs here - must run from ram
+// flash a 8 byte long
+
+RAMFUNC int FirmwareFlasherClass::flash_long (uint32_t address, uint64_t long_value)
+{
+
+  if (address >= FLASH_SIZE || (address & 0B111) != 0) // basic checks
+    return 1;
+
+  // correct value in FTFL_FSEC no matter what
+  if (address == 0x40C) {
+    long_value = 0xFFFFFFFE;
+  }
+  uint64_t *value64_ptr = &long_value;
+  // uint8_t *value8_ptr = (uint8_t*)value64_ptr;
+  uint32_t *value32_ptr = (uint32_t*)value64_ptr;
+  uint32_t word1_value = *value32_ptr;
+  uint32_t word2_value = *(value32_ptr+1);
+  // Serial.printf("befor: %08X",((*(volatile uint64_t *) address)>>32)&0xFFFFFFFF);
+  // Serial.printf("%08X\n",  *(volatile uint64_t *) address);
+  // Serial.printf("word1: %08X\n", word1_value);
+  // Serial.printf("word2: %08X\n", word2_value);
+  // Serial.printf("writing 16: %016X\n", long_value);
+  // Serial.printf("writing 8: %08X",  (long_value>>32)&0xFFFFFFFF);
+  // Serial.printf("%08X\n",long_value);
+  // Serial.printf("writing 2: %02X", (long_value>>56)&0xFF);
+  // Serial.printf("%02X", (long_value>>48)&0xFF);
+  // Serial.printf("%02X", (long_value>>40)&0xFF);
+  // Serial.printf("%02X", (long_value>>32)&0xFF);
+  // Serial.printf("%02X", (long_value>>24)&0xFF);
+  // Serial.printf("%02X", (long_value>>16)&0xFF);
+  // Serial.printf("%02X", (long_value>>8)&0xFF);
+  // Serial.printf("%02X\n", (long_value)&0xFF);
+  // check if already done - not an error
+  if (*(volatile uint64_t *) address == long_value)
+    return 0;
+
+  // check if not erased
+  if (*(volatile uint64_t *) address != 0xFFFFFFFFFFFFFFFF)  // TODO this fails
+    return 4;
+
+  __disable_irq ();
+
+  while ((FTFL_FSTAT & FTFL_FSTAT_CCIF) != FTFL_FSTAT_CCIF)  // wait for ready
+  {
+  };
+
+  // clear error flags
+  FTFL_FSTAT = FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0;
+
+  // program long long word!
+  FTFL_FCCOB0 = 0x07;   // PGM
+  FTFL_FCCOB1 = address >> 16;
+  FTFL_FCCOB2 = address >> 8;
+  FTFL_FCCOB3 = address;
+  FTFL_FCCOB4 = long_value >> 56;
+  FTFL_FCCOB5 = long_value >> 48;
+  FTFL_FCCOB6 = long_value >> 40;
+  FTFL_FCCOB7 = long_value >> 32;
+  FTFL_FCCOB8 = long_value >> 24;
+  FTFL_FCCOB9 = long_value >> 16;
+  FTFL_FCCOBA = long_value >> 8;
+  FTFL_FCCOBB = long_value;
+
+  FTFL_FSTAT = FTFL_FSTAT_CCIF;  // execute!
+
+  while ((FTFL_FSTAT & FTFL_FSTAT_CCIF) != FTFL_FSTAT_CCIF)  // wait for ready
+  {
+  };
+
+  FMC_PFB0CR |= 0xF << 20;  // flush cache
+
+  if (!leave_interrupts_disabled)
+    __enable_irq ();
+
+  // Serial.printf("after: %08X", *(volatile uint64_t *) address);
+  // Serial.printf("%08X\n", ((*(volatile uint64_t *) address)>>32)&0xFFFFFFFF);
+  //
+  // Serial.printf("FTFL_FSTAT: %X\n", FTFL_FSTAT);
+
+  if (*(volatile uint32_t *) address != word2_value) {
+    Serial.printf("fail block 1");
+    return 8;
+  }
+  if (*((volatile uint32_t *) address+1) != word1_value) {
+    Serial.printf("fail block 2");
+    return 8;
+  }
 
   return FTFL_FSTAT & (FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0);
 }
@@ -620,7 +719,7 @@ int FirmwareFlasherClass::parse_hex_line (const char *theline, char *bytes, unsi
   if (!sscanf (ptr, "%04x", (unsigned int *)addr))
     return 0;
   ptr += 4;
-  /* Serial.printf("Line: length=%d Addr=%d\n", len, *addr); */
+  Serial.printf("Line: length=%d Addr=%d\n", len, *addr);
   if (!sscanf (ptr, "%02x", code))
     return 0;
   ptr += 2;
