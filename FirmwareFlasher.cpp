@@ -188,11 +188,7 @@ RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_va
   FTFL_FSTAT = FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0;
 
   // program long word!
-  #if defined(__MK20DX128__) || defined(__MK20DX256__)
   FTFL_FCCOB0 = 0x06;    // PGM
-  #elif defined(__MK64FX512__) || defined(__MK66FX1M0__)
-  FTFL_FCCOB0 = 0x07;   // PGM
-  #endif
   FTFL_FCCOB1 = address >> 16;
   FTFL_FCCOB2 = address >> 8;
   FTFL_FCCOB3 = address;
@@ -278,6 +274,7 @@ RAMFUNC void FirmwareFlasherClass::flash_move (uint32_t min_address, uint32_t ma
   // below here is critical
 
   // copy upper to lower, always erasing as we go up
+  #if defined(__MK20DX128__) || defined(__MK20DX256__)
   for (address = min_address; address <= max_address; address += 4) {
 
     if ((address & (FLASH_SECTOR_SIZE - 1)) == 0) {   // new sector?
@@ -290,7 +287,20 @@ RAMFUNC void FirmwareFlasherClass::flash_move (uint32_t min_address, uint32_t ma
     error |= flash_word(address, *(uint32_t *)(address + FLASH_SIZE / 2));
 
   } // for
+  #elif defined(__MK64FX512__) || defined(__MK66FX1M0__)
+  for (address = min_address; address <= max_address; address += 8) {
 
+    if ((address & (FLASH_SECTOR_SIZE - 1)) == 0) {   // new sector?
+      error |= flash_erase_sector(address, 54321);
+
+      if (address == (0x40C & ~(FLASH_SECTOR_SIZE - 1)))  // critical sector
+        error |= flash_long(0x40C, 0xFFFFFFFE);                  // fix it immediately
+    }
+
+    error |= flash_long(address, *(uint64_t *)(address + FLASH_SIZE / 2));
+
+  } // for
+  #endif
   // hint - can use LED here for debugging.  Or disable erase and load the same program as is running.
 
   if (error) {
@@ -395,13 +405,21 @@ int FirmwareFlasherClass::flash_hex_line (const char *line)
   }				// switch
 
   // write hex line to upper flash - note, cast assumes little endian and alignment
+  #if defined(__MK20DX128__) || defined(__MK20DX256__)
   if (flash_block (base_address + address + (FLASH_SIZE / 2), (uint32_t *)data, byte_count))  // offset to upper 128K
   {
     Serial.printf ("can't flash %d bytes to %x\n", byte_count, address);
     error = 4;
     return -2;
   }
-
+  #elif defined(__MK64FX512__) || defined(__MK66FX1M0__)
+  if (flash_block (base_address + address + (FLASH_SIZE / 2), (uint64_t *)data, byte_count))  // offset to upper 128K
+  {
+    Serial.printf ("can't flash %d bytes to %x\n", byte_count, address);
+    error = 4;
+    return -2;
+  }
+  #endif
   // track size of modifications
   if (base_address + address + byte_count > max_address)
     max_address = base_address + address + byte_count;
@@ -442,8 +460,10 @@ void FirmwareFlasherClass::flash_erase_upper()
   } // for
 } // flash_erase_upper()
 
+
 // **************************
 // take a word aligned array of words and write it to upper memory flash
+#if defined(__MK20DX128__) || defined(__MK20DX256__)
 int FirmwareFlasherClass::flash_block (uint32_t address, uint32_t * bytes, int count)
 {
   int ret;
@@ -469,6 +489,32 @@ int FirmwareFlasherClass::flash_block (uint32_t address, uint32_t * bytes, int c
   return 0;
 }				// flash_block()
 
+#elif defined(__MK64FX512__) || defined(__MK66FX1M0__)
+int FirmwareFlasherClass::flash_block (uint32_t address, uint64_t * bytes, int count)
+{
+  int ret;
+
+  if ((address % 8) != 0 || (count % 8 != 0))  // sanity checks
+  {
+    Serial.printf ("flash_block align error\n");
+    return -1;
+  }
+
+  while (count > 0)
+  {
+    if ((ret = flash_long(address, *bytes)) != 0)
+    {
+      Serial.printf ("flash_block write error %d\n", ret);
+      return -2;
+    }
+    address += 8;
+    ++bytes;
+    count -= 8;
+  }				// while
+
+  return 0;
+}				// flash_block()
+#endif
 
 // these two are optional
 
