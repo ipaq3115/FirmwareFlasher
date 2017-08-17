@@ -36,6 +36,19 @@
 #error NOT SUPPORTED
 #endif
 
+// MCU Local Memory PCCCR Register Bit Definitions (request to add to kinetis.h?)
+#if defined(__MK66FX1M0__)
+  #define LMEM_PCCCR_GO      ((uint32_t)0x80000000)    //LMC Initiate Cache Command
+  #define LMEM_PCCCR_PUSHW1  ((uint32_t)0x08000000)    //LMC Push all modified lines in way 1
+  #define LMEM_PCCCR_INVW1   ((uint32_t)0x04000000)    //LMC Invalidate Way 1
+  #define LMEM_PCCCR_PUSHW0  ((uint32_t)0x02000000)    //LMC Push all modified lines in way 0
+  #define LMEM_PCCCR_INVW0   ((uint32_t)0x01000000)    //LMC Invalidate Way 0
+  #define LMEM_PCCCR_PCCR3   ((uint32_t)0x00000008)    //LMC Forces no allocation on cache misses (must also have PCCR2 asserted)
+  #define LMEM_PCCCR_PCCR2   ((uint32_t)0x00000004)    //LMC all cacheable areas write through
+  #define LMEM_PCCCR_ENWRBUF ((uint32_t)0x00000002)    //LMC write buffer enable
+  #define LMEM_PCCCR_ENCACHE ((uint32_t)0x00000001)    //LMC cache enable
+#endif
+
 // apparently better - thanks to Frank Boesing
 #define RAMFUNC  __attribute__ ((section(".fastrun"), noinline, noclone, optimize("Os") ))
 

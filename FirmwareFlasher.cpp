@@ -148,7 +148,8 @@ int FirmwareFlasherClass::check_compatible(uint32_t min, uint32_t max)
 
 // WARNING:  you can destroy your MCU with flash erase or write!
 // This code may or may not protect you from that.
-
+// 2nd Modifications for teensy 3.5/3/6 by Deb Hollenback at GiftCoder
+//    This code is released into the public domain.
 // Extensive modifications for OTA updates by Jon Zeeff
 // Original by Niels A. Moseley, 2015.
 // This code is released into the public domain.
@@ -226,19 +227,19 @@ RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_va
 
 // *********************************
 // actual flash operation occurs here - must run from ram
-// flash a 8 byte long
+// flash a 8 byte
 
-RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t long_value)
+RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t phrase_value)
 {
 
   if (address >= FLASH_SIZE || (address & 0B111) != 0) // basic checks
     return 1;
 
-  // correct value in FTFL_FSEC no matter what
-  if (address == 0x40C) {
-    long_value = 0xFFFFFFFE;
+  // correct value in FTFL_FSEC no matter what.
+  if (address == 0x408) {
+    phrase_value = 0xfffff9deffffffff;
   }
-  uint64_t *value64_ptr = &long_value;
+  uint64_t *value64_ptr = &phrase_value;
   // uint8_t *value8_ptr = (uint8_t*)value64_ptr;
   uint32_t *value32_ptr = (uint32_t*)value64_ptr;
   uint32_t word1_value = *value32_ptr;
@@ -259,7 +260,7 @@ RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t long_
   // Serial.printf("%02X", (long_value>>8)&0xFF);
   // Serial.printf("%02X\n", (long_value)&0xFF);
   // check if already done - not an error
-  if (*(volatile uint64_t *) address == long_value)
+  if (*(volatile uint64_t *) address == phrase_value)
     return 0;
 
   // check if not erased
@@ -267,6 +268,9 @@ RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t long_
     return 4;
 
   __disable_irq ();
+  #if defined(__MK66FX1M0__)  //thank you Deb Hollenback at GiftCoder
+    kinetis_hsrun_disable(); //drop out of highspeed mode for flash writes
+  #endif
 
   while ((FTFL_FSTAT & FTFL_FSTAT_CCIF) != FTFL_FSTAT_CCIF)  // wait for ready
   {
@@ -280,14 +284,16 @@ RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t long_
   FTFL_FCCOB1 = address >> 16;
   FTFL_FCCOB2 = address >> 8;
   FTFL_FCCOB3 = address;
-  FTFL_FCCOB4 = long_value >> 56;
-  FTFL_FCCOB5 = long_value >> 48;
-  FTFL_FCCOB6 = long_value >> 40;
-  FTFL_FCCOB7 = long_value >> 32;
-  FTFL_FCCOB8 = long_value >> 24;
-  FTFL_FCCOB9 = long_value >> 16;
-  FTFL_FCCOBA = long_value >> 8;
-  FTFL_FCCOBB = long_value;
+
+  FTFL_FCCOB4 = phrase_value >> 24;
+  FTFL_FCCOB5 = phrase_value >> 16;
+  FTFL_FCCOB6 = phrase_value >> 8;
+  FTFL_FCCOB7 = phrase_value >> 0;
+
+  FTFL_FCCOB8 = phrase_value >> 56;
+  FTFL_FCCOB9 = phrase_value >> 48;
+  FTFL_FCCOBA = phrase_value >> 40;
+  FTFL_FCCOBB = phrase_value >> 32;
 
   FTFL_FSTAT = FTFL_FSTAT_CCIF;  // execute!
 
@@ -297,22 +303,31 @@ RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t long_
 
   FMC_PFB0CR |= 0xF << 20;  // flush cache
 
+  #if defined(__MK66FX1M0__)
+    //Invalidate any cached lines in the CODE bus cache
+    LMEM_PCCCR |= LMEM_PCCCR_GO+LMEM_PCCCR_INVW1+LMEM_PCCCR_INVW0; //issue invalidate cmds, leave lower settings intact
+    while ((LMEM_PCCCR & LMEM_PCCCR_GO) == LMEM_PCCCR_GO)  // wait for invalidate to complete
+    {
+    };
+
+    kinetis_hsrun_enable(); //enable MCU high speed mode
+  #endif
   if (!leave_interrupts_disabled)
     __enable_irq ();
+
+  #if defined(__MK66FX1M0__)
+    //if a printf immediately follows this rtn, delay needed post kinetis_hsrun_enable() or monitor may hang.
+    delayMicroseconds(300);
+  #endif
 
   // Serial.printf("after: %08X", *(volatile uint64_t *) address);
   // Serial.printf("%08X\n", ((*(volatile uint64_t *) address)>>32)&0xFFFFFFFF);
   //
   // Serial.printf("FTFL_FSTAT: %X\n", FTFL_FSTAT);
 
-  if (*(volatile uint32_t *) address != word2_value) {
-    Serial.printf("fail block 1");
+  // check if value actually written
+  if (*(volatile uint64_t *) address != phrase_value)
     return 8;
-  }
-  if (*((volatile uint32_t *) address+1) != word1_value) {
-    Serial.printf("fail block 2");
-    return 8;
-  }
 
   return FTFL_FSTAT & (FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0);
 }
