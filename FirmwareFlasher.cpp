@@ -188,7 +188,11 @@ RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_va
   FTFL_FSTAT = FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0;
 
   // program long word!
-  FTFL_FCCOB0 = 0x06;   // PGM
+  #if defined(__MK20DX128__) || defined(__MK20DX256__)
+  FTFL_FCCOB0 = 0x06;    // PGM
+  #elif defined(__MK64FX512__) || defined(__MK66FX1M0__)
+  FTFL_FCCOB0 = 0x07;   // PGM
+  #endif
   FTFL_FCCOB1 = address >> 16;
   FTFL_FCCOB2 = address >> 8;
   FTFL_FCCOB3 = address;
