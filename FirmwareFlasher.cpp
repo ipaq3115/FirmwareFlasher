@@ -228,7 +228,7 @@ RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_va
 // actual flash operation occurs here - must run from ram
 // flash a 8 byte long
 
-RAMFUNC int FirmwareFlasherClass::flash_long (uint32_t address, uint64_t long_value)
+RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t long_value)
 {
 
   if (address >= FLASH_SIZE || (address & 0B111) != 0) // basic checks
@@ -396,10 +396,10 @@ RAMFUNC void FirmwareFlasherClass::flash_move (uint32_t min_address, uint32_t ma
       error |= flash_erase_sector(address, 54321);
 
       if (address == (0x40C & ~(FLASH_SECTOR_SIZE - 1)))  // critical sector
-        error |= flash_long(0x40C, 0xFFFFFFFE);                  // fix it immediately
+        error |= flash_phrase(0x40C, 0xFFFFFFFE);                  // fix it immediately
     }
 
-    error |= flash_long(address, *(uint64_t *)(address + FLASH_SIZE / 2));
+    error |= flash_phrase(address, *(uint64_t *)(address + FLASH_SIZE / 2));
 
   } // for
   #endif
@@ -604,7 +604,7 @@ int FirmwareFlasherClass::flash_block (uint32_t address, uint64_t * bytes, int c
 
   while (count > 0)
   {
-    if ((ret = flash_long(address, *bytes)) != 0)
+    if ((ret = flash_phrase(address, *bytes)) != 0)
     {
       Serial.printf ("flash_block write error %d\n", ret);
       return -2;
