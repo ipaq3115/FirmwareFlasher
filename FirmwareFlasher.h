@@ -1,3 +1,6 @@
+// WARNING:  you can destroy your MCU with flash erase or write!
+// This code is not ready for use.
+
 #ifndef FirmwareFlasher_h_
 #define FirmwareFlasher_h_
 

@@ -1,3 +1,6 @@
+// WARNING:  you can destroy your MCU with flash erase or write!
+// This code is not ready for use.
+
 #include <Arduino.h>
 #include "FirmwareFlasher.h"
 #include <stdio.h>

@@ -1,5 +1,5 @@
 // WARNING:  you can destroy your MCU with flash erase or write!
-// This code may or may not protect you from that.
+// This code is not ready for use.
 
 #include "FirmwareFlasher.h"
 const int ledPin = 13;
