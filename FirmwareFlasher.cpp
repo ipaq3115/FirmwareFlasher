@@ -1,66 +1,16 @@
-// Simple test program for OTA firmware updates on teensy 3.x using the USB virtual serial link.
+// WARNING:  you can destroy your MCU with flash erase or write!
+// This code is not ready for use.
 
-// hint:  on Linux, exit the serial console and do "dd if=blink.hex of=/dev/ttyACM0", then restart the Serial console and
-// enter the ":flash xxx" command.
-
-// #include <Arduino.h>
-#include "flasher.h"
+#include <Arduino.h>
+#include "FirmwareFlasher.h"
 #include <stdio.h>
 // #include "serial.h"          // you probably don't want this, comment it out
-
-void flash_erase_upper();
-RAMFUNC static int flash_word (uint32_t address, uint32_t word_value);
-RAMFUNC static int flash_erase_sector (uint32_t address, int unsafe);
-RAMFUNC static void flash_move (uint32_t min_address, uint32_t max_address);
-static int flash_hex_line(const char *line);
-int parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned int *num, unsigned int *code);
-static int flash_block(uint32_t address, uint32_t *bytes, int count);
 
 // You probably need these, customized for your serial port (ie, Serial, Serial1, etc)
 // For use with other communication links (eg, packet radio, CAN, etc), you need to supply your own versions.
 // #define Serial_Available()  Serial.available()
 // #define Serial_Read()       Serial.read()
 // #define Serial_Printf       Serial.printf()
-
-const int ledPin = 13;
-
-void setup ()
-{
-  Serial.begin(115200);
-  pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, HIGH);    // set the LED on
-  delay(2000);
-  Serial.println("hey!!!!!!!");
-  // put your setup code here, to run once:
-  boot_check();             // check if we need to upgrade firmware before running loop()
-  digitalWrite(ledPin, LOW);     // set the LED off
-}
-
-void loop ()
-{
-  //simple example of writing to flash
-  /*
-  int ret;
-  uint32_t addr = FLASH_SIZE / 2;
-  ret = flash_word (addr, 0x123);
-  Serial.printf ("%x:%x  %d\n", addr, *(volatile unsigned int *) addr, ret);
-  ret = flash_word (addr, 0x456);  // this will fail
-  Serial.printf ("%x:%x  %d\n", addr, *(volatile unsigned int *) addr, ret);
-  flash_erase_sector (addr, 0);
-  ret = flash_word (addr, 0x456);
-  Serial.printf ("%x:%x  %d\n", addr, *(volatile unsigned int *) addr, ret);
-  */
-
-  // upgrade_firmware();
-
-  // for (;;) {}
-
-  digitalWrite(ledPin, HIGH);    // set the LED on
-  delay(100);
-  digitalWrite(ledPin, LOW);     // set the LED off
-  delay(100);
-
-}  // loop()
 
 
 // Example Serial_Printf() if needed as a reference.  With this, you need to write Serial_Print() (probably easier).
@@ -114,11 +64,15 @@ void Serial_Printf(const char * format, ... )
 
 // TODO - only copy RAMFUNC functions to ram just before they are used
 
-void upgrade_firmware(void)   // main entry point
+uint8_t *FirmwareFlasherClass::saveBytes;
+uint32_t FirmwareFlasherClass::saveAddr = 0xFFFFFFFF;
+uint8_t  FirmwareFlasherClass::saveSize = 0;
+
+void FirmwareFlasherClass::upgrade_firmware(void)   // main entry point
 {
   Serial.printf("%s flash size = %dK in %dK sectors\n", FLASH_ID, FLASH_SIZE / 1024, FLASH_SECTOR_SIZE / 1024);
 
-  flash_erase_upper ();   // erase upper half of flash
+  flash_erase_upper();   // erase upper half of flash
 
   if ((uint32_t)flash_word < FLASH_SIZE || (uint32_t)flash_erase_sector < FLASH_SIZE || (uint32_t)flash_move < FLASH_SIZE) {
     Serial.printf("routines not in ram\n");
@@ -152,8 +106,12 @@ void upgrade_firmware(void)   // main entry point
 
     if (c == '\n' || c == '\r') {
       line[count] = 0;          // terminate string
-      flash_hex_line(line);
-      Serial.printf("Y\n");
+      if(flash_hex_line(line) != 0) {
+        Serial.printf("error\n");
+      }else {
+        Serial.printf("Y\n");
+      }
+
       count = 0;
     } else
       line[count++] = c;        // add to string
@@ -169,7 +127,7 @@ void upgrade_firmware(void)   // main entry point
 
 // This routine is optional and can be removed.
 
-void boot_check(void)
+void FirmwareFlasherClass::boot_check(void)
 {
   delay(1000);
   Serial.printf("@\n");
@@ -182,7 +140,7 @@ void boot_check(void)
 
 
 // check that the uploaded firmware contains a string that indicates that it will run on this MCU
-static int check_compatible(uint32_t min, uint32_t max)
+int FirmwareFlasherClass::check_compatible(uint32_t min, uint32_t max)
 {
   uint32_t i;
 
@@ -198,7 +156,8 @@ static int check_compatible(uint32_t min, uint32_t max)
 
 // WARNING:  you can destroy your MCU with flash erase or write!
 // This code may or may not protect you from that.
-
+// 2nd Modifications for teensy 3.5/3/6 by Deb Hollenback at GiftCoder
+//    This code is released into the public domain.
 // Extensive modifications for OTA updates by Jon Zeeff
 // Original by Niels A. Moseley, 2015.
 // This code is released into the public domain.
@@ -213,9 +172,10 @@ static int leave_interrupts_disabled = 0;
 // actual flash operation occurs here - must run from ram
 // flash a 4 byte word
 
-RAMFUNC static int
-flash_word (uint32_t address, uint32_t word_value)
+RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_value)
 {
+  Serial.printf("befor: %X\n", *(volatile uint32_t *) address);
+  Serial.printf("writing: %X\n", word_value);
   if (address >= FLASH_SIZE || (address & 0B11) != 0) // basic checks
     return 1;
 
@@ -242,7 +202,7 @@ flash_word (uint32_t address, uint32_t word_value)
   FTFL_FSTAT = FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0;
 
   // program long word!
-  FTFL_FCCOB0 = 0x06;   // PGM
+  FTFL_FCCOB0 = 0x06;    // PGM
   FTFL_FCCOB1 = address >> 16;
   FTFL_FCCOB2 = address >> 8;
   FTFL_FCCOB3 = address;
@@ -262,8 +222,98 @@ flash_word (uint32_t address, uint32_t word_value)
   if (!leave_interrupts_disabled)
     __enable_irq ();
 
+  Serial.printf("after: %X\n", *(volatile uint32_t *) address);
   // check if done OK
-  if (*(volatile uint32_t *) address != word_value)
+  if (*(volatile uint32_t *) address != word_value) {
+    Serial.printf("should be: %X but is: %X\n", word_value, (volatile uint32_t *) address);
+    Serial.printf("FTFL_FSTAT: %X\n", FTFL_FSTAT);
+    return 8;
+  }
+
+  return FTFL_FSTAT & (FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0);
+}
+
+// *********************************
+// actual flash operation occurs here - must run from ram
+// flash a 8 byte
+
+RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t phrase_value)
+{
+
+  if (address >= FLASH_SIZE || (address & 0B111) != 0) // basic checks
+    return 1;
+
+  // correct value in FTFL_FSEC no matter what.
+  if (address == 0x408) {
+    phrase_value = 0xfffff9deffffffff;
+  }
+  if (*(volatile uint64_t *) address == phrase_value)
+    return 0;
+
+  // check if not erased
+  if (*(volatile uint64_t *) address != 0xFFFFFFFFFFFFFFFF)  // TODO this fails
+    return 4;
+
+  __disable_irq ();
+  #if defined(__MK66FX1M0__)  //thank you Deb Hollenback at GiftCoder
+    kinetis_hsrun_disable(); //drop out of highspeed mode for flash writes
+  #endif
+
+  while ((FTFL_FSTAT & FTFL_FSTAT_CCIF) != FTFL_FSTAT_CCIF)  // wait for ready
+  {
+  };
+
+  // clear error flags
+  FTFL_FSTAT = FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0;
+
+  // program long long word!
+  FTFL_FCCOB0 = 0x07;   // PGM
+  FTFL_FCCOB1 = address >> 16;
+  FTFL_FCCOB2 = address >> 8;
+  FTFL_FCCOB3 = address;
+
+  FTFL_FCCOB4 = phrase_value >> 24;
+  FTFL_FCCOB5 = phrase_value >> 16;
+  FTFL_FCCOB6 = phrase_value >> 8;
+  FTFL_FCCOB7 = phrase_value >> 0;
+
+  FTFL_FCCOB8 = phrase_value >> 56;
+  FTFL_FCCOB9 = phrase_value >> 48;
+  FTFL_FCCOBA = phrase_value >> 40;
+  FTFL_FCCOBB = phrase_value >> 32;
+
+  FTFL_FSTAT = FTFL_FSTAT_CCIF;  // execute!
+
+  while ((FTFL_FSTAT & FTFL_FSTAT_CCIF) != FTFL_FSTAT_CCIF)  // wait for ready
+  {
+  };
+
+  FMC_PFB0CR |= 0xF << 20;  // flush cache
+
+  #if defined(__MK66FX1M0__)
+    //Invalidate any cached lines in the CODE bus cache
+    LMEM_PCCCR |= LMEM_PCCCR_GO+LMEM_PCCCR_INVW1+LMEM_PCCCR_INVW0; //issue invalidate cmds, leave lower settings intact
+    while ((LMEM_PCCCR & LMEM_PCCCR_GO) == LMEM_PCCCR_GO)  // wait for invalidate to complete
+    {
+    };
+
+    kinetis_hsrun_enable(); //enable MCU high speed mode
+  #endif
+  if (!leave_interrupts_disabled)
+    __enable_irq ();
+
+  #if defined(__MK66FX1M0__)
+    //if a printf immediately follows this rtn, delay needed post kinetis_hsrun_enable() or monitor may hang.
+    delayMicroseconds(300);
+  #endif
+
+  // Serial.printf("after: %08X", *(volatile uint64_t *) address);
+  // Serial.printf("%08X\n", ((*(volatile uint64_t *) address)>>32)&0xFFFFFFFF);
+  //
+  // Serial.printf("FTFL_FSTAT: %X\n", FTFL_FSTAT);
+
+  // check if value actually written
+  if (*(volatile uint64_t *) address != phrase_value)
     return 8;
 
   return FTFL_FSTAT & (FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0);
@@ -273,8 +323,7 @@ int erase_count = 0;
 
 // *************************************
 
-RAMFUNC static int
-flash_erase_sector (uint32_t address, int unsafe)
+RAMFUNC int FirmwareFlasherClass::flash_erase_sector (uint32_t address, int unsafe)
 {
   if (address > FLASH_SIZE || (address & (FLASH_SECTOR_SIZE - 1)) != 0) // basic checks
     return 1;
@@ -317,8 +366,7 @@ flash_erase_sector (uint32_t address, int unsafe)
 // move upper half down to lower half
 // DANGER: if this is interrupted, the teensy could be permanently destroyed
 
-RAMFUNC static void
-flash_move (uint32_t min_address, uint32_t max_address)
+RAMFUNC void FirmwareFlasherClass::flash_move (uint32_t min_address, uint32_t max_address)
 {
   leave_interrupts_disabled = 1;
 
@@ -330,6 +378,7 @@ flash_move (uint32_t min_address, uint32_t max_address)
   // below here is critical
 
   // copy upper to lower, always erasing as we go up
+  #if defined(__MK20DX128__) || defined(__MK20DX256__)
   for (address = min_address; address <= max_address; address += 4) {
 
     if ((address & (FLASH_SECTOR_SIZE - 1)) == 0) {   // new sector?
@@ -342,7 +391,22 @@ flash_move (uint32_t min_address, uint32_t max_address)
     error |= flash_word(address, *(uint32_t *)(address + FLASH_SIZE / 2));
 
   } // for
+  #elif defined(__MK64FX512__) || defined(__MK66FX1M0__)
+  for (address = min_address; address <= max_address; address += 8) {
 
+    if ((address & (FLASH_SECTOR_SIZE - 1)) == 0) {   // new sector?
+      error |= flash_erase_sector(address, 54321);
+
+      // correct value in FTFL_FSEC no matter what.
+      if (address == (0x408 & ~(FLASH_SECTOR_SIZE - 1))) {// critical sector
+        error |= flash_phrase(0x408, 0xfffff9DEffffffff);                  // fix it immediately
+      }
+    }
+
+    error |= flash_phrase(address, *(uint64_t *)(address + FLASH_SIZE / 2));
+
+  } // for
+  #endif
   // hint - can use LED here for debugging.  Or disable erase and load the same program as is running.
 
   if (error) {
@@ -366,8 +430,7 @@ flash_move (uint32_t min_address, uint32_t max_address)
 // Note:  hex records must be 32 bit word aligned!
 // TODO: use a CRC value instead of line count
 
-static int
-flash_hex_line (const char *line)
+int FirmwareFlasherClass::flash_hex_line (const char *line)
 {
   // hex records info
   unsigned int byte_count;
@@ -408,7 +471,7 @@ flash_hex_line (const char *line)
   //int parse_hex_line(const char *theline, char bytes, unsigned int *addr, unsigned int *num, unsigned int *code);
 
   // must be a hex data line
-  if (! parse_hex_line ((const char *)line, (char *)data, (unsigned int *) &address, (unsigned int*) &byte_count, (unsigned int*) &code))
+  if (! FirmwareFlasher.parse_hex_line((const char *)line, (char *)data, (unsigned int *) &address, (unsigned int*) &byte_count, (unsigned int*) &code))
   {
     Serial.printf ("bad hex line %s\n", line);
     error = 1;
@@ -448,13 +511,51 @@ flash_hex_line (const char *line)
   }				// switch
 
   // write hex line to upper flash - note, cast assumes little endian and alignment
+  #if defined(__MK20DX128__) || defined(__MK20DX256__)
   if (flash_block (base_address + address + (FLASH_SIZE / 2), (uint32_t *)data, byte_count))  // offset to upper 128K
   {
     Serial.printf ("can't flash %d bytes to %x\n", byte_count, address);
     error = 4;
     return -2;
   }
-
+  #elif defined(__MK64FX512__) || defined(__MK66FX1M0__)
+  if (byte_count % 8 != 0) {
+    Serial.printf("not 64bit\n");
+    if (byte_count < 16) {
+      if (saveAddr != 0xFFFFFFFF) {//somthing is saved
+        if (address == saveAddr + saveSize) {
+          memmove(data+saveSize, data, byte_count);
+          memcpy(data, saveBytes, saveSize);
+          byte_count += saveSize;
+          address = saveAddr;
+          saveAddr = 0xFFFFFFFF;
+        } else {
+          return -2;
+        }
+      } else if (byte_count < 8) {//nothing saved and shorter than the minimum flash length
+        saveAddr = address;
+        saveSize = byte_count;
+        saveBytes = (uint8_t*) calloc(saveSize, 8);
+        memcpy(saveBytes, data, saveSize);
+        return 0;
+      } else {// nothing saved. flash a phrase and save the overflow
+        saveSize = byte_count-8;
+        saveAddr = address+8;
+        saveBytes = (uint8_t*) calloc(saveSize, 8);
+        memcpy(saveBytes, data + 8, saveSize);
+        byte_count = 8;
+      }
+    } else {
+      return -2;
+    }
+  }
+  if (flash_block (base_address + address + (FLASH_SIZE / 2), (uint64_t *)data, byte_count))  // offset to upper 128K
+  {
+    Serial.printf ("can't flash %d bytes to %x\n", byte_count, address);
+    error = 4;
+    return -2;
+  }
+  #endif
   // track size of modifications
   if (base_address + address + byte_count > max_address)
     max_address = base_address + address + byte_count;
@@ -466,8 +567,7 @@ flash_hex_line (const char *line)
 
 // ****************************
 // check if sector is all 0xFF
-static int
-flash_sector_erased(uint32_t address)
+int FirmwareFlasherClass::flash_sector_erased(uint32_t address)
 {
   uint32_t *ptr;
 
@@ -481,7 +581,7 @@ flash_sector_erased(uint32_t address)
 // ***************************
 // erase the entire upper half
 // Note: highest sectors of flash are used for other things - don't erase them
-void flash_erase_upper()
+void FirmwareFlasherClass::flash_erase_upper()
 {
   uint32_t address;
   int ret;
@@ -496,10 +596,11 @@ void flash_erase_upper()
   } // for
 } // flash_erase_upper()
 
+
 // **************************
 // take a word aligned array of words and write it to upper memory flash
-static int
-flash_block (uint32_t address, uint32_t * bytes, int count)
+#if defined(__MK20DX128__) || defined(__MK20DX256__)
+int FirmwareFlasherClass::flash_block (uint32_t address, uint32_t * bytes, int count)
 {
   int ret;
 
@@ -524,6 +625,32 @@ flash_block (uint32_t address, uint32_t * bytes, int count)
   return 0;
 }				// flash_block()
 
+#elif defined(__MK64FX512__) || defined(__MK66FX1M0__)
+int FirmwareFlasherClass::flash_block (uint32_t address, uint64_t * bytes, int count)
+{
+  int ret;
+
+  if ((address % 8) != 0 || (count % 8 != 0))  // sanity checks
+  {
+    Serial.printf ("flash_block align error\n");
+    return -1;
+  }
+
+  while (count > 0)
+  {
+    if ((ret = flash_phrase(address, *bytes)) != 0)
+    {
+      Serial.printf ("flash_block write error %d\n", ret);
+      return -2;
+    }
+    address += 8;
+    ++bytes;
+    count -= 8;
+  }				// while
+
+  return 0;
+}				// flash_block()
+#endif
 
 // these two are optional
 
@@ -532,7 +659,7 @@ flash_block (uint32_t address, uint32_t * bytes, int count)
 // read a WORD from the write once flash area
 // address is 0 to 0xF
 
-RAMFUNC uint32_t read_once(unsigned char address)
+RAMFUNC uint32_t FirmwareFlasherClass::read_once(unsigned char address)
 {
   __disable_irq ();
 
@@ -551,7 +678,7 @@ RAMFUNC uint32_t read_once(unsigned char address)
 // write a 4 byte WORD to the write once flash area
 // address is 0 to 0xF
 
-RAMFUNC void program_once(unsigned char address, uint32_t word_value)
+RAMFUNC void FirmwareFlasherClass::program_once(unsigned char address, uint32_t word_value)
 {
   __disable_irq ();
 
@@ -609,8 +736,7 @@ RAMFUNC void program_once(unsigned char address, uint32_t word_value)
 /* line was valid, or a 0 if an error occured.  The variable */
 /* num gets the number of bytes that were stored into bytes[] */
 
-int
-parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned int *num, unsigned int *code)
+int FirmwareFlasherClass::parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned int *num, unsigned int *code)
 {
   unsigned sum, len, cksum;
   const char *ptr;
@@ -630,7 +756,7 @@ parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned i
   if (!sscanf (ptr, "%04x", (unsigned int *)addr))
     return 0;
   ptr += 4;
-  /* Serial.printf("Line: length=%d Addr=%d\n", len, *addr); */
+  Serial.printf("Line: length=%d Addr=%d\n", len, *addr);
   if (!sscanf (ptr, "%02x", code))
     return 0;
   ptr += 2;
@@ -653,3 +779,7 @@ parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned i
     return 0;			/* checksum error */
   return 1;
 }
+
+
+
+FirmwareFlasherClass FirmwareFlasher;
