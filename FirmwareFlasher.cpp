@@ -393,8 +393,10 @@ RAMFUNC void FirmwareFlasherClass::flash_move (uint32_t min_address, uint32_t ma
     if ((address & (FLASH_SECTOR_SIZE - 1)) == 0) {   // new sector?
       error |= flash_erase_sector(address, 54321);
 
-      if (address == (0x40C & ~(FLASH_SECTOR_SIZE - 1)))  // critical sector
-        error |= flash_phrase(0x40C, 0xFFFFFFFE);                  // fix it immediately
+      // correct value in FTFL_FSEC no matter what.
+      if (address == (0x408 & ~(FLASH_SECTOR_SIZE - 1))) {// critical sector
+        error |= flash_phrase(0x408, 0xfffff9DEffffffff);                  // fix it immediately
+      }
     }
 
     error |= flash_phrase(address, *(uint64_t *)(address + FLASH_SIZE / 2));
