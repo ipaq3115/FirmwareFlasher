@@ -102,8 +102,12 @@ void FirmwareFlasherClass::upgrade_firmware(void)   // main entry point
 
     if (c == '\n' || c == '\r') {
       line[count] = 0;          // terminate string
-      flash_hex_line(line);
-      Serial.printf("Y\n");
+      if(flash_hex_line(line) != 0) {
+        Serial.printf("error\n");
+      }else {
+        Serial.printf("Y\n");
+      }
+
       count = 0;
     } else
       line[count++] = c;        // add to string
