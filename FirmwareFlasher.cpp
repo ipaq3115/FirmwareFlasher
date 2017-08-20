@@ -519,6 +519,36 @@ int FirmwareFlasherClass::flash_hex_line (const char *line)
     return -2;
   }
   #elif defined(__MK64FX512__) || defined(__MK66FX1M0__)
+  if (byte_count % 8 != 0) {
+    Serial.printf("not 64bit\n");
+    if (byte_count < 16) {
+      if (saveAddr != 0xFFFFFFFF) {//somthing is saved
+        if (address == saveAddr + saveSize) {
+          memmove(data+saveSize, data, byte_count);
+          memcpy(data, saveBytes, saveSize);
+          byte_count += saveSize;
+          address = saveAddr;
+          saveAddr = 0xFFFFFFFF;
+        } else {
+          return -2;
+        }
+      } else if (byte_count < 8) {//nothing saved and shorter than the minimum flash length
+        saveAddr = address;
+        saveSize = byte_count;
+        saveBytes = (uint8_t*) calloc(saveSize, 8);
+        memcpy(saveBytes, data, saveSize);
+        return 0;
+      } else {// nothing saved. flash a phrase and save the overflow
+        saveSize = byte_count-8;
+        saveAddr = address+8;
+        saveBytes = (uint8_t*) calloc(saveSize, 8);
+        memcpy(saveBytes, data + 8, saveSize);
+        byte_count = 8;
+      }
+    } else {
+      return -2;
+    }
+  }
   if (flash_block (base_address + address + (FLASH_SIZE / 2), (uint64_t *)data, byte_count))  // offset to upper 128K
   {
     Serial.printf ("can't flash %d bytes to %x\n", byte_count, address);
