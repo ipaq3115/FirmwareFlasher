@@ -64,6 +64,10 @@ void Serial_Printf(const char * format, ... )
 
 // TODO - only copy RAMFUNC functions to ram just before they are used
 
+uint8_t *FirmwareFlasherClass::saveBytes;
+uint32_t FirmwareFlasherClass::saveAddr = 0xFFFFFFFF;
+uint8_t  FirmwareFlasherClass::saveSize = 0;
+
 void FirmwareFlasherClass::upgrade_firmware(void)   // main entry point
 {
   Serial.printf("%s flash size = %dK in %dK sectors\n", FLASH_ID, FLASH_SIZE / 1024, FLASH_SECTOR_SIZE / 1024);

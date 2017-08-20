@@ -58,6 +58,10 @@ public:
   void boot_check(void);
 
 private:
+  static uint8_t *saveBytes;
+  static uint32_t saveAddr;
+  static uint8_t  saveSize;
+
   static int check_compatible(uint32_t min, uint32_t max);
   uint32_t  read_once(unsigned char address);
   void program_once(unsigned char address, uint32_t value);
