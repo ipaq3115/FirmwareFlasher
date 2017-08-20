@@ -65,7 +65,7 @@ private:
   void flash_erase_upper();
   int flash_sector_erased(uint32_t address);
   RAMFUNC static int flash_word (uint32_t address, uint32_t word_value);
-  RAMFUNC static int flash_phrase (uint32_t address, uint64_t long_value);
+  RAMFUNC static int flash_phrase (uint32_t address, uint64_t phrase_value);
   RAMFUNC static int flash_erase_sector (uint32_t address, int unsafe);
   RAMFUNC static void flash_move (uint32_t min_address, uint32_t max_address);
   static int flash_hex_line(const char *line);

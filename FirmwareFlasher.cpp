@@ -239,27 +239,6 @@ RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t phras
   if (address == 0x408) {
     phrase_value = 0xfffff9deffffffff;
   }
-  uint64_t *value64_ptr = &phrase_value;
-  // uint8_t *value8_ptr = (uint8_t*)value64_ptr;
-  uint32_t *value32_ptr = (uint32_t*)value64_ptr;
-  uint32_t word1_value = *value32_ptr;
-  uint32_t word2_value = *(value32_ptr+1);
-  // Serial.printf("befor: %08X",((*(volatile uint64_t *) address)>>32)&0xFFFFFFFF);
-  // Serial.printf("%08X\n",  *(volatile uint64_t *) address);
-  // Serial.printf("word1: %08X\n", word1_value);
-  // Serial.printf("word2: %08X\n", word2_value);
-  // Serial.printf("writing 16: %016X\n", long_value);
-  // Serial.printf("writing 8: %08X",  (long_value>>32)&0xFFFFFFFF);
-  // Serial.printf("%08X\n",long_value);
-  // Serial.printf("writing 2: %02X", (long_value>>56)&0xFF);
-  // Serial.printf("%02X", (long_value>>48)&0xFF);
-  // Serial.printf("%02X", (long_value>>40)&0xFF);
-  // Serial.printf("%02X", (long_value>>32)&0xFF);
-  // Serial.printf("%02X", (long_value>>24)&0xFF);
-  // Serial.printf("%02X", (long_value>>16)&0xFF);
-  // Serial.printf("%02X", (long_value>>8)&0xFF);
-  // Serial.printf("%02X\n", (long_value)&0xFF);
-  // check if already done - not an error
   if (*(volatile uint64_t *) address == phrase_value)
     return 0;
 
