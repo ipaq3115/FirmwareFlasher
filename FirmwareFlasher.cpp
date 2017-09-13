@@ -4,31 +4,9 @@
 #include <Arduino.h>
 #include "FirmwareFlasher.h"
 #include <stdio.h>
-// #include "serial.h"          // you probably don't want this, comment it out
-
-// You probably need these, customized for your serial port (ie, Serial, Serial1, etc)
-// For use with other communication links (eg, packet radio, CAN, etc), you need to supply your own versions.
-// #define Serial_Available()  Serial.available()
-// #define Serial_Read()       Serial.read()
-// #define Serial_Printf       Serial.printf()
-
-
-// Example Serial_Printf() if needed as a reference.  With this, you need to write Serial_Print() (probably easier).
-/*#define SIZE 200
-
-void Serial_Printf(const char * format, ... )
-{
-  char string[SIZE + 1];        // Warning: fixed buffer size
-  va_list v_List;
-  va_start( v_List, format );
-  vsnprintf( string, SIZE, format, v_List );
-
-  //  assert(strlen(string) < SIZE);
-
-  string[SIZE] = 0;
-  Serial_Print(string);
-  va_end( v_List );
-}*/
+#if defined(_use_udp)
+#include <EthernetUdp.h>
+#endif
 
 // ********************************************************************************************
 
@@ -67,9 +45,32 @@ void Serial_Printf(const char * format, ... )
 uint8_t *FirmwareFlasherClass::saveBytes;
 uint32_t FirmwareFlasherClass::saveAddr = 0xFFFFFFFF;
 uint8_t  FirmwareFlasherClass::saveSize = 0;
+char *FirmwareFlasherClass::key_word;
 
-void FirmwareFlasherClass::upgrade_firmware(void)   // main entry point
+#if defined(_use_udp)
+EthernetUDP *FirmwareFlasherClass::udp;
+
+int FirmwareFlasherClass::dataAvailable(void)
 {
+  // if ()
+  return -1;
+}// dataAvailable()
+#else
+int FirmwareFlasherClass::dataAvailable(void)
+{
+
+  return -1;
+}// dataAvailable()
+#endif
+
+void FirmwareFlasherClass::upgrade_firmware(void* src, char* key, uint16_t key_len)   // main entry point
+{
+  memset(key_word, 0, key_len);
+  memcpy(key_word, key, key_len);
+  #if defined(_use_udp)
+  udp = src;
+  #else
+  #endif
   Serial.printf("%s flash size = %dK in %dK sectors\n", FLASH_ID, FLASH_SIZE / 1024, FLASH_SECTOR_SIZE / 1024);
 
   flash_erase_upper();   // erase upper half of flash
@@ -133,7 +134,7 @@ void FirmwareFlasherClass::boot_check(void)
   Serial.printf("@\n");
   delay(500);
   if (Serial.available() && Serial.read() == '@')
-    upgrade_firmware();
+    // upgrade_firmware();
 
   return;
 }  // boot_check()

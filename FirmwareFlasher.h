@@ -6,7 +6,9 @@
 
 #include <stdint.h>
 #include <kinetis.h>
-//#include "serial.h"
+#if defined(_use_udp)
+#include <EthernetUdp.h>
+#endif
 
 #if defined(__MK20DX128__) //T_3.0
 #define FLASH_SIZE              0x20000
@@ -54,13 +56,19 @@
 
 class FirmwareFlasherClass {
 public:
-  void upgrade_firmware(void);
+  void upgrade_firmware(void* src, char *key, uint16_t len);
   void boot_check(void);
 
 private:
+  static char *key_word;
   static uint8_t *saveBytes;
   static uint32_t saveAddr;
   static uint8_t  saveSize;
+  #if defined(_use_udp)
+  EthernetUDP *udp;
+  #endif
+
+  static int dataAvailable(void);
 
   static int check_compatible(uint32_t min, uint32_t max);
   uint32_t  read_once(unsigned char address);
