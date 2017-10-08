@@ -4,31 +4,6 @@
 #include <Arduino.h>
 #include "FirmwareFlasher.h"
 #include <stdio.h>
-// #include "serial.h"          // you probably don't want this, comment it out
-
-// You probably need these, customized for your serial port (ie, Serial, Serial1, etc)
-// For use with other communication links (eg, packet radio, CAN, etc), you need to supply your own versions.
-// #define Serial_Available()  Serial.available()
-// #define Serial_Read()       Serial.read()
-// #define Serial_Printf       Serial.printf()
-
-
-// Example Serial_Printf() if needed as a reference.  With this, you need to write Serial_Print() (probably easier).
-/*#define SIZE 200
-
-void Serial_Printf(const char * format, ... )
-{
-  char string[SIZE + 1];        // Warning: fixed buffer size
-  va_list v_List;
-  va_start( v_List, format );
-  vsnprintf( string, SIZE, format, v_List );
-
-  //  assert(strlen(string) < SIZE);
-
-  string[SIZE] = 0;
-  Serial_Print(string);
-  va_end( v_List );
-}*/
 
 // ********************************************************************************************
 
