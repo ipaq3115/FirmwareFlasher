@@ -43,6 +43,25 @@ uint8_t *FirmwareFlasherClass::saveBytes;
 uint32_t FirmwareFlasherClass::saveAddr = 0xFFFFFFFF;
 uint8_t  FirmwareFlasherClass::saveSize = 0;
 
+int FirmwareFlasherClass::prepare_flash(void)
+{
+  if ((uint32_t)flash_word < FLASH_SIZE || (uint32_t)flash_erase_sector < FLASH_SIZE || (uint32_t)flash_move < FLASH_SIZE) {
+    return -1; //routines not in ram
+  }
+
+  // what is currently used?
+  int32_t addr = FLASH_SIZE / 2;
+  while (addr > 0 && *((uint32_t *)addr) == 0xFFFFFFFF) {
+    addr -= 4;
+  }
+  if (addr > FLASH_SIZE / 2 - RESERVE_FLASH) {
+    return -2; //firmware is too large
+  }
+
+  flash_erase_upper();   // erase upper half of flash
+  return 0;
+}//prepare_flash()
+
 void FirmwareFlasherClass::upgrade_firmware(void)   // main entry point
 {
   Serial.printf("%s flash size = %dK in %dK sectors\n", FLASH_ID, FLASH_SIZE / 1024, FLASH_SECTOR_SIZE / 1024);

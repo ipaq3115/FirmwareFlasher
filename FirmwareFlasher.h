@@ -54,6 +54,7 @@
 
 class FirmwareFlasherClass {
 public:
+  int prepare_flash(void);
   void upgrade_firmware(void);
   void boot_check(void);
 
