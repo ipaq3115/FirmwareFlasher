@@ -57,7 +57,8 @@ public:
   int prepare_flash(void);
   void upgrade_firmware(void);
   void boot_check(void);
-
+  static int flash_hex_line(const char *line);
+  
 private:
   static uint8_t *saveBytes;
   static uint32_t saveAddr;
@@ -73,7 +74,7 @@ private:
   RAMFUNC static int flash_phrase (uint32_t address, uint64_t phrase_value);
   RAMFUNC static int flash_erase_sector (uint32_t address, int unsafe);
   RAMFUNC static void flash_move (uint32_t min_address, uint32_t max_address);
-  static int flash_hex_line(const char *line);
+
   int parse_hex_line (const char *theline, char *bytes, unsigned int *addr, unsigned int *num, unsigned int *code);
   #if defined(__MK20DX128__) || defined(__MK20DX256__)
   static int flash_block(uint32_t address, uint32_t *bytes, int count);
