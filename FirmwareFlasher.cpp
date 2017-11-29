@@ -49,6 +49,8 @@ int FirmwareFlasherClass::prepare_flash(void)
     return -1; //routines not in ram
   }
 
+  flash_erase_upper();   // erase upper half of flash
+
   // what is currently used?
   int32_t addr = FLASH_SIZE / 2;
   while (addr > 0 && *((uint32_t *)addr) == 0xFFFFFFFF) {
@@ -58,7 +60,7 @@ int FirmwareFlasherClass::prepare_flash(void)
     return -2; //firmware is too large
   }
 
-  flash_erase_upper();   // erase upper half of flash
+
   return 0;
 }//prepare_flash()
 
