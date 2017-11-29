@@ -168,8 +168,8 @@ static int leave_interrupts_disabled = 0;
 
 RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_value)
 {
-  Serial.printf("befor: %X\n", *(volatile uint32_t *) address);
-  Serial.printf("writing: %X\n", word_value);
+  // Serial.printf("befor: %X\n", *(volatile uint32_t *) address);
+  // Serial.printf("writing: %X\n", word_value);
   if (address >= FLASH_SIZE || (address & 0B11) != 0) // basic checks
     return 1;
 
@@ -216,7 +216,7 @@ RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_va
   if (!leave_interrupts_disabled)
     __enable_irq ();
 
-  Serial.printf("after: %X\n", *(volatile uint32_t *) address);
+  // Serial.printf("after: %X\n", *(volatile uint32_t *) address);
   // check if done OK
   if (*(volatile uint32_t *) address != word_value) {
     Serial.printf("should be: %X but is: %X\n", word_value, (volatile uint32_t *) address);
