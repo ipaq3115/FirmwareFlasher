@@ -50,7 +50,8 @@
 #endif
 
 // apparently better - thanks to Frank Boesing
-#define RAMFUNC  __attribute__ ((section(".fastrun"), noinline, noclone, optimize("Os") ))
+#define RAMFUNC FASTRUN
+// #define RAMFUNC  __attribute__ ((section(".fastrun"), noinline, noclone, optimize("Os") ))
 
 class FirmwareFlasherClass {
 public:
@@ -60,9 +61,18 @@ public:
   static int flash_hex_line(const char *line);
   
 private:
-  static uint8_t *saveBytes;
+  static byte saveBytes[100];
   static uint32_t saveAddr;
+  static uint32_t lastAddr;
   static uint8_t  saveSize;
+  
+  static uint32_t address;
+  static uint32_t base_address;
+  static int line_count;
+  static int error;
+  static int done;
+  static uint32_t max_address;
+  static uint32_t min_address;
 
   static int check_compatible(uint32_t min, uint32_t max);
   uint32_t  read_once(unsigned char address);

@@ -5,6 +5,8 @@
 #include "FirmwareFlasher.h"
 #include <stdio.h>
 
+#define Serial Serial
+
 // ********************************************************************************************
 
 // Version 1.3B
@@ -39,9 +41,18 @@
 
 // TODO - only copy RAMFUNC functions to ram just before they are used
 
-uint8_t *FirmwareFlasherClass::saveBytes;
+byte FirmwareFlasherClass::saveBytes[100];
 uint32_t FirmwareFlasherClass::saveAddr = 0xFFFFFFFF;
+uint32_t FirmwareFlasherClass::lastAddr = 0xFFFFFFFF;
 uint8_t  FirmwareFlasherClass::saveSize = 0;
+
+uint32_t FirmwareFlasherClass::address = 0;
+uint32_t FirmwareFlasherClass::base_address = 0;
+int FirmwareFlasherClass::line_count = 0;
+int FirmwareFlasherClass::error = 0;
+int FirmwareFlasherClass::done = 0;
+uint32_t FirmwareFlasherClass::max_address = 0;
+uint32_t FirmwareFlasherClass::min_address = ~0;
 
 int FirmwareFlasherClass::prepare_flash(void)
 {
@@ -60,6 +71,20 @@ int FirmwareFlasherClass::prepare_flash(void)
     return -2; //firmware is too large
   }
 
+  // Zero all of the values that flash_hex_line() uses 
+  // This allows a firmware update to be canceled and resumed
+  
+  saveAddr = 0xFFFFFFFF;
+  lastAddr = 0xFFFFFFFF;
+  saveSize = 0;
+
+  address = 0;
+  base_address = 0;
+  line_count = 0;
+  error = 0;
+  done = 0;
+  max_address = 0;
+  min_address = ~0;
 
   return 0;
 }//prepare_flash()
@@ -133,7 +158,6 @@ void FirmwareFlasherClass::boot_check(void)
 
   return;
 }  // boot_check()
-
 
 // check that the uploaded firmware contains a string that indicates that it will run on this MCU
 int FirmwareFlasherClass::check_compatible(uint32_t min, uint32_t max)
@@ -236,20 +260,41 @@ RAMFUNC int FirmwareFlasherClass::flash_word (uint32_t address, uint32_t word_va
 RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t phrase_value)
 {
 
-  if (address >= FLASH_SIZE || (address & 0B111) != 0) // basic checks
+// Serial.printf(".");
+
+  if (address >= FLASH_SIZE || (address & 0B111) != 0) { // basic checks
+    Serial.printf("flash_phrase basic checks address %d FLASH_SIZE %d\r\n", address);
     return 1;
+  }
+  
+// Serial.printf(".");
 
   // correct value in FTFL_FSEC no matter what.
   if (address == 0x408) {
     phrase_value = 0xfffff9deffffffff;
   }
-  if (*(volatile uint64_t *) address == phrase_value)
+// Serial.printf(".");
+
+  if (*(volatile uint64_t *) address == phrase_value) {
+    Serial.printf("flash_phrase address == phrase_value\r\n");  
     return 0;
+  }
+  
+// Serial.printf(".");
 
   // check if not erased
-  if (*(volatile uint64_t *) address != 0xFFFFFFFFFFFFFFFF)  // TODO this fails
+  if (*(volatile uint64_t *) address != 0xFFFFFFFFFFFFFFFF) { // TODO this fails
+    Serial.printf("flash_phrase address not erased\r\n");
     return 4;
+  }
 
+  Serial.printf("about to disable interrutps\r\n"); Serial.flush(); 
+  
+  // if(address < FLASH_SIZE / 2) {
+      // Serial.printf("address %d\r\n", address); Serial.flush(); 
+      // delay(100);
+  // }
+  
   __disable_irq ();
   #if defined(__MK66FX1M0__)  //thank you Deb Hollenback at GiftCoder
     kinetis_hsrun_disable(); //drop out of highspeed mode for flash writes
@@ -278,11 +323,17 @@ RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t phras
   FTFL_FCCOBA = phrase_value >> 40;
   FTFL_FCCOBB = phrase_value >> 32;
 
+// Serial.printf(".");
+
   FTFL_FSTAT = FTFL_FSTAT_CCIF;  // execute!
+
+// Serial.printf(".");
 
   while ((FTFL_FSTAT & FTFL_FSTAT_CCIF) != FTFL_FSTAT_CCIF)  // wait for ready
   {
   };
+
+// Serial.printf(".");
 
   FMC_PFB0CR |= 0xF << 20;  // flush cache
 
@@ -303,14 +354,32 @@ RAMFUNC int FirmwareFlasherClass::flash_phrase (uint32_t address, uint64_t phras
     delayMicroseconds(300);
   #endif
 
-  // Serial.printf("after: %08X", *(volatile uint64_t *) address);
-  // Serial.printf("%08X\n", ((*(volatile uint64_t *) address)>>32)&0xFFFFFFFF);
-  //
-  // Serial.printf("FTFL_FSTAT: %X\n", FTFL_FSTAT);
+// Serial.printf(".\r\n");
+
+  Serial.printf("after: %08X", *(volatile uint64_t *) address);
+  Serial.printf("%08X\n", ((*(volatile uint64_t *) address)>>32)&0xFFFFFFFF);
+  Serial.printf("befre: %08X", phrase_value);
+  Serial.printf("%08X\n", (phrase_value>>32) & 0xFFFFFFFF);
+  
+  Serial.printf("FTFL_FSTAT: %X\n", FTFL_FSTAT);
 
   // check if value actually written
-  if (*(volatile uint64_t *) address != phrase_value)
+  if (*(volatile uint64_t *) address != phrase_value) {
+
+    Serial.printf("FAIL\r\n");
+    Serial.printf("after: %08X", *(volatile uint64_t *) address);
+    Serial.printf("%08X\n", ((*(volatile uint64_t *) address)>>32)&0xFFFFFFFF);
+    Serial.printf("befre: %08X", phrase_value);
+    Serial.printf("%08X\n", (phrase_value>>32) & 0xFFFFFFFF);
+    delay(1000);
+    Serial.printf("after: %08X", *(volatile uint64_t *) address);
+    Serial.printf("%08X\n", ((*(volatile uint64_t *) address)>>32)&0xFFFFFFFF);
+    Serial.printf("befre: %08X", phrase_value);
+    Serial.printf("%08X\n", (phrase_value>>32) & 0xFFFFFFFF);
+    while(true);
+  
     return 8;
+  }
 
   return FTFL_FSTAT & (FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0);
 }
@@ -329,6 +398,10 @@ RAMFUNC int FirmwareFlasherClass::flash_erase_sector (uint32_t address, int unsa
 
   __disable_irq ();
 
+#if defined(__MK66FX1M0__)
+  kinetis_hsrun_disable();
+#endif  
+  
   // wait for flash to be ready!
   while ((FTFL_FSTAT & FTFL_FSTAT_CCIF) != FTFL_FSTAT_CCIF)
   {
@@ -351,8 +424,23 @@ RAMFUNC int FirmwareFlasherClass::flash_erase_sector (uint32_t address, int unsa
 
   FMC_PFB0CR = 0xF << 20;  // flush cache
 
+#if defined(__MK66FX1M0__)
+  //Invalidate any cached lines in the CODE bus cache
+  LMEM_PCCCR |= LMEM_PCCCR_GO+LMEM_PCCCR_INVW1+LMEM_PCCCR_INVW0; //issue invalidate cmds, leave lower settings intact
+  while ((LMEM_PCCCR & LMEM_PCCCR_GO) == LMEM_PCCCR_GO)  // wait for invalidate to complete
+  {
+  };
+  
+  kinetis_hsrun_enable(); //enable MCU high speed mode
+#endif
+
   if (!leave_interrupts_disabled)
     __enable_irq ();
+
+#if defined(__MK66FX1M0__)
+  //if a printf immediately follows this rtn, delay needed post kinetis_hsrun_enable() or monitor may hang.
+  delayMicroseconds(300); 
+#endif
 
   return FTFL_FSTAT & (FTFL_FSTAT_RDCOLERR | FTFL_FSTAT_ACCERR | FTFL_FSTAT_FPVIOL | FTFL_FSTAT_MGSTAT0);
 
@@ -366,7 +454,11 @@ RAMFUNC void FirmwareFlasherClass::flash_move (uint32_t min_address, uint32_t ma
 {
   leave_interrupts_disabled = 1;
 
+  Serial.printf("flash_move min_address %d max_address %d\r\n", min_address, max_address);
+
   min_address &= ~(FLASH_SECTOR_SIZE - 1);      // round down
+
+  Serial.printf("flash_move min_address %d flash_phrase %p\r\n", min_address, flash_phrase);
 
   uint32_t address;
   int error = 0;
@@ -393,11 +485,28 @@ RAMFUNC void FirmwareFlasherClass::flash_move (uint32_t min_address, uint32_t ma
     if ((address & (FLASH_SECTOR_SIZE - 1)) == 0) {   // new sector?
       error |= flash_erase_sector(address, 54321);
 
+      Serial.printf("New sector err %d\r\n", error);
+
       // correct value in FTFL_FSEC no matter what.
       if (address == (0x408 & ~(FLASH_SECTOR_SIZE - 1))) {// critical sector
+        
         error |= flash_phrase(0x408, 0xfffff9DEffffffff);                  // fix it immediately
+        
+        Serial.printf("Critical sector err %d\r\n", error);
+        
       }
+      
     }
+    
+    byte * ptr = address + FLASH_SIZE / 2;
+
+    Serial.printf("address %d %08X %08X\r\n", 
+        address, 
+        *(uint64_t *)(address + FLASH_SIZE / 2)); 
+    
+    for(int i=0;i<8;i++) Serial.printf("%02X ", ptr[i]); Serial.printf("\r\n");
+    
+    Serial.flush();
 
     error |= flash_phrase(address, *(uint64_t *)(address + FLASH_SIZE / 2));
 
@@ -407,7 +516,10 @@ RAMFUNC void FirmwareFlasherClass::flash_move (uint32_t min_address, uint32_t ma
 
   if (error) {
     //digitalWrite(ledPin, HIGH);    // set the LED on and halt
-    for (;;) {}
+    for (;;) {
+        Serial.printf("error %d\r\n", error);
+        delay(1000);
+    }
   }
 
   // restart to run new program
@@ -428,18 +540,19 @@ RAMFUNC void FirmwareFlasherClass::flash_move (uint32_t min_address, uint32_t ma
 
 int FirmwareFlasherClass::flash_hex_line (const char *line)
 {
+    Serial.printf("flash_hex_line %s\r\n", line);
   // hex records info
   unsigned int byte_count;
-  static uint32_t address;
   unsigned int code;
   char data[128];   // assume no hex line will have more than this.  Alignment?
 
-  static uint32_t base_address = 0;
-  static int line_count = 0;
-  static int error = 0;
-  static int done = 0;
-  static uint32_t max_address = 0;
-  static uint32_t min_address = ~0;
+  // static uint32_t address;
+  // static uint32_t base_address = 0;
+  // static int line_count = 0;
+  // static int error = 0;
+  // static int done = 0;
+  // static uint32_t max_address = 0;
+  // static uint32_t min_address = ~0;
 
   if (line[0] != ':')		// a non hex line is ignored
     return 0;
@@ -454,6 +567,7 @@ int FirmwareFlasherClass::flash_hex_line (const char *line)
     if (lines == line_count && done) {
       Serial.printf("flash %x:%x begins...\n", min_address, max_address);
       delay(100);
+      // while(true);
       flash_move (min_address, max_address);
       // should never get here
     } else {
@@ -462,10 +576,10 @@ int FirmwareFlasherClass::flash_hex_line (const char *line)
     }
   } // if
 
-  ++line_count;
-
   //int parse_hex_line(const char *theline, char bytes, unsigned int *addr, unsigned int *num, unsigned int *code);
 
+  ++line_count;
+    
   // must be a hex data line
   if (! FirmwareFlasher.parse_hex_line((const char *)line, (char *)data, (unsigned int *) &address, (unsigned int*) &byte_count, (unsigned int*) &code))
   {
@@ -489,11 +603,16 @@ int FirmwareFlasherClass::flash_hex_line (const char *line)
     case 1:             // EOF
       delay(1000);
       Serial.printf ("done, %d hex lines, address range %x:%x, waiting for :flash %d\n", line_count, min_address, max_address, line_count);
-      if (check_compatible(min_address + FLASH_SIZE / 2, max_address + FLASH_SIZE / 2))
+      Serial.printf("saveAddr 0x%X\r\n", saveAddr);
+      if (check_compatible(min_address + FLASH_SIZE / 2, max_address + FLASH_SIZE / 2)) {
         done = 1;
-      else
+      } else {
         Serial.printf ("new firmware not compatible\n");
-      return 0;
+        return -9999;
+      }
+      // Only return here if nothing is saved
+      if(saveAddr == 0xFFFFFFFF) return 0;
+      break;
     case 2:
       base_address = ((data[0] << 8) | data[1]) << 4;   // extended segment address
       return 0;
@@ -515,36 +634,189 @@ int FirmwareFlasherClass::flash_hex_line (const char *line)
     return -2;
   }
   #elif defined(__MK64FX512__) || defined(__MK66FX1M0__)
-  if (byte_count % 8 != 0) {
-    Serial.printf("not 64bit\n");
-    if (byte_count < 16) {
-      if (saveAddr != 0xFFFFFFFF) {//somthing is saved
-        if (address == saveAddr + saveSize) {
-          memmove(data+saveSize, data, byte_count);
-          memcpy(data, saveBytes, saveSize);
-          byte_count += saveSize;
-          address = saveAddr;
-          saveAddr = 0xFFFFFFFF;
+  
+    // Saved
+    if(saveAddr != 0xFFFFFFFF) {
+
+        Serial.printf("Found saved\r\n");
+        
+        if(done) {
+            
+            Serial.printf("Write last data in the buffer %d %d\r\n", saveAddr, saveSize);
+
+            // Zero the array
+            for(int i=0;i<8;i++) data[i] = 0;
+            
+            memcpy(data, saveBytes, saveSize);
+            
+            address = saveAddr;
+            byte_count = saveSize;
+            
+            if(byte_count < 8) byte_count = 8;
+            
+            saveAddr = 0xFFFFFFFF;
+            
+        } else if (address == saveAddr + saveSize) {
+            
+            // Move data up wards in the buffer
+            memmove(data+saveSize, data, byte_count);
+            
+            // Copy saved into the lower part of the buffer
+            memcpy(data, saveBytes, saveSize);
+            
+            Serial.printf("byte_count %d saveSize %d address %d saveAddr %d\r\n", byte_count, saveSize, address, saveAddr);
+            
+            // Add the size of the saved portion
+            byte_count += saveSize;
+            
+            // Print the array we want to flash
+            for(int i=0;i<byte_count;i++) Serial.printf("%02X", data[i]); Serial.println();
+            
+            // Change to the saved address
+            address = saveAddr;
+            
+            // Reset saved variables
+            saveAddr = 0xFFFFFFFF;
+            // free(saveBytes);
+            
+            unsigned int left_over = byte_count % 8;
+            
+            if(left_over != 0) {
+                
+                saveAddr = address + byte_count - left_over;
+                saveSize = left_over;
+                // saveBytes = (uint8_t*) calloc(saveSize, 8);
+                memcpy(saveBytes, data + byte_count - left_over, saveSize);
+                
+                byte_count -= left_over;
+                
+            }
+            
         } else {
-          return -2;
+            
+            Serial.printf("address %d saveAddr %d saveSize %d byte_count %d line\r\n",
+                address, saveAddr, saveSize, byte_count, line);
+            
+            // free(saveBytes);
+            
+            return -2;
+        
         }
-      } else if (byte_count < 8) {//nothing saved and shorter than the minimum flash length
-        saveAddr = address;
-        saveSize = byte_count;
-        saveBytes = (uint8_t*) calloc(saveSize, 8);
-        memcpy(saveBytes, data, saveSize);
-        return 0;
-      } else {// nothing saved. flash a phrase and save the overflow
-        saveSize = byte_count-8;
-        saveAddr = address+8;
-        saveBytes = (uint8_t*) calloc(saveSize, 8);
-        memcpy(saveBytes, data + 8, saveSize);
-        byte_count = 8;
-      }
+
+        Serial.printf("byte_count %d saveSize %d address %d saveAddr %d\r\n", byte_count, saveSize, address, saveAddr);
+        
+        Serial.printf("Writing this to flash: ");
+        
+        // Print the array we want to flash
+        for(int i=0;i<byte_count;i++) Serial.printf("%02X", data[i]); Serial.println();
+        
     } else {
-      return -2;
+        
+        // Nothing saved and not in alignment
+        if(byte_count % 8 != 0) {
+            
+            if(byte_count >= 16) {
+                
+                Serial.printf("For some reason not expecting anything this long\r\n");
+                return -2;
+                
+            }
+            
+            // Save all for later since we can't flash less that 8 bytes
+            if(byte_count < 8) {
+            
+                saveAddr = address;
+                saveSize = byte_count;
+                // saveBytes = (uint8_t*) calloc(saveSize, 8);
+                memcpy(saveBytes, data, saveSize);
+                
+                return 0;
+                
+            // Flash lower sections and save the extra for next time
+            } else {
+                
+                saveSize = byte_count - 8;
+                saveAddr = address + 8;
+                // saveBytes = (uint8_t*) calloc(saveSize, 8);
+                memcpy(saveBytes, data + 8, saveSize);
+                byte_count = 8;
+                
+            }
+            
+        }
+        
     }
-  }
+  
+    // if (byte_count % 8 != 0) {
+    //     
+    //     Serial.printf("not 64bit\n");
+    //     
+    //     if (byte_count < 16) {
+    //         
+    //         if (saveAddr != 0xFFFFFFFF) {//somthing is saved
+    //         
+    //             Serial.printf("Found saved\r\n");
+    //             
+    //             if (address == saveAddr + saveSize) {
+    //                 
+    //                 // Move data up wards in the buffer
+    //                 memmove(data+saveSize, data, byte_count);
+    //                 
+    //                 // Copy saved into the lower part of the buffer
+    //                 memcpy(data, saveBytes, saveSize);
+    //                 
+    //                 Serial.printf("byte_count %d saveSize %d address %d saveAddr %d\r\n", byte_count, saveSize, address, saveAddr);
+    //                 
+    //                 // Add the size of the saved portion
+    //                 byte_count += saveSize;
+    //                 
+    //                 for(int i=0;i<byte_count;i++) Serial.printf("% 02X", data[0]);
+    //                 
+    //                 // Change to the saved address
+    //                 address = saveAddr;
+    //                 
+    //                 // Reset saved variables
+    //                 saveAddr = 0xFFFFFFFF;
+    //                 free(saveBytes);
+    //                 
+    //                 
+    //                 
+    //             } else {
+    //                 
+    //                 Serial.printf("address %d saveAddr %d saveSize %d byte_count %d line\r\n",
+    //                 address, saveAddr, saveSize, byte_count, line);
+    //                 free(saveBytes);
+    //                 return -2;
+    //             
+    //             }
+    //             
+    //         } else if (byte_count < 8) {//nothing saved and shorter than the minimum flash length
+    //         
+    //             saveAddr = address;
+    //             saveSize = byte_count;
+    //             saveBytes = (uint8_t*) calloc(saveSize, 8);
+    //             memcpy(saveBytes, data, saveSize);
+    //             return 0;
+    //             
+    //         } else {// nothing saved. flash a phrase and save the overflow
+    //             
+    //             saveSize = byte_count-8;
+    //             saveAddr = address+8;
+    //             saveBytes = (uint8_t*) calloc(saveSize, 8);
+    //             memcpy(saveBytes, data + 8, saveSize);
+    //             byte_count = 8;
+    //             
+    //         }
+    //         
+    //     } else {
+    //         
+    //         Serial.printf("byte_count %d line\r\n", byte_count, line);
+    //         return -2;
+    //         
+    //     }
+    //     
+    // }
+  
   if (flash_block (base_address + address + (FLASH_SIZE / 2), (uint64_t *)data, byte_count))  // offset to upper 128K
   {
     Serial.printf ("can't flash %d bytes to %x\n", byte_count, address);
@@ -585,7 +857,7 @@ void FirmwareFlasherClass::flash_erase_upper()
   // erase each block
   for (address = FLASH_SIZE / 2; address < (FLASH_SIZE - RESERVE_FLASH); address += FLASH_SECTOR_SIZE) {
     if (!flash_sector_erased(address)) {
-      //Serial.printf("erase sector %x\n", address);
+      Serial.printf("erase sector %x\n", address);
       if ((ret = flash_erase_sector(address, 0)) != 0)
         Serial.printf("flash erase error %d\n", ret);
     }
@@ -752,7 +1024,7 @@ int FirmwareFlasherClass::parse_hex_line (const char *theline, char *bytes, unsi
   if (!sscanf (ptr, "%04x", (unsigned int *)addr))
     return 0;
   ptr += 4;
-  Serial.printf("Line: length=%d Addr=%d\n", len, *addr);
+  // Serial.printf("Line: length=%d Addr=%d\n", len, *addr);
   if (!sscanf (ptr, "%02x", code))
     return 0;
   ptr += 2;
@@ -779,3 +1051,5 @@ int FirmwareFlasherClass::parse_hex_line (const char *theline, char *bytes, unsi
 
 
 FirmwareFlasherClass FirmwareFlasher;
+
+#undef Serial
